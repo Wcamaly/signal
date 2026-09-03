@@ -43,6 +43,10 @@ git push -u origin feat/reddit-source
 gh pr create --fill
 ```
 
+`main` requires one approval from the maintainer listed in `.github/CODEOWNERS`.
+Only repository collaborators with write access can merge; public contributors
+can open pull requests without receiving merge access.
+
 Branch names: `feat/…`, `fix/…`, `docs/…`, `refactor/…`, `chore/…`.
 
 Commits: present tense, one idea per commit, no trailing period —

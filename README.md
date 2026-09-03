@@ -1,7 +1,9 @@
 # Signal
 
-**An AI trend radar that reads your sources, decides what is worth saying, writes
-the weekly digest, and drafts the posts. You approve them.**
+**A self-hosted AI trend radar for RSS, GitHub, Reddit, Hacker News, arXiv,
+YouTube, and more.** Signal finds the stories worth your attention, creates a
+weekly digest, and drafts posts for your channels. You review and approve every
+publication.
 
 Nothing is published on its own. The agent proposes; you edit, ask for
 rewrites, and approve — one post at a time.
