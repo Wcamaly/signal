@@ -1,9 +1,9 @@
 [Unit]
-Description=Signal — dispara el pipeline los lunes a la mañana
+Description=Signal — fires the pipeline on Monday mornings
 
 [Timer]
-# Lunes 08:00 hora local del contenedor.
-# Cambiá el día/hora acá y después:  systemctl daemon-reload && systemctl restart signal-pipeline.timer
+# Monday 08:00, local time of the container.
+# Change the day/hour here, then:  systemctl daemon-reload && systemctl restart signal-pipeline.timer
 OnCalendar=Mon *-*-* 08:00:00
 Persistent=true
 RandomizedDelaySec=300

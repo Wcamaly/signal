@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Construye signal:local y la importa en containerd del nodo k3s usando kubectl.
+# Builds signal:local and imports it into the containerd of the k3s node through kubectl.
 
 set -euo pipefail
 
@@ -9,10 +9,10 @@ KUBECTL="${KUBECTL:-kubectl}"
 POD="signal-image-loader"
 TAR_FILE="${TMPDIR:-/tmp}/signal-image.tar"
 
-command -v docker >/dev/null || { echo "No encuentro docker" >&2; exit 1; }
-command -v "$KUBECTL" >/dev/null || { echo "No encuentro kubectl" >&2; exit 1; }
+command -v docker >/dev/null || { echo "docker not found" >&2; exit 1; }
+command -v "$KUBECTL" >/dev/null || { echo "kubectl not found" >&2; exit 1; }
 
-echo "Construyendo $IMAGE…"
+echo "Building $IMAGE…"
 docker build -t "$IMAGE" .
 docker save "$IMAGE" -o "$TAR_FILE"
 
@@ -34,6 +34,6 @@ trap cleanup EXIT
 "$KUBECTL" -n "$NAMESPACE" exec "$POD" -- /bin/sh -c \
   'chroot /host /usr/local/bin/k3s ctr -n k8s.io images import /tmp/signal-image.tar'
 
-echo "Imagen $IMAGE importada en k3s. Reiniciando Signal…"
+echo "Image $IMAGE imported into k3s. Restarting Signal…"
 "$KUBECTL" -n "$NAMESPACE" rollout restart deployment/signal
 "$KUBECTL" -n "$NAMESPACE" rollout status deployment/signal --timeout=180s

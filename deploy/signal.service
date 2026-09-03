@@ -1,5 +1,5 @@
 [Unit]
-Description=Signal — radar de IA y publicaciones
+Description=Signal — AI radar and publications
 Documentation=file:/opt/signal/README.md
 After=network-online.target
 Wants=network-online.target
@@ -16,7 +16,7 @@ RestartSec=5
 KillSignal=SIGINT
 TimeoutStopSec=20
 
-# Endurecimiento: la app sólo necesita escribir en su carpeta de datos.
+# Hardening: the app only needs to write to its data directory.
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
