@@ -31,6 +31,9 @@ the thing before spending a cent.
 
 The database creates itself at `./data/signal.db`.
 
+Prefer Docker? `docker compose up -d` does the same thing, with the state in a
+named volume.
+
 ---
 
 ## How it works
@@ -136,59 +139,32 @@ Protect it with `CRON_SECRET` if it is reachable from anywhere but localhost.
 
 ## Deploying
 
-### Docker / systemd / LXC
-
-`deploy/install.sh` installs the app in a Debian container with a systemd
-service and a weekly timer. `deploy/create-lxc.sh` creates that container on a
-Proxmox host. The `Dockerfile` builds a standalone image.
-
-### k3s with Argo CD
-
-The manifests use Kustomize and Argo CD. The `signal` namespace holds only this
-project and keeps SQLite on a PVC, so there is one replica and the pipeline runs
-as a `CronJob` on Mondays at 08:00.
+**Docker:**
 
 ```bash
-# 1. Namespace and image (built locally, imported into the node's containerd)
-kubectl apply -f deploy/kustomize/base/namespace.yaml
-bash deploy/load-local-image-k3s.sh
-
-# 2. Secret — kept out of Git
-export CRON_SECRET="a-long-secret"
-export SIGNAL_SECRET_KEY="another-long-secret"   # encrypts credentials stored from the UI
-export ANTHROPIC_API_KEY="sk-ant-..."            # optional, can be pasted in the UI instead
-bash deploy/create-secret-k3s.sh
-
-# 3. Argo CD application
-kubectl apply -f deploy/argocd/project.yaml
-kubectl apply -f deploy/argocd/application.yaml
-kubectl -n argocd wait application/signal --for=jsonpath='{.status.sync.status}'=Synced --timeout=180s
+cp .env.example .env       # optional; the model and its key can be set in the UI
+docker compose up -d       # http://localhost:3000
 ```
 
-Argo syncs `deploy/kustomize/overlays/production` — PVC, Deployment, Service,
-Ingress and `CronJob`. Change the timezone in
-`deploy/kustomize/base/configmap.yaml` and `cronjob.yaml`. To ship a local
-update, run `load-local-image-k3s.sh` again.
+**A Debian box:** `bash deploy/install.sh` installs the app under systemd with a
+weekly timer.
 
-```bash
-kubectl -n signal get pods,pvc,cronjobs
-kubectl -n signal logs deploy/signal
-kubectl -n signal create job --from=cronjob/signal-pipeline signal-pipeline-manual
-kubectl -n signal port-forward svc/signal 3000:3000     # without the Ingress
-```
+**Kubernetes:** `deploy/kubernetes/` is a Kustomize example — namespace, config,
+PVC, deployment, service, ingress and the weekly CronJob. The host, the ingress
+class and the timezone are placeholders; read it before applying it.
 
-Traefik publishes Signal at `http://signal.192.168.1.240.nip.io`. If your network
-does not resolve `nip.io`, add `192.168.1.240 signal.local` to `/etc/hosts` and
-change the host in `deploy/kustomize/base/ingress.yaml`. That route is plain HTTP
-inside the local network.
+Backups, schedules, and the one mistake worth avoiding — **never let Argo CD or
+Flux auto-sync a public repository into your cluster**, because then merging a
+pull request deploys it — are covered in
+**[docs/deploying.md](docs/deploying.md)**.
 
-State lives in the `signal-data` PVC (`/app/data/signal.db`) — back it up, or use
-the snapshot mechanism of its StorageClass. Losing it loses the digests, the
-posts and the credentials stored from the UI.
+Whatever the shape: **Signal has no authentication of its own.** Run it on
+localhost, on a homelab, or behind a VPN or an authenticating proxy — never on a
+public address as it is. See [SECURITY.md](SECURITY.md).
 
-**Signal has no authentication of its own.** Run it on localhost, on a homelab,
-or behind a VPN or an authenticating proxy — never on a public IP as it is. See
-[SECURITY.md](SECURITY.md).
+State is one SQLite file plus the key that encrypts your stored credentials.
+Back up the volume, the data directory, or the PVC — losing it loses the
+digests, the posts and every credential saved from the UI.
 
 ---
 

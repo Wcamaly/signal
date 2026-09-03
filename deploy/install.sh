@@ -125,7 +125,7 @@ cat <<EOF
   Remote access without exposing anything to the internet:
     curl -fsSL https://tailscale.com/install.sh | sh
     tailscale up --ssh
-  (the container already has /dev/net/tun enabled from create-lxc.sh)
+  (an unprivileged LXC needs /dev/net/tun allowed in its config for this)
 
   To update the app later: copy the new code and run this script again.
 
