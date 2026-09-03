@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Signal
 
 Radar de tendencias de IA → resumen semanal con criterio → borradores de publicaciones para LinkedIn, X e Instagram, con una UI para revisarlos y aprobarlos uno por uno.
@@ -96,8 +95,17 @@ docker buildx build --platform linux/amd64 -t "$IMAGE" --push .
 ```
 
 El token necesita permiso `write:packages` y el paquete debe permitir acceso al
-repositorio. Usá `linux/arm64` si los nodos del clúster son ARM. Si el paquete es
-privado, configurá también un `imagePullSecret` en el namespace `signal`.
+repositorio. Usá `linux/arm64` si los nodos del clúster son ARM.
+
+Para un registry privado, creá una credencial de lectura por namespace. Repetí este
+paso para cada proyecto nuevo:
+
+```bash
+kubectl -n signal create secret docker-registry ghcr-credentials \
+  --docker-server=ghcr.io \
+  --docker-username=Wcamaly \
+  --docker-password="$GITHUB_TOKEN"
+```
 
 ### 2. Crear el namespace y el Secret
 

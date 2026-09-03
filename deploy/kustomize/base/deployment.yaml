@@ -14,6 +14,8 @@ spec:
       labels:
         app.kubernetes.io/name: signal
     spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
       containers:
         - name: signal
           image: signal
