@@ -15,7 +15,7 @@ command -v gh >/dev/null || { echo "gh CLI not found: https://cli.github.com" >&
 
 REPO="${REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
 BRANCH="${BRANCH:-$(gh repo view "$REPO" --json defaultBranchRef --jq .defaultBranchRef.name)}"
-REVIEWERS="${REVIEWERS:-0}"   # required approvals; 0 works for a solo maintainer
+REVIEWERS="${REVIEWERS:-1}"   # require the maintainer's CODEOWNERS approval
 
 echo "Protecting ${REPO}@${BRANCH} (required approvals: ${REVIEWERS})…"
 
@@ -35,7 +35,7 @@ gh api -X POST "repos/${REPO}/rulesets" --input - <<JSON
       "parameters": {
         "required_approving_review_count": ${REVIEWERS},
         "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
+        "require_code_owner_review": true,
         "require_last_push_approval": false,
         "required_review_thread_resolution": false,
         "allowed_merge_methods": ["merge", "squash", "rebase"]

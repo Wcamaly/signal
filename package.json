@@ -32,7 +32,7 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "description": "Open-source AI trend radar: reads your sources, writes the weekly digest, drafts the posts. You approve them.",
+  "description": "Open-source, self-hosted AI trend radar for RSS, GitHub, Reddit, Hacker News, arXiv, and YouTube. Creates digests and drafts posts for your approval.",
   "license": "MIT",
   "repository": {
     "type": "git",
