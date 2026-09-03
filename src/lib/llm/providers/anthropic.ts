@@ -25,9 +25,14 @@ export const anthropicProvider: LlmProvider = {
 
   async chat(req, ctx) {
     if (!ctx.apiKey) throw new LlmError("Anthropic needs an API key", "anthropic");
+    // Identity-linked keys (one key, several workspaces) are rejected with a 400
+    // unless the request says which workspace it acts in. Workspace-scoped keys
+    // ignore the header, so it is safe to always send it when configured.
+    const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
     const client = new Anthropic({
       apiKey: ctx.apiKey,
       baseURL: ctx.baseUrl || undefined,
+      ...(workspaceId ? { defaultHeaders: { "anthropic-workspace-id": workspaceId } } : {}),
     });
 
     try {
