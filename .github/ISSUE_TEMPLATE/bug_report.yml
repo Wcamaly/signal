@@ -1,0 +1,44 @@
+name: Bug report
+description: Something does not work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the error message and the run log if the pipeline was involved.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Run the … stage
+        3. See …
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: LLM provider and model
+      placeholder: anthropic / claude-opus-5, ollama / llama3.3, none (demo mode)…
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v1.0.0 or a commit sha
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed API keys, tokens and personal data from the logs I pasted
+          required: true
