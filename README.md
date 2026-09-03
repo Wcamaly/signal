@@ -128,7 +128,7 @@ kubectl -n argocd wait application/signal --for=jsonpath='{.status.sync.status}'
 ```
 
 Argo sincroniza `deploy/kustomize/overlays/production`, incluyendo el PVC, Deployment,
-Service y `CronJob`. Para usar otra zona horaria, editá el valor en
+Service, Ingress y `CronJob`. Para usar otra zona horaria, editá el valor en
 `deploy/kustomize/base/configmap.yaml` y `deploy/kustomize/base/cronjob.yaml`.
 
 Para publicar una actualización local, ejecutá nuevamente `load-local-image-k3s.sh`.
@@ -141,12 +141,12 @@ desde un registry.
 kubectl -n signal get pods,pvc,cronjobs
 kubectl -n signal logs deploy/signal
 kubectl -n signal create job --from=cronjob/signal-pipeline signal-pipeline-manual
-kubectl -n signal port-forward svc/signal 3000:3000
 ```
 
-Abrí `http://localhost:3000` después del `port-forward`. Para exponerlo en la red,
-agregá un Ingress acorde al controlador instalado en tu clúster; la app no tiene
-autenticación propia.
+Traefik publica Signal en `http://signal.192.168.1.240.nip.io`. Si tu red no resuelve
+`nip.io`, agregá `192.168.1.240 signal.local` a `/etc/hosts` y cambiá el host del
+Ingress a `signal.local`. La app no tiene autenticación propia y esta ruta sólo usa
+HTTP dentro de la red local.
 
 El estado está en `signal-data` (`/app/data/signal.db`). Respaldá ese PVC o usá el
 mecanismo de snapshots de su StorageClass.
