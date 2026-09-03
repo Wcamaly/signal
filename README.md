@@ -91,10 +91,13 @@ contexto remoto:
 
 ```bash
 export IMAGE=ghcr.io/wcamaly/signal:latest
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u Wcamaly --password-stdin
 docker buildx build --platform linux/amd64 -t "$IMAGE" --push .
 ```
 
-Usá `linux/arm64` si los nodos del clúster son ARM.
+El token necesita permiso `write:packages` y el paquete debe permitir acceso al
+repositorio. Usá `linux/arm64` si los nodos del clúster son ARM. Si el paquete es
+privado, configurá también un `imagePullSecret` en el namespace `signal`.
 
 ### 2. Crear el namespace y el Secret
 
