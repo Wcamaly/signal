@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: signal
+  namespace: argocd
+spec:
+  description: Signal AI radar and publishing workflow
+  sourceRepos:
+    - git@github.com:Wcamaly/signal.git
+  destinations:
+    - namespace: signal
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

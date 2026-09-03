@@ -1,0 +1,13 @@
+[Unit]
+Description=Signal — corrida semanal del pipeline
+After=signal.service
+Requires=signal.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/signal.env
+# Ingesta + curaduría + resumen + redacción. Puede tardar varios minutos.
+ExecStart=/usr/bin/curl -fsS --max-time 900 \
+  -H "authorization: Bearer ${CRON_SECRET}" \
+  "http://127.0.0.1:${PORT}/api/cron"
+SyslogIdentifier=signal-pipeline

@@ -1,0 +1,12 @@
+[Unit]
+Description=Signal — dispara el pipeline los lunes a la mañana
+
+[Timer]
+# Lunes 08:00 hora local del contenedor.
+# Cambiá el día/hora acá y después:  systemctl daemon-reload && systemctl restart signal-pipeline.timer
+OnCalendar=Mon *-*-* 08:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

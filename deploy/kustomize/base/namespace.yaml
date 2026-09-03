@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: signal
+  labels:
+    app.kubernetes.io/part-of: signal
+    app.kubernetes.io/managed-by: argocd
