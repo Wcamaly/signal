@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Signal
 
 Radar de tendencias de IA → resumen semanal con criterio → borradores de publicaciones para LinkedIn, X e Instagram, con una UI para revisarlos y aprobarlos uno por uno.
