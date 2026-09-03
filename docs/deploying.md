@@ -134,15 +134,24 @@ The fix is the standard split — **application repo public, configuration repo
 private**:
 
 ```
-github.com/you/signal          public    the app. No cluster wiring in it.
-github.com/you/signal-deploy   private   overlays, ingress host, Argo Application
+your-forge/signal          public     the app. No cluster wiring in it.
+your-forge/signal-deploy   private    overlays, ingress host, Argo Application
 ```
+
+They do not have to live on the same forge: a public GitHub repo and a private
+GitLab project work fine together, since Argo only ever talks to the second one.
 
 Argo watches only the private repo. A public pull request can then change the
 code — which still has to be built and shipped deliberately — but it cannot
 change what runs in your cluster. Point `sourceRepos` in the AppProject at the
 private repo only, so an accidental reintroduction of the public URL fails
 validation instead of deploying.
+
+One detail that costs an afternoon: the `repoURL` in the Application, and the
+`url` of the repository Secret that carries the deploy key, must both be the
+**canonical** URL. An SSH host alias from your own `~/.ssh/config` does not
+exist inside the cluster, and a mismatch between those two strings surfaces as
+"repository not accessible" with no hint as to why.
 
 If you are migrating an existing setup, the order matters: create the private
 repo, give Argo a read credential for it, repoint the AppProject and then the
