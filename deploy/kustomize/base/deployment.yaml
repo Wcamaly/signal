@@ -14,12 +14,10 @@ spec:
       labels:
         app.kubernetes.io/name: signal
     spec:
-      imagePullSecrets:
-        - name: ghcr-credentials
       containers:
         - name: signal
           image: signal
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
             - name: http
               containerPort: 3000

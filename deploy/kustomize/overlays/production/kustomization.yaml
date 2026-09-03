@@ -5,5 +5,5 @@ resources:
   - ../../base
 images:
   - name: signal
-    newName: ghcr.io/wcamaly/signal
-    newTag: latest
+    newName: signal
+    newTag: local

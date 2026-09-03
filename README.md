@@ -83,29 +83,19 @@ los recursos de este proyecto y mantiene SQLite en un PVC. Por eso hay una sola
 réplica de la aplicación y el pipeline corre como `CronJob` los lunes a las 08:00 en
 `America/Argentina/Buenos_Aires`.
 
-### 1. Construir y publicar la imagen
+### 1. Construir y cargar la imagen local
 
-Necesitás un registry accesible desde los nodos k3s y `kubectl` configurado con el
-contexto remoto:
-
-```bash
-export IMAGE=ghcr.io/wcamaly/signal:latest
-echo "$GITHUB_TOKEN" | docker login ghcr.io -u Wcamaly --password-stdin
-docker buildx build --platform linux/amd64 -t "$IMAGE" --push .
-```
-
-El token necesita permiso `write:packages` y el paquete debe permitir acceso al
-repositorio. Usá `linux/arm64` si los nodos del clúster son ARM.
-
-Para un registry privado, creá una credencial de lectura por namespace. Repetí este
-paso para cada proyecto nuevo:
+Como los proyectos son privados y el nodo k3s es remoto, no usamos un registry
+externo. La imagen se construye localmente, se transfiere por la API de Kubernetes y
+se importa en el `containerd` del nodo:
 
 ```bash
-kubectl -n signal create secret docker-registry ghcr-credentials \
-  --docker-server=ghcr.io \
-  --docker-username=Wcamaly \
-  --docker-password="$GITHUB_TOKEN"
+kubectl apply -f deploy/kustomize/base/namespace.yaml
+bash deploy/load-local-image-k3s.sh
 ```
+
+El nodo es `k3s-master` y la imagen queda sólo en su almacenamiento local. Para varios
+nodos, repetí la importación en cada nodo o usá un registry privado interno.
 
 ### 2. Crear el namespace y el Secret
 
@@ -141,9 +131,9 @@ Argo sincroniza `deploy/kustomize/overlays/production`, incluyendo el PVC, Deplo
 Service y `CronJob`. Para usar otra zona horaria, editá el valor en
 `deploy/kustomize/base/configmap.yaml` y `deploy/kustomize/base/cronjob.yaml`.
 
-Para publicar una actualización, cambiá la etiqueta de imagen en el overlay y hacé
-push al repositorio; Argo hará el rollout. Para un registry privado, configurá el
-`imagePullSecret` en el Deployment o en la cuenta de servicio del namespace.
+Para publicar una actualización local, ejecutá nuevamente `load-local-image-k3s.sh`.
+Argo seguirá gestionando los manifiestos, pero la imagen no se descarga desde Git ni
+desde un registry.
 
 ### Operación
 
@@ -159,9 +149,7 @@ agregá un Ingress acorde al controlador instalado en tu clúster; la app no tie
 autenticación propia.
 
 El estado está en `signal-data` (`/app/data/signal.db`). Respaldá ese PVC o usá el
-mecanismo de snapshots de su StorageClass. Para actualizar, publicá una nueva etiqueta
-de imagen en `deploy/kustomize/overlays/production/kustomization.yaml` y dejá que Argo
-sincronice el cambio.
+mecanismo de snapshots de su StorageClass.
 
 ---
 
