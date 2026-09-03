@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { channelLabel, getChannels } from "@/lib/channels";
 import { getDb, weekKey } from "@/lib/db";
 import { seedSources } from "@/lib/ingest";
+import { llmStatus } from "@/lib/llm";
 import PageHeader from "@/components/PageHeader";
-import { PLATFORM_META, type Platform } from "@/lib/types";
-import { hasKey } from "@/lib/claude";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +21,16 @@ export default function Dashboard() {
   const db = getDb();
   seedSources();
   const week = weekKey();
+  const channels = getChannels();
+  const status = llmStatus();
 
-  const count = (sql: string, ...p: unknown[]) =>
-    (db.prepare(sql).get(...p) as { c: number }).c;
+  const count = (sql: string, ...p: unknown[]) => (db.prepare(sql).get(...p) as { c: number }).c;
 
   const items = count("SELECT COUNT(*) c FROM items WHERE week_key = ?", week);
-  const selected = count("SELECT COUNT(*) c FROM items WHERE week_key = ? AND status IN ('selected','used')", week);
+  const selected = count(
+    "SELECT COUNT(*) c FROM items WHERE week_key = ? AND status IN ('selected','used')",
+    week,
+  );
   const drafts = count("SELECT COUNT(*) c FROM posts WHERE status = 'draft'");
   const approved = count("SELECT COUNT(*) c FROM posts WHERE status IN ('approved','scheduled')");
   const published = count("SELECT COUNT(*) c FROM posts WHERE status = 'published'");
@@ -44,7 +48,7 @@ export default function Dashboard() {
 
   const queue = db
     .prepare("SELECT id, platform, hook, body, status FROM posts WHERE status = 'draft' ORDER BY id DESC LIMIT 5")
-    .all() as { id: number; platform: Platform; hook: string; body: string; status: string }[];
+    .all() as { id: number; platform: string; hook: string; body: string; status: string }[];
 
   const lastRun = db.prepare("SELECT * FROM runs ORDER BY id DESC LIMIT 1").get() as
     | { kind: string; status: string; log: string; started_at: string }
@@ -53,38 +57,41 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
-        kicker={`Semana ${week}`}
-        title="Panel"
-        sub="Estado del radar, del resumen y de la cola de publicaciones."
+        kicker={`Week ${week}`}
+        title="Dashboard"
+        sub="State of the radar, the digest and the publication queue."
       />
 
       <div className="p-8 flex flex-col gap-7">
-        {!hasKey() && (
+        {!status.ready && (
           <div className="card p-4 border-l-2" style={{ borderLeftColor: "var(--warn)" }}>
-            <div className="text-[13px] font-medium mb-1">Modo demo</div>
+            <div className="text-[13px] font-medium mb-1">Demo mode</div>
             <p className="text-[12.5px] text-muted leading-relaxed">
-              No hay <code className="font-mono text-[11.5px]">ANTHROPIC_API_KEY</code> configurada. La ingesta de
-              fuentes funciona igual, pero la curaduría, el resumen y los posts salen con textos de relleno. Agregá la
-              clave en <code className="font-mono text-[11.5px]">.env.local</code> y volvé a correr el pipeline.
+              {status.reason} Ingest works either way, but curation, the digest and the posts come out as
+              filler text. Pick a provider and paste a key under{" "}
+              <Link href="/settings/model" className="text-accent">
+                Model &amp; keys
+              </Link>
+              .
             </p>
           </div>
         )}
 
         <section className="grid grid-cols-6 gap-3">
-          <Stat n={items} label="Items de la semana" href="/radar" />
-          <Stat n={selected} label="Señales seleccionadas" href="/radar" />
-          <Stat n={drafts} label="Borradores por revisar" href="/posts" />
-          <Stat n={approved} label="Aprobados / agendados" href="/posts" />
-          <Stat n={published} label="Publicados" href="/posts" />
-          <Stat n={sources} label="Fuentes activas" href="/sources" />
+          <Stat n={items} label="Items this week" href="/radar" />
+          <Stat n={selected} label="Selected signals" href="/radar" />
+          <Stat n={drafts} label="Drafts to review" href="/posts" />
+          <Stat n={approved} label="Approved / scheduled" href="/posts" />
+          <Stat n={published} label="Published" href="/posts" />
+          <Stat n={sources} label="Active sources" href="/sources" />
         </section>
 
         <div className="grid grid-cols-[1.15fr_1fr] gap-7 items-start">
           <section>
             <div className="flex items-baseline justify-between mb-3">
-              <h2 className="kicker">Resumen de esta semana</h2>
+              <h2 className="kicker">Digest of this week</h2>
               <Link href="/digest" className="text-[12px] text-muted hover:text-ink">
-                Ver todos →
+                See all →
               </Link>
             </div>
             {digest ? (
@@ -95,38 +102,38 @@ export default function Dashboard() {
               </Link>
             ) : (
               <div className="card p-5 text-[13px] text-muted">
-                Todavía no hay resumen para {week}. Corré el pipeline desde la barra lateral.
+                No digest for {week} yet. Run the pipeline from the sidebar.
               </div>
             )}
 
-            <h2 className="kicker mt-7 mb-3">Cola de aprobación</h2>
+            <h2 className="kicker mt-7 mb-3">Approval queue</h2>
             <div className="flex flex-col gap-2">
               {queue.length ? (
-                queue.map((p) => (
-                  <Link
-                    key={p.id}
-                    href="/posts"
-                    className="card px-4 py-3 flex items-start gap-3 hover:border-line-strong transition-colors"
-                  >
-                    <span
-                      className="chip shrink-0 mt-0.5"
-                      style={{ color: PLATFORM_META[p.platform]?.color }}
+                queue.map((p) => {
+                  const channel = channelLabel(channels, p.platform);
+                  return (
+                    <Link
+                      key={p.id}
+                      href="/posts"
+                      className="card px-4 py-3 flex items-start gap-3 hover:border-line-strong transition-colors"
                     >
-                      {PLATFORM_META[p.platform]?.label ?? p.platform}
-                    </span>
-                    <span className="text-[13px] leading-snug line-clamp-2 text-muted">
-                      {p.hook || p.body.slice(0, 120)}
-                    </span>
-                  </Link>
-                ))
+                      <span className="chip shrink-0 mt-0.5" style={{ color: channel.color }}>
+                        {channel.label}
+                      </span>
+                      <span className="text-[13px] leading-snug line-clamp-2 text-muted">
+                        {p.hook || p.body.slice(0, 120)}
+                      </span>
+                    </Link>
+                  );
+                })
               ) : (
-                <div className="card p-5 text-[13px] text-muted">Sin borradores pendientes.</div>
+                <div className="card p-5 text-[13px] text-muted">No pending drafts.</div>
               )}
             </div>
           </section>
 
           <section>
-            <h2 className="kicker mb-3">Top señales</h2>
+            <h2 className="kicker mb-3">Top signals</h2>
             <div className="flex flex-col gap-2">
               {topItems.length ? (
                 topItems.map((i) => (
@@ -154,14 +161,14 @@ export default function Dashboard() {
                 ))
               ) : (
                 <div className="card p-5 text-[13px] text-muted">
-                  Sin señales puntuadas. Corré ingesta + curaduría.
+                  No scored signals yet. Run ingest + curate.
                 </div>
               )}
             </div>
 
             {lastRun && (
               <>
-                <h2 className="kicker mt-7 mb-3">Última corrida</h2>
+                <h2 className="kicker mt-7 mb-3">Last run</h2>
                 <div className="card p-4">
                   <div className="flex items-center gap-2 mb-2.5">
                     <span

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export default function CopyButton({
   text,
-  label = "Copiar",
+  label = "Copy",
   className = "btn",
 }: {
   text: string;
@@ -30,7 +30,7 @@ export default function CopyButton({
         setTimeout(() => setDone(false), 1600);
       }}
     >
-      {done ? "Copiado ✓" : label}
+      {done ? "Copied ✓" : label}
     </button>
   );
 }

@@ -12,9 +12,9 @@ export default function DigestList() {
   return (
     <div>
       <PageHeader
-        kicker="Archivo"
-        title="Resúmenes semanales"
-        sub="El documento de trabajo del que salen las publicaciones. Con opinión, no un boletín."
+        kicker="Archive"
+        title="Weekly digests"
+        sub="The working document every publication is derived from. It has an opinion; it is not a newsletter."
       />
       <div className="p-8 flex flex-col gap-2 max-w-3xl">
         {digests.length ? (
@@ -30,7 +30,7 @@ export default function DigestList() {
           ))
         ) : (
           <div className="card p-6 text-[13px] text-muted">
-            Todavía no generaste ningún resumen. Corré el pipeline desde la barra lateral.
+            No digest yet. Run the pipeline from the sidebar.
           </div>
         )}
       </div>

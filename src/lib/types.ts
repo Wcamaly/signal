@@ -1,38 +1,11 @@
-export type Platform = "linkedin" | "x" | "instagram";
-
-export const PLATFORMS: Platform[] = ["linkedin", "x", "instagram"];
-
-export const PLATFORM_META: Record<
-  Platform,
-  { label: string; limit: number; color: string; hint: string }
-> = {
-  linkedin: {
-    label: "LinkedIn",
-    limit: 3000,
-    color: "#0A66C2",
-    hint: "Formato largo. Autoridad, análisis, opinión con fundamento.",
-  },
-  x: {
-    label: "X",
-    limit: 280,
-    color: "#e7e9ea",
-    hint: "Hilo o post corto. Filo, densidad, sin relleno.",
-  },
-  instagram: {
-    label: "Instagram",
-    limit: 2200,
-    color: "#E1306C",
-    hint: "Carrusel. Visual primero, copy de apoyo.",
-  },
-};
-
 export type Source = {
   id: number;
   name: string;
   url: string;
-  kind: "rss" | "hn" | "arxiv" | "github";
+  kind: string;
   category: string;
   weight: number;
+  config: string | null;
   enabled: number;
   last_run_at: string | null;
   last_error: string | null;
@@ -69,11 +42,29 @@ export type Digest = {
   created_at: string;
 };
 
+/** A publishing target: a social network, a newsletter, a blog. */
+export type Channel = {
+  id: number;
+  key: string;
+  label: string;
+  char_limit: number;
+  color: string;
+  hint: string | null;
+  template: string | null;
+  publisher: string;
+  config: string | null;
+  credential_id: number | null;
+  posts_per_run: number;
+  enabled: number;
+  sort_order: number;
+};
+
 export type Post = {
   id: number;
   digest_id: number | null;
   item_id: number | null;
-  platform: Platform;
+  /** Channel key. Named `platform` because that is the column name. */
+  platform: string;
   angle: string | null;
   hook: string | null;
   body: string;
@@ -104,32 +95,35 @@ export type VoiceProfile = {
   samples: string;
 };
 
+/**
+ * Neutral starting point. Everything here is editable under Voice & settings,
+ * and the two fields that change the output the most are `banned` and
+ * `samples` — see docs/configuring.md.
+ */
 export const DEFAULT_VOICE: VoiceProfile = {
-  author: "Walter",
-  role: "Fundador y responsable técnico",
-  company: "Plataforma de agentes de IA con control demostrable",
+  author: "",
+  role: "",
+  company: "",
   positioning:
-    "No le pedimos al modelo que se porte bien: se lo impedimos. El agente sólo puede ejecutar lo que la organización declaró, cada decisión queda registrada, y corre donde el cliente decida — incluso en su propio servidor sin salida a internet.",
+    "The one thesis you defend in public, in a sentence or two. What you believe that most of your field does not.",
   audience:
-    "Decisores técnicos y de riesgo en banca, salud, sector público y corporativos grandes. Gente que ya vio demos de IA y quiere saber quién responde cuando el modelo se equivoca.",
-  tone: "Directo, técnico, sin hype. Afirmaciones concretas antes que adjetivos. Una idea por post. Se permite discrepar con el consenso del sector.",
+    "Who you are writing for: role, sector, and what keeps them up at night. The more specific, the better the curator filters.",
+  tone: "Direct and concrete. Claims before adjectives. One idea per post. Disagreeing with the consensus is allowed.",
   pillars: [
-    "Control de comportamiento (máquinas de estado sobre modelos)",
-    "Soberanía del dato y despliegue on-premise",
-    "Trazabilidad y evidencia auditable",
-    "Costo real de operar IA en producción",
-    "Lo que la industria promete vs. lo que se puede desplegar",
+    "The recurring topic you want to be known for",
+    "A second angle you can hold an opinion on",
+    "A third one, narrower than the other two",
   ],
   banned: [
-    "revolucionario",
+    "revolutionary",
     "game changer",
-    "el futuro ya llegó",
+    "the future is here",
     "🚀",
-    "desbloqueá tu potencial",
-    "En un mundo donde",
-    "No es solo X, es Y",
+    "unlock your potential",
+    "In a world where",
+    "It's not just X, it's Y",
   ],
-  cta: "Invitación baja: una pregunta abierta al lector o un enlace a la demo en vivo. Nunca 'agendá una llamada' en cada post.",
-  language: "Español rioplatense neutro (voseo suave), términos técnicos en inglés cuando corresponde",
+  cta: "Low-pressure close: an open question to the reader, or a link. Never 'book a call' on every post.",
+  language: "English",
   samples: "",
 };

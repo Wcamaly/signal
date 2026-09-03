@@ -1,5 +1,6 @@
 import { getDb } from "@/lib/db";
 import { seedSources } from "@/lib/ingest";
+import { SOURCE_CATEGORIES, sourceKindCatalog } from "@/lib/sources";
 import PageHeader from "@/components/PageHeader";
 import SourceManager from "@/components/SourceManager";
 import type { Source } from "@/lib/types";
@@ -18,12 +19,16 @@ export default function SourcesPage() {
   return (
     <div>
       <PageHeader
-        kicker="Entrada"
-        title="Fuentes"
-        sub="RSS, Hacker News y arXiv. Ninguna necesita API key. Agregá las que sigas vos: el radar vale lo que valen las fuentes."
+        kicker="Input"
+        title="Sources"
+        sub="RSS, Hacker News, arXiv, GitHub, Reddit and YouTube — none of them needs an API key. Add the ones you actually read: the radar is worth what its sources are worth."
       />
       <div className="p-8 max-w-4xl">
-        <SourceManager sources={rows} />
+        <SourceManager
+          sources={rows}
+          kinds={sourceKindCatalog()}
+          categories={SOURCE_CATEGORIES}
+        />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import path from "node:path";
 import fs from "node:fs";
 
-const DATA_DIR = process.env.SIGNAL_DATA_DIR || path.join(process.cwd(), "data");
+export const DATA_DIR = process.env.SIGNAL_DATA_DIR || path.join(process.cwd(), "data");
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const globalForDb = globalThis as unknown as { __signalDb?: Database.Database };
@@ -14,9 +14,10 @@ function init(db: Database.Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       url TEXT NOT NULL UNIQUE,
-      kind TEXT NOT NULL,              -- rss | hn | arxiv | github
-      category TEXT DEFAULT 'general', -- labs | research | product | community | business
+      kind TEXT NOT NULL,              -- id of a registered source kind (see lib/sources)
+      category TEXT DEFAULT 'general', -- labs | research | product | community | business | ...
       weight REAL DEFAULT 1.0,
+      config TEXT DEFAULT '{}',        -- JSON, kind-specific options
       enabled INTEGER DEFAULT 1,
       last_run_at TEXT,
       last_error TEXT,
@@ -33,11 +34,11 @@ function init(db: Database.Database) {
       summary TEXT,
       published_at TEXT,
       week_key TEXT,
-      score REAL,                      -- 0..100 asignado por el curador
-      why TEXT,                        -- por qué importa (curador)
-      angle TEXT,                      -- ángulo editorial sugerido
+      score REAL,                      -- 0..100, assigned by the curator
+      why TEXT,                        -- why it matters (curator)
+      angle TEXT,                      -- suggested editorial angle
       topics TEXT,                     -- JSON array
-      cluster TEXT,                    -- nombre de la historia agrupada
+      cluster TEXT,                    -- name of the grouped story
       status TEXT DEFAULT 'new',       -- new | scored | selected | rejected | used
       created_at TEXT DEFAULT (datetime('now'))
     );
@@ -60,12 +61,12 @@ function init(db: Database.Database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       digest_id INTEGER REFERENCES digests(id) ON DELETE CASCADE,
       item_id INTEGER REFERENCES items(id) ON DELETE SET NULL,
-      platform TEXT NOT NULL,          -- linkedin | x | instagram
+      platform TEXT NOT NULL,          -- key of a row in channels
       angle TEXT,
       hook TEXT,
       body TEXT NOT NULL,
       hashtags TEXT,
-      visual_brief TEXT,               -- brief de imagen (instagram / carrusel)
+      visual_brief TEXT,               -- image / carousel brief
       char_count INTEGER,
       status TEXT DEFAULT 'draft',     -- draft | approved | scheduled | published | discarded
       scheduled_at TEXT,
@@ -77,6 +78,49 @@ function init(db: Database.Database) {
       updated_at TEXT DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
+
+    -- Publishing targets. A channel is any place a draft can end up:
+    -- a social network, a newsletter, a blog. Fully editable from the UI.
+    CREATE TABLE IF NOT EXISTS channels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,        -- stable slug, stored in posts.platform
+      label TEXT NOT NULL,
+      char_limit INTEGER DEFAULT 3000,
+      color TEXT DEFAULT '#8b93a1',
+      hint TEXT,                       -- format guidance injected into the writer prompt
+      template TEXT,                   -- publication template ({{body}}, {{hashtags}}, ...)
+      publisher TEXT DEFAULT 'manual', -- id of a registered publisher (see lib/publishers)
+      config TEXT DEFAULT '{}',        -- JSON, publisher-specific non-secret options
+      credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
+      posts_per_run INTEGER DEFAULT 2,
+      enabled INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 100,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- API keys and tokens entered from the UI. Secrets are encrypted at rest
+    -- (see lib/secrets.ts) and never sent back to the browser.
+    CREATE TABLE IF NOT EXISTS credentials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      scope TEXT NOT NULL,             -- llm | channel
+      provider TEXT NOT NULL,          -- anthropic | openai | mastodon | webhook | ...
+      label TEXT NOT NULL,
+      secret TEXT NOT NULL,            -- encrypted payload
+      hint TEXT,                        -- last characters, for display only
+      extra TEXT DEFAULT '{}',         -- JSON, non-secret metadata (base url, account, ...)
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      last_used_at TEXT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_credentials_slot ON credentials(scope, provider, label);
+
+    -- Prompt overrides written from the UI. Missing row = shipped default.
+    CREATE TABLE IF NOT EXISTS prompts (
+      key TEXT PRIMARY KEY,            -- curator | digest | writer | refine
+      system TEXT,
+      template TEXT,
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
 
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -93,6 +137,17 @@ function init(db: Database.Database) {
       finished_at TEXT
     );
   `);
+
+  // Migrations for databases created by earlier versions.
+  ensureColumn(db, "sources", "config", "TEXT DEFAULT '{}'");
+  ensureColumn(db, "posts", "published_url", "TEXT");
+}
+
+function ensureColumn(db: Database.Database, table: string, column: string, ddl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
 }
 
 export function getDb(): Database.Database {
@@ -126,6 +181,10 @@ export function setSetting(key: string, value: unknown) {
     .run(key, JSON.stringify(value));
 }
 
+export function deleteSetting(key: string) {
+  getDb().prepare("DELETE FROM settings WHERE key = ?").run(key);
+}
+
 /* ---------- misc ---------- */
 
 export function weekKey(d: Date = new Date()): string {
@@ -135,4 +194,13 @@ export function weekKey(d: Date = new Date()): string {
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+export function parseJson<T>(raw: string | null | undefined, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
 }

@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import RunButton from "@/components/RunButton";
-import { hasKey, MODEL } from "@/lib/claude";
+import { llmStatus } from "@/lib/llm";
 
 export const metadata: Metadata = {
-  title: "Signal — radar de IA y publicaciones",
-  description: "Analiza tendencias de IA, arma el resumen semanal y redacta las publicaciones.",
+  title: "Signal — AI radar and publications",
+  description:
+    "Reads your sources, picks what is worth saying, writes the weekly digest and drafts the posts. You approve them.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const status = llmStatus();
+
   return (
-    <html lang="es">
+    <html lang="en">
       <body className="min-h-screen">
         <div className="flex min-h-screen">
           <aside className="w-[212px] shrink-0 border-r border-line bg-[#0d0e11] flex flex-col">
@@ -26,20 +30,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <span className="font-semibold text-[15px] tracking-tight">Signal</span>
               </div>
               <p className="text-[11px] text-faint mt-2 leading-snug">
-                Radar de IA → resumen semanal → publicaciones
+                Radar → weekly digest → publications
               </p>
             </div>
             <Nav />
             <div className="mt-auto px-5 py-4 border-t border-line">
-              <div className="flex items-center gap-1.5 mb-3">
+              <Link href="/settings/model" className="flex items-center gap-1.5 mb-3 group">
                 <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: hasKey() ? "var(--good)" : "var(--warn)" }}
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: status.ready ? "var(--good)" : "var(--warn)" }}
                 />
-                <span className="text-[10.5px] text-faint font-mono">
-                  {hasKey() ? MODEL : "modo demo · sin API key"}
+                <span className="text-[10.5px] text-faint font-mono truncate group-hover:text-muted">
+                  {status.ready ? `${status.provider}/${status.model}` : "demo mode · no model"}
                 </span>
-              </div>
+              </Link>
               <RunButton />
             </div>
           </aside>

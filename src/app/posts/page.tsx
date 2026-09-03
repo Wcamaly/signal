@@ -1,37 +1,42 @@
+import { getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
+import { publisherCatalog } from "@/lib/publishers";
 import PageHeader from "@/components/PageHeader";
 import PostCard from "@/components/PostCard";
-import { PLATFORMS, PLATFORM_META, type Post } from "@/lib/types";
+import type { Post } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const STATUSES = [
-  { key: "draft", label: "Borradores" },
-  { key: "approved", label: "Aprobados" },
-  { key: "scheduled", label: "Agendados" },
-  { key: "published", label: "Publicados" },
-  { key: "discarded", label: "Descartados" },
+  { key: "draft", label: "Drafts" },
+  { key: "approved", label: "Approved" },
+  { key: "scheduled", label: "Scheduled" },
+  { key: "published", label: "Published" },
+  { key: "discarded", label: "Discarded" },
 ];
 
-type Search = Promise<{ status?: string; platform?: string }>;
+type Search = Promise<{ status?: string; channel?: string }>;
 
 export default async function PostsPage({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
   const status = sp.status || "draft";
-  const platform = sp.platform || "all";
+  const channelKey = sp.channel || "all";
   const db = getDb();
+  const channels = getChannels();
+  const publishers = publisherCatalog();
 
   const counts = Object.fromEntries(
-    (db.prepare("SELECT status, COUNT(*) c FROM posts GROUP BY status").all() as { status: string; c: number }[]).map(
-      (r) => [r.status, r.c],
-    ),
+    (db.prepare("SELECT status, COUNT(*) c FROM posts GROUP BY status").all() as {
+      status: string;
+      c: number;
+    }[]).map((r) => [r.status, r.c]),
   ) as Record<string, number>;
 
   const where: string[] = ["p.status = ?"];
   const args: unknown[] = [status];
-  if (platform !== "all") {
+  if (channelKey !== "all") {
     where.push("p.platform = ?");
-    args.push(platform);
+    args.push(channelKey);
   }
 
   const posts = db
@@ -43,14 +48,14 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
     .all(...args) as (Post & { source_url: string | null; source_title: string | null })[];
 
   const qs = (o: Record<string, string>) =>
-    "/posts?" + new URLSearchParams({ status, platform, ...o }).toString();
+    "/posts?" + new URLSearchParams({ status, channel: channelKey, ...o }).toString();
 
   return (
     <div>
       <PageHeader
-        kicker="Cola de publicación"
-        title="Publicaciones"
-        sub="Nada sale solo. Revisás, editás o pedís una reescritura, y recién ahí se aprueba."
+        kicker="Publication queue"
+        title="Publications"
+        sub="Nothing goes out on its own. You review, edit or ask for a rewrite, and only then it is approved."
       />
 
       <div className="px-8 py-4 border-b border-line flex items-center gap-4 flex-wrap">
@@ -67,18 +72,21 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
           ))}
         </div>
         <div className="w-px h-4 bg-[var(--border)]" />
-        <div className="flex gap-1.5">
-          <a href={qs({ platform: "all" })} className={`chip ${platform === "all" ? "!text-ink !border-line-strong" : ""}`}>
-            Todas
+        <div className="flex gap-1.5 flex-wrap">
+          <a
+            href={qs({ channel: "all" })}
+            className={`chip ${channelKey === "all" ? "!text-ink !border-line-strong" : ""}`}
+          >
+            All
           </a>
-          {PLATFORMS.map((p) => (
+          {channels.map((c) => (
             <a
-              key={p}
-              href={qs({ platform: p })}
-              className={`chip ${platform === p ? "!text-ink !border-line-strong" : ""}`}
-              style={platform === p ? { color: PLATFORM_META[p].color } : undefined}
+              key={c.key}
+              href={qs({ channel: c.key })}
+              className={`chip ${channelKey === c.key ? "!text-ink !border-line-strong" : ""}`}
+              style={channelKey === c.key ? { color: c.color } : undefined}
             >
-              {PLATFORM_META[p].label}
+              {c.label}
             </a>
           ))}
         </div>
@@ -86,10 +94,38 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
 
       <div className="p-8 flex flex-col gap-4 max-w-[860px]">
         {posts.length ? (
-          posts.map((p) => <PostCard key={p.id} post={p} />)
+          posts.map((p) => {
+            const channel = channels.find((c) => c.key === p.platform);
+            return (
+              <PostCard
+                key={p.id}
+                post={p}
+                channel={
+                  channel ?? {
+                    id: -1,
+                    key: p.platform,
+                    label: p.platform,
+                    char_limit: 3000,
+                    color: "#8b93a1",
+                    hint: null,
+                    template: "{{body}}\n\n{{hashtags}}",
+                    publisher: "manual",
+                    config: "{}",
+                    credential_id: null,
+                    posts_per_run: 0,
+                    enabled: 0,
+                    sort_order: 999,
+                  }
+                }
+                publisherLabel={
+                  publishers.find((pub) => pub.id === (channel?.publisher ?? "manual"))?.label ?? "Manual"
+                }
+              />
+            );
+          })
         ) : (
           <div className="card p-6 text-[13px] text-muted">
-            No hay publicaciones en este estado. Corré la etapa de redacción desde la barra lateral.
+            Nothing in this state. Run the writing stage from the sidebar.
           </div>
         )}
       </div>

@@ -5,11 +5,11 @@ import { actionSetItemStatus } from "@/lib/actions";
 import type { Item } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, string> = {
-  new: "sin evaluar",
-  scored: "evaluado",
-  selected: "seleccionado",
-  rejected: "descartado",
-  used: "usado",
+  new: "not scored",
+  scored: "scored",
+  selected: "selected",
+  rejected: "rejected",
+  used: "used",
 };
 
 export default function ItemRow({
@@ -73,7 +73,7 @@ export default function ItemRow({
         <div className="shrink-0 flex gap-1">
           {item.why && (
             <button className="btn btn-ghost btn-sm" onClick={() => setOpen((o) => !o)}>
-              {open ? "Ocultar" : "Por qué"}
+              {open ? "Hide" : "Why"}
             </button>
           )}
           {item.status !== "selected" && (
@@ -81,7 +81,7 @@ export default function ItemRow({
               className="btn btn-sm"
               onClick={() => start(() => void actionSetItemStatus(item.id, "selected"))}
             >
-              Seleccionar
+              Select
             </button>
           )}
           {item.status !== "rejected" && (
@@ -89,7 +89,7 @@ export default function ItemRow({
               className="btn btn-ghost btn-sm"
               onClick={() => start(() => void actionSetItemStatus(item.id, "rejected"))}
             >
-              Descartar
+              Reject
             </button>
           )}
         </div>
@@ -98,12 +98,12 @@ export default function ItemRow({
       {open && (
         <div className="px-4 pb-3.5 pl-[68px] text-[12.5px] text-muted leading-relaxed border-t border-line pt-3">
           <div className="mb-2">
-            <span className="kicker">Por qué importa</span>
+            <span className="kicker">Why it matters</span>
             <p className="mt-1">{item.why}</p>
           </div>
           {item.summary && (
             <div>
-              <span className="kicker">Resumen de la fuente</span>
+              <span className="kicker">Source summary</span>
               <p className="mt-1 text-faint">{item.summary.slice(0, 600)}</p>
             </div>
           )}

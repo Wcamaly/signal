@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
 import { renderMarkdown } from "@/lib/md";
 import PageHeader from "@/components/PageHeader";
 import CopyButton from "@/components/CopyButton";
-import { PLATFORM_META, type Platform } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,20 +12,32 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const db = getDb();
   const digest = db.prepare("SELECT * FROM digests WHERE id = ?").get(Number(id)) as
-    | { id: number; week_key: string; title: string; subtitle: string; markdown: string; item_ids: string; model: string; created_at: string }
+    | {
+        id: number;
+        week_key: string;
+        title: string;
+        subtitle: string;
+        markdown: string;
+        item_ids: string;
+        model: string;
+        created_at: string;
+      }
     | undefined;
   if (!digest) notFound();
 
+  const channels = getChannels();
   const ids = JSON.parse(digest.item_ids || "[]") as number[];
   const items = ids.length
     ? (db
-        .prepare(`SELECT id, title, url, score FROM items WHERE id IN (${ids.map(() => "?").join(",")}) ORDER BY score DESC`)
+        .prepare(
+          `SELECT id, title, url, score FROM items WHERE id IN (${ids.map(() => "?").join(",")}) ORDER BY score DESC`,
+        )
         .all(...ids) as { id: number; title: string; url: string; score: number }[])
     : [];
 
   const posts = db
     .prepare("SELECT id, platform, hook, status FROM posts WHERE digest_id = ? ORDER BY platform")
-    .all(digest.id) as { id: number; platform: Platform; hook: string; status: string }[];
+    .all(digest.id) as { id: number; platform: string; hook: string; status: string }[];
 
   return (
     <div>
@@ -35,9 +47,9 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
         sub={digest.subtitle}
         right={
           <>
-            <CopyButton text={digest.markdown} label="Copiar markdown" />
+            <CopyButton text={digest.markdown} label="Copy markdown" />
             <Link href="/posts" className="btn btn-primary">
-              Ver publicaciones
+              See publications
             </Link>
           </>
         }
@@ -50,7 +62,7 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
 
         <aside className="flex flex-col gap-6 sticky top-8">
           <div>
-            <h3 className="kicker mb-2.5">Señales usadas ({items.length})</h3>
+            <h3 className="kicker mb-2.5">Signals used ({items.length})</h3>
             <div className="flex flex-col gap-1.5">
               {items.map((i) => (
                 <a
@@ -68,24 +80,27 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div>
-            <h3 className="kicker mb-2.5">Posts derivados ({posts.length})</h3>
+            <h3 className="kicker mb-2.5">Posts written ({posts.length})</h3>
             <div className="flex flex-col gap-1.5">
               {posts.length ? (
-                posts.map((p) => (
-                  <Link
-                    key={p.id}
-                    href="/posts"
-                    className="card px-3 py-2.5 text-[12px] text-muted hover:text-ink hover:border-line-strong transition-colors"
-                  >
-                    <span style={{ color: PLATFORM_META[p.platform]?.color }} className="font-medium">
-                      {PLATFORM_META[p.platform]?.label}
-                    </span>
-                    <span className="text-faint"> · {p.status}</span>
-                    <div className="line-clamp-2 mt-1 leading-snug">{p.hook}</div>
-                  </Link>
-                ))
+                posts.map((p) => {
+                  const channel = channelLabel(channels, p.platform);
+                  return (
+                    <Link
+                      key={p.id}
+                      href="/posts"
+                      className="card px-3 py-2.5 text-[12px] text-muted hover:text-ink hover:border-line-strong transition-colors"
+                    >
+                      <span style={{ color: channel.color }} className="font-medium">
+                        {channel.label}
+                      </span>
+                      <span className="text-faint"> · {p.status}</span>
+                      <div className="line-clamp-2 mt-1 leading-snug">{p.hook}</div>
+                    </Link>
+                  );
+                })
               ) : (
-                <p className="text-[12px] text-faint">Sin posts. Corré la etapa de redacción.</p>
+                <p className="text-[12px] text-faint">No posts yet. Run the writing stage.</p>
               )}
             </div>
           </div>

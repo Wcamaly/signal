@@ -1,18 +1,41 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { actionSaveConfig, actionSaveVoice } from "@/lib/actions";
-import { PLATFORMS, PLATFORM_META, type Platform, type VoiceProfile } from "@/lib/types";
+import { actionSaveGeneral, actionSaveVoice } from "@/lib/actions";
+import type { VoiceProfile } from "@/lib/types";
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
+/** Filled-in example, loaded from the button. Replace every line with yours. */
+const EXAMPLE: VoiceProfile = {
+  author: "Alex Rivera",
+  role: "Founder and technical lead",
+  company: "A platform for running AI agents under demonstrable control",
+  positioning:
+    "We do not ask the model to behave: we make misbehaving impossible. The agent can only execute what the organisation declared, every decision is recorded, and it runs wherever the customer decides — including their own air-gapped server.",
+  audience:
+    "Technical and risk decision makers in banking, healthcare, the public sector and large corporates. People who have seen AI demos and want to know who answers when the model gets it wrong.",
+  tone: "Direct, technical, no hype. Concrete claims before adjectives. One idea per post. Disagreeing with the industry consensus is allowed.",
+  pillars: [
+    "Behaviour control (state machines on top of models)",
+    "Data sovereignty and on-premise deployment",
+    "Traceability and auditable evidence",
+    "The real cost of running AI in production",
+    "What the industry promises vs. what can actually be deployed",
+  ],
+  banned: [
+    "revolutionary",
+    "game changer",
+    "the future is here",
+    "🚀",
+    "unlock your potential",
+    "In a world where",
+    "It's not just X, it's Y",
+  ],
+  cta: "Low-pressure close: an open question to the reader or a link to the live demo. Never 'book a call' on every post.",
+  language: "English",
+  samples: "",
+};
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
       <span className="label">{label}</span>
@@ -24,25 +47,23 @@ function Field({
 
 export default function VoiceForm({
   voice: initial,
-  platforms: initialPlatforms,
-  perPlatform: initialPer,
+  general: initialGeneral,
 }: {
   voice: VoiceProfile;
-  platforms: Platform[];
-  perPlatform: number;
+  general: { signals_per_week: number; ingest_max_age_days: number };
 }) {
   const [v, setV] = useState(initial);
-  const [platforms, setPlatforms] = useState<Platform[]>(initialPlatforms);
-  const [per, setPer] = useState(initialPer);
+  const [general, setGeneral] = useState(initialGeneral);
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
 
-  const set = <K extends keyof VoiceProfile>(k: K, val: VoiceProfile[K]) => setV((p) => ({ ...p, [k]: val }));
+  const set = <K extends keyof VoiceProfile>(k: K, val: VoiceProfile[K]) =>
+    setV((p) => ({ ...p, [k]: val }));
 
   function save() {
     start(async () => {
       await actionSaveVoice(v);
-      await actionSaveConfig({ platforms, posts_per_platform: per });
+      await actionSaveGeneral(general);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     });
@@ -51,34 +72,53 @@ export default function VoiceForm({
   return (
     <div className="flex flex-col gap-7">
       <section className="card p-6">
-        <h2 className="kicker mb-5">Perfil de voz</h2>
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <h2 className="kicker">Voice profile</h2>
+          <button className="btn btn-ghost btn-sm" onClick={() => setV(EXAMPLE)} type="button">
+            Load example
+          </button>
+        </div>
 
         <div className="grid grid-cols-2 gap-x-4">
-          <Field label="Nombre">
+          <Field label="Name">
             <input className="input" value={v.author} onChange={(e) => set("author", e.target.value)} />
           </Field>
-          <Field label="Rol">
+          <Field label="Role">
             <input className="input" value={v.role} onChange={(e) => set("role", e.target.value)} />
           </Field>
         </div>
 
-        <Field label="Empresa / qué construís">
+        <Field label="Company / what you build">
           <input className="input" value={v.company} onChange={(e) => set("company", e.target.value)} />
         </Field>
 
-        <Field label="Posicionamiento" hint="La tesis central. Va en cada prompt: es lo que hace que los posts digan algo tuyo y no del sector.">
-          <textarea className="textarea min-h-[90px]" value={v.positioning} onChange={(e) => set("positioning", e.target.value)} />
+        <Field
+          label="Positioning"
+          hint="Your central thesis. It goes into every prompt: this is what makes the posts say something of yours instead of something generic."
+        >
+          <textarea
+            className="textarea min-h-[90px]"
+            value={v.positioning}
+            onChange={(e) => set("positioning", e.target.value)}
+          />
         </Field>
 
-        <Field label="Audiencia" hint="Para quién escribís. Cuanto más concreto (cargo, sector, qué le preocupa), mejor filtra el curador.">
-          <textarea className="textarea min-h-[70px]" value={v.audience} onChange={(e) => set("audience", e.target.value)} />
+        <Field
+          label="Audience"
+          hint="Who you write for. The more concrete (role, sector, what worries them), the better the curator filters."
+        >
+          <textarea
+            className="textarea min-h-[70px]"
+            value={v.audience}
+            onChange={(e) => set("audience", e.target.value)}
+          />
         </Field>
 
-        <Field label="Tono">
+        <Field label="Tone">
           <textarea className="textarea min-h-[70px]" value={v.tone} onChange={(e) => set("tone", e.target.value)} />
         </Field>
 
-        <Field label="Pilares editoriales" hint="Uno por línea. El curador puntúa más alto lo que cae en estos temas.">
+        <Field label="Editorial pillars" hint="One per line. The curator scores items in these topics higher.">
           <textarea
             className="textarea min-h-[110px] font-mono !text-[12.5px]"
             value={v.pillars.join("\n")}
@@ -87,8 +127,8 @@ export default function VoiceForm({
         </Field>
 
         <Field
-          label="Prohibiciones"
-          hint="Una por línea. Frases, muletillas y emojis que no querés ver nunca. Es el ajuste que más cambia el resultado."
+          label="Banned"
+          hint="One per line. Phrases, tics and emoji you never want to see. This is the setting that changes the output the most."
         >
           <textarea
             className="textarea min-h-[110px] font-mono !text-[12.5px]"
@@ -98,17 +138,17 @@ export default function VoiceForm({
         </Field>
 
         <div className="grid grid-cols-2 gap-x-4">
-          <Field label="Idioma">
+          <Field label="Language" hint="The language the digest and the posts are written in.">
             <input className="input" value={v.language} onChange={(e) => set("language", e.target.value)} />
           </Field>
-          <Field label="Cierre / CTA">
+          <Field label="Close / CTA">
             <input className="input" value={v.cta} onChange={(e) => set("cta", e.target.value)} />
           </Field>
         </div>
 
         <Field
-          label="Muestras de tu escritura"
-          hint="Pegá 2 o 3 posts tuyos que hayan funcionado. Sin esto el agente escribe correcto pero neutro; con esto empieza a sonar a vos."
+          label="Samples of your writing"
+          hint="Paste 2 or 3 of your own posts that worked. Without this the agent writes correct but neutral text; with it, it starts to sound like you."
         >
           <textarea
             className="textarea min-h-[160px]"
@@ -120,44 +160,43 @@ export default function VoiceForm({
       </section>
 
       <section className="card p-6">
-        <h2 className="kicker mb-5">Publicación</h2>
-        <Field label="Plataformas activas">
-          <div className="flex gap-2">
-            {PLATFORMS.map((p) => (
-              <label
-                key={p}
-                className={`chip cursor-pointer !px-3 !py-2 ${platforms.includes(p) ? "!text-ink !border-line-strong" : ""}`}
-              >
-                <input
-                  type="checkbox"
-                  className="accent-[var(--accent)]"
-                  checked={platforms.includes(p)}
-                  onChange={(e) =>
-                    setPlatforms((prev) => (e.target.checked ? [...prev, p] : prev.filter((x) => x !== p)))
-                  }
-                />
-                {PLATFORM_META[p].label}
-              </label>
-            ))}
-          </div>
-        </Field>
-        <Field label="Posts por plataforma y semana" hint="Con 2 por plataforma tenés 6 borradores semanales para elegir 3.">
-          <input
-            type="number"
-            min={1}
-            max={5}
-            className="input !w-24"
-            value={per}
-            onChange={(e) => setPer(Number(e.target.value))}
-          />
-        </Field>
+        <h2 className="kicker mb-5">Pipeline</h2>
+        <div className="grid grid-cols-2 gap-x-4">
+          <Field label="Signals selected per week" hint="How many items survive curation and feed the digest.">
+            <input
+              type="number"
+              min={1}
+              max={30}
+              className="input !w-24"
+              value={general.signals_per_week}
+              onChange={(e) => setGeneral((g) => ({ ...g, signals_per_week: Number(e.target.value) }))}
+            />
+          </Field>
+          <Field label="Ignore items older than (days)" hint="Anything published before this window is dropped at ingest.">
+            <input
+              type="number"
+              min={1}
+              max={90}
+              className="input !w-24"
+              value={general.ingest_max_age_days}
+              onChange={(e) => setGeneral((g) => ({ ...g, ingest_max_age_days: Number(e.target.value) }))}
+            />
+          </Field>
+        </div>
+        <p className="text-[12px] text-muted">
+          How many posts each channel gets is set per channel, under <strong>Channels</strong>.
+        </p>
       </section>
 
       <div className="flex items-center gap-3">
         <button className="btn btn-primary" onClick={save} disabled={pending}>
-          {pending ? "Guardando…" : "Guardar"}
+          {pending ? "Saving…" : "Save"}
         </button>
-        {saved && <span className="text-[12.5px]" style={{ color: "var(--good)" }}>Guardado ✓</span>}
+        {saved && (
+          <span className="text-[12.5px]" style={{ color: "var(--good)" }}>
+            Saved ✓
+          </span>
+        )}
       </div>
     </div>
   );

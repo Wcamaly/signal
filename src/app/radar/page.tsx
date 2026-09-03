@@ -14,7 +14,9 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
   const min = Number(sp.min ?? 0);
 
   const weeks = db
-    .prepare("SELECT week_key, COUNT(*) c FROM items WHERE week_key IS NOT NULL GROUP BY week_key ORDER BY week_key DESC LIMIT 8")
+    .prepare(
+      "SELECT week_key, COUNT(*) c FROM items WHERE week_key IS NOT NULL GROUP BY week_key ORDER BY week_key DESC LIMIT 8",
+    )
     .all() as { week_key: string; c: number }[];
 
   const items = db
@@ -32,8 +34,8 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
     <div>
       <PageHeader
         kicker="Radar"
-        title={`Señales de ${week}`}
-        sub={`${items.length} items · ${scored} evaluados por el curador. El puntaje mide qué tan publicable es para tu audiencia, no qué tan importante es la noticia.`}
+        title={`Signals of ${week}`}
+        sub={`${items.length} items · ${scored} scored by the curator. The score measures how publishable something is for your audience, not how important the news is.`}
         right={
           <div className="flex gap-1.5">
             {weeks.map((w) => (
@@ -52,8 +54,12 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
       <div className="p-8">
         <div className="flex gap-1.5 mb-4">
           {[0, 60, 75, 85].map((m) => (
-            <a key={m} href={`/radar?week=${week}&min=${m}`} className={`chip ${min === m ? "!text-ink !border-line-strong" : ""}`}>
-              {m === 0 ? "Todo" : `≥ ${m}`}
+            <a
+              key={m}
+              href={`/radar?week=${week}&min=${m}`}
+              className={`chip ${min === m ? "!text-ink !border-line-strong" : ""}`}
+            >
+              {m === 0 ? "All" : `≥ ${m}`}
             </a>
           ))}
         </div>
@@ -63,7 +69,7 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
             items.map((i) => <ItemRow key={i.id} item={i} />)
           ) : (
             <div className="card p-6 text-[13px] text-muted">
-              No hay items para esta semana. Corré la ingesta desde la barra lateral.
+              No items for this week. Run the ingest stage from the sidebar.
             </div>
           )}
         </div>

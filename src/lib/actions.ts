@@ -1,11 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  channelConfig,
+  deleteChannel,
+  getChannel,
+  renderPost,
+  saveChannel,
+  type ChannelInput,
+} from "./channels";
+import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
 import { getDb, setSetting } from "./db";
+import { fetchSource, seedSources } from "./ingest";
+import { saveLlmConfig, testLlm, type LlmConfig } from "./llm";
+import { getPublisher } from "./publishers";
+import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { getVoice, runPipeline, type Stage } from "./pipeline";
 import { refinePost } from "./agents/writer";
-import { seedSources } from "./ingest";
-import type { VoiceProfile } from "./types";
+import type { Post, Source, VoiceProfile } from "./types";
+
+type Result = { ok: boolean; error?: string };
+
+async function guard(fn: () => void | Promise<void>): Promise<Result> {
+  try {
+    await fn();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/* ---------- pipeline ---------- */
 
 export async function actionRunPipeline(stages: Stage[]) {
   const res = await runPipeline(stages);
@@ -13,7 +38,12 @@ export async function actionRunPipeline(stages: Stage[]) {
   return res;
 }
 
-export async function actionUpdatePost(id: number, patch: { body?: string; hook?: string; notes?: string }) {
+/* ---------- posts ---------- */
+
+export async function actionUpdatePost(
+  id: number,
+  patch: { body?: string; hook?: string; notes?: string },
+) {
   const db = getDb();
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -38,12 +68,13 @@ export async function actionUpdatePost(id: number, patch: { body?: string; hook?
 export async function actionSetPostStatus(id: number, status: string, scheduledAt?: string | null) {
   const db = getDb();
   if (status === "published") {
-    db.prepare("UPDATE posts SET status = 'published', published_at = datetime('now'), updated_at = datetime('now') WHERE id = ?").run(id);
+    db.prepare(
+      "UPDATE posts SET status = 'published', published_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+    ).run(id);
   } else if (status === "scheduled") {
-    db.prepare("UPDATE posts SET status = 'scheduled', scheduled_at = ?, updated_at = datetime('now') WHERE id = ?").run(
-      scheduledAt ?? null,
-      id,
-    );
+    db.prepare(
+      "UPDATE posts SET status = 'scheduled', scheduled_at = ?, updated_at = datetime('now') WHERE id = ?",
+    ).run(scheduledAt ?? null, id);
   } else {
     db.prepare("UPDATE posts SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, id);
   }
@@ -51,42 +82,95 @@ export async function actionSetPostStatus(id: number, status: string, scheduledA
   revalidatePath("/");
 }
 
-export async function actionRefinePost(id: number, instruction: string) {
-  try {
+export async function actionRefinePost(id: number, instruction: string): Promise<Result> {
+  const res = await guard(async () => {
     await refinePost(id, instruction, getVoice());
+  });
+  revalidatePath("/posts");
+  return res;
+}
+
+/** Sends a post through its channel's publisher. */
+export async function actionPublishPost(id: number): Promise<Result & { url?: string | null }> {
+  const db = getDb();
+  const post = db.prepare("SELECT * FROM posts WHERE id = ?").get(id) as Post | undefined;
+  if (!post) return { ok: false, error: "Post not found" };
+
+  const channel = getChannel(post.platform);
+  if (!channel) return { ok: false, error: `Channel "${post.platform}" no longer exists` };
+
+  const publisher = getPublisher(channel.publisher);
+  if (!publisher) return { ok: false, error: `Unknown publisher "${channel.publisher}"` };
+
+  const source = post.item_id
+    ? (db.prepare("SELECT url, title FROM items WHERE id = ?").get(post.item_id) as
+        | { url: string; title: string }
+        | undefined)
+    : undefined;
+
+  try {
+    const { url } = await publisher.publish({
+      channel,
+      post,
+      rendered: renderPost(post, channel, { link: source?.url, title: source?.title }),
+      link: source?.url ?? null,
+      secret: channel.credential_id ? readSecret(channel.credential_id) : null,
+      config: channelConfig(channel),
+    });
+
+    db.prepare(
+      `UPDATE posts SET status = 'published', published_at = datetime('now'),
+       published_url = COALESCE(?, published_url), updated_at = datetime('now') WHERE id = ?`,
+    ).run(url ?? null, id);
+
     revalidatePath("/posts");
-    return { ok: true };
+    revalidatePath("/");
+    return { ok: true, url: url ?? null };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/* ---------- voice and general settings ---------- */
 
 export async function actionSaveVoice(voice: VoiceProfile) {
   setSetting("voice", voice);
   revalidatePath("/", "layout");
 }
 
-export async function actionSaveConfig(cfg: { platforms: string[]; posts_per_platform: number }) {
-  setSetting("platforms", cfg.platforms);
-  setSetting("posts_per_platform", cfg.posts_per_platform);
+export async function actionSaveGeneral(cfg: { signals_per_week: number; ingest_max_age_days: number }) {
+  setSetting("signals_per_week", Math.max(1, Math.min(30, Math.round(cfg.signals_per_week) || 8)));
+  setSetting("ingest_max_age_days", Math.max(1, Math.min(90, Math.round(cfg.ingest_max_age_days) || 14)));
   revalidatePath("/", "layout");
 }
+
+/* ---------- sources ---------- */
 
 export async function actionToggleSource(id: number, enabled: boolean) {
   getDb().prepare("UPDATE sources SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id);
   revalidatePath("/sources");
 }
 
-export async function actionAddSource(name: string, url: string, kind: string, category: string) {
-  try {
+export async function actionAddSource(input: {
+  name: string;
+  url: string;
+  kind: string;
+  category: string;
+  config: Record<string, string>;
+}): Promise<Result> {
+  const res = await guard(() => {
+    if (!input.name.trim() || !input.url.trim()) throw new Error("Name and URL are required");
+    const config = Object.fromEntries(
+      Object.entries(input.config ?? {}).filter(([, v]) => String(v).trim() !== ""),
+    );
     getDb()
-      .prepare("INSERT INTO sources (name, url, kind, category, weight) VALUES (?, ?, ?, ?, 1.0)")
-      .run(name, url, kind, category);
-    revalidatePath("/sources");
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+      .prepare(
+        "INSERT INTO sources (name, url, kind, category, weight, config) VALUES (?, ?, ?, ?, 1.0, ?)",
+      )
+      .run(input.name.trim(), input.url.trim(), input.kind, input.category, JSON.stringify(config));
+  });
+  revalidatePath("/sources");
+  return res;
 }
 
 export async function actionDeleteSource(id: number) {
@@ -99,7 +183,98 @@ export async function actionSeedSources() {
   revalidatePath("/sources");
 }
 
+/** Fetches one source without writing anything, to validate it from the UI. */
+export async function actionTestSource(id: number): Promise<Result & { found?: number; sample?: string }> {
+  const source = getDb().prepare("SELECT * FROM sources WHERE id = ?").get(id) as Source | undefined;
+  if (!source) return { ok: false, error: "Source not found" };
+  try {
+    const items = await fetchSource(source);
+    return { ok: true, found: items.length, sample: items[0]?.title ?? "" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function actionSetItemStatus(id: number, status: string) {
   getDb().prepare("UPDATE items SET status = ? WHERE id = ?").run(status, id);
   revalidatePath("/radar");
+}
+
+/* ---------- channels ---------- */
+
+export async function actionSaveChannel(input: ChannelInput): Promise<Result> {
+  const res = await guard(() => saveChannel(input));
+  revalidatePath("/settings/channels");
+  revalidatePath("/posts");
+  revalidatePath("/", "layout");
+  return res;
+}
+
+export async function actionDeleteChannel(key: string): Promise<Result> {
+  const res = await guard(() => deleteChannel(key));
+  revalidatePath("/settings/channels");
+  revalidatePath("/posts");
+  return res;
+}
+
+/* ---------- credentials ---------- */
+
+export async function actionSaveCredential(input: {
+  scope: CredentialScope;
+  provider: string;
+  label?: string;
+  secret: string;
+  extra?: Record<string, string>;
+}): Promise<Result & { id?: number }> {
+  try {
+    const cred = saveCredential(input);
+    revalidatePath("/settings/model");
+    revalidatePath("/settings/channels");
+    revalidatePath("/", "layout");
+    return { ok: true, id: cred.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function actionDeleteCredential(id: number): Promise<Result> {
+  const res = await guard(() => deleteCredential(id));
+  revalidatePath("/settings/model");
+  revalidatePath("/settings/channels");
+  revalidatePath("/", "layout");
+  return res;
+}
+
+/* ---------- model ---------- */
+
+export async function actionSaveLlmConfig(cfg: Partial<LlmConfig>): Promise<Result> {
+  const res = await guard(() => saveLlmConfig(cfg));
+  revalidatePath("/", "layout");
+  return res;
+}
+
+export async function actionTestLlm() {
+  return testLlm();
+}
+
+/* ---------- prompts ---------- */
+
+export async function actionSavePrompt(
+  key: PromptKey,
+  value: { system: string; template: string },
+): Promise<Result> {
+  const res = await guard(() => savePrompt(key, value));
+  revalidatePath("/settings/prompts");
+  return res;
+}
+
+export async function actionResetPrompt(key: PromptKey): Promise<Result & { prompt?: { system: string; template: string } }> {
+  try {
+    resetPrompt(key);
+    revalidatePath("/settings/prompts");
+    const prompt = getPrompt(key);
+    return { ok: true, prompt: { system: prompt.system, template: prompt.template } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
