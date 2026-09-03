@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest something Signal should be able to do
+labels: [enhancement]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Source kind (a new place to read from)
+        - LLM provider
+        - Channel or publisher (a new place to publish to)
+        - Prompts and editorial quality
+        - UI
+        - Deployment
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that Signal makes hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: If it is a plugin (source, provider, channel, publisher), see docs/extending.md — those are meant to be contributed.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Are you up for building it?
+      options:
+        - label: I would like to open the PR myself
