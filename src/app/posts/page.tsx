@@ -1,4 +1,4 @@
-import { getChannels } from "@/lib/channels";
+import { channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
 import { publisherCatalog } from "@/lib/publishers";
 import PageHeader from "@/components/PageHeader";
@@ -95,30 +95,16 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
       <div className="p-8 flex flex-col gap-4 max-w-[860px]">
         {posts.length ? (
           posts.map((p) => {
-            const channel = channels.find((c) => c.key === p.platform);
+            // A post whose channel was deleted still has to render: channelLabel
+            // falls back to neutral metadata built from the stored key.
+            const channel = channelLabel(channels, p.platform);
             return (
               <PostCard
                 key={p.id}
                 post={p}
-                channel={
-                  channel ?? {
-                    id: -1,
-                    key: p.platform,
-                    label: p.platform,
-                    char_limit: 3000,
-                    color: "#8b93a1",
-                    hint: null,
-                    template: "{{body}}\n\n{{hashtags}}",
-                    publisher: "manual",
-                    config: "{}",
-                    credential_id: null,
-                    posts_per_run: 0,
-                    enabled: 0,
-                    sort_order: 999,
-                  }
-                }
+                channel={channel}
                 publisherLabel={
-                  publishers.find((pub) => pub.id === (channel?.publisher ?? "manual"))?.label ?? "Manual"
+                  publishers.find((pub) => pub.id === channel.publisher)?.label ?? "Manual"
                 }
               />
             );
