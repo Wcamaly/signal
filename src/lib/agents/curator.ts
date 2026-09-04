@@ -1,4 +1,5 @@
 import { getDb, getSetting } from "../db";
+import { fillSelectedImages } from "../images";
 import { chatJson, llmReady, modelLabel } from "../llm";
 import { getPrompt, renderPrompt } from "../prompts";
 import type { Item, VoiceProfile } from "../types";
@@ -38,7 +39,7 @@ export async function curateWeek(week: string, voice: VoiceProfile) {
     .prepare("SELECT * FROM items WHERE week_key = ? AND status IN ('new','scored') ORDER BY published_at DESC LIMIT 120")
     .all(week) as Item[];
 
-  if (!items.length) return { scored: 0, selected: 0, model: modelLabel() };
+  if (!items.length) return { scored: 0, selected: 0, images: 0, model: modelLabel() };
 
   let verdicts: Verdict[];
 
@@ -96,5 +97,8 @@ export async function curateWeek(week: string, voice: VoiceProfile) {
   const sel = db.prepare("UPDATE items SET status = 'selected' WHERE id = ?");
   db.transaction(() => top.forEach((t) => sel.run(t.id)))();
 
-  return { scored: verdicts.length, selected: top.length, model: modelLabel() };
+  // Last, over the ten or so items that were actually selected.
+  const images = await fillSelectedImages(week);
+
+  return { scored: verdicts.length, selected: top.length, images, model: modelLabel() };
 }
