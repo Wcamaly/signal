@@ -17,6 +17,15 @@ export const anthropicProvider: LlmProvider = {
   keyLabel: "API key",
   keyPlaceholder: "sk-ant-...",
   envKeys: ["ANTHROPIC_API_KEY"],
+  options: [
+    {
+      key: "workspaceId",
+      label: "Workspace ID",
+      placeholder: "wrkspc_...",
+      help: "Only for identity-linked keys, which are shared across workspaces: the API rejects them with a 400 unless the request names the workspace it acts in. Find it in the console URL of the workspace. Workspace-scoped keys ignore it.",
+      envKeys: ["ANTHROPIC_WORKSPACE_ID"],
+    },
+  ],
   defaultBaseUrl: "https://api.anthropic.com",
   models: ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5", "claude-opus-4-8"],
   defaultModel: "claude-opus-5",
@@ -28,7 +37,7 @@ export const anthropicProvider: LlmProvider = {
     // Identity-linked keys (one key, several workspaces) are rejected with a 400
     // unless the request says which workspace it acts in. Workspace-scoped keys
     // ignore the header, so it is safe to always send it when configured.
-    const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+    const workspaceId = ctx.options.workspaceId?.trim();
     const client = new Anthropic({
       apiKey: ctx.apiKey,
       baseURL: ctx.baseUrl || undefined,
@@ -57,6 +66,14 @@ export const anthropicProvider: LlmProvider = {
     } catch (err) {
       if (err instanceof LlmError) throw err;
       if (err instanceof Anthropic.APIError) {
+        if (!workspaceId && err.message.includes("anthropic-workspace-id")) {
+          throw new LlmError(
+            "This Anthropic key is identity-linked, so the request must name a workspace. " +
+              "Add the workspace id under Model & keys (or set ANTHROPIC_WORKSPACE_ID).",
+            "anthropic",
+            err.status,
+          );
+        }
         throw new LlmError(`Anthropic returned ${err.status}: ${err.message}`, "anthropic", err.status);
       }
       throw new LlmError(`Anthropic request failed: ${String(err)}`, "anthropic");

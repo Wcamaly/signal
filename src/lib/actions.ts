@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
   channelConfig,
   deleteChannel,
@@ -12,11 +13,15 @@ import {
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
 import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
-import { saveLlmConfig, testLlm, type LlmConfig } from "./llm";
+import { saveLlmConfig, saveProviderOptions, testLlm, type LlmConfig } from "./llm";
+import { MAX_UPLOAD_BYTES, saveMedia } from "./media";
 import { getPublisher } from "./publishers";
+import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
+import { fetchText } from "./sources/util";
 import { getVoice, runPipeline, type Stage } from "./pipeline";
 import { refinePost } from "./agents/writer";
+import { translateDigest, translatePost } from "./agents/translate";
 import type { Post, Source, VoiceProfile } from "./types";
 
 type Result = { ok: boolean; error?: string };
@@ -28,6 +33,22 @@ async function guard(fn: () => void | Promise<void>): Promise<Result> {
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/**
+ * An uploaded image lives at `/media/<hash>` on this instance, and a webhook
+ * receiver is somewhere else entirely, so the path has to become an absolute
+ * URL. The origin comes from the request rather than from configuration, which
+ * means it is correct behind a proxy without anyone setting anything.
+ */
+async function absoluteUrl(pathOrUrl: string | null): Promise<string | null> {
+  if (!pathOrUrl) return null;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return null;
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}${pathOrUrl}`;
 }
 
 /* ---------- pipeline ---------- */
@@ -42,7 +63,13 @@ export async function actionRunPipeline(stages: Stage[]) {
 
 export async function actionUpdatePost(
   id: number,
-  patch: { body?: string; hook?: string; notes?: string },
+  patch: {
+    body?: string;
+    hook?: string;
+    notes?: string;
+    image_url?: string | null;
+    image_alt?: string | null;
+  },
 ) {
   const db = getDb();
   const fields: string[] = [];
@@ -59,10 +86,59 @@ export async function actionUpdatePost(
     fields.push("notes = ?");
     values.push(patch.notes);
   }
+  if (patch.image_url !== undefined) {
+    fields.push("image_url = ?");
+    values.push(patch.image_url || null);
+  }
+  if (patch.image_alt !== undefined) {
+    fields.push("image_alt = ?");
+    values.push(patch.image_alt || null);
+  }
   if (!fields.length) return;
   fields.push("updated_at = datetime('now')");
   db.prepare(`UPDATE posts SET ${fields.join(", ")} WHERE id = ?`).run(...values, id);
   revalidatePath("/posts");
+}
+
+/**
+ * Sets the link of a post. The cached link card belongs to the old URL, so it
+ * goes with it — `actionUnfurlPostLink` fills it in again.
+ */
+export async function actionSetPostLink(id: number, link: string): Promise<Result> {
+  const res = await guard(() => {
+    const url = link.trim();
+    if (url && !/^https?:\/\//i.test(url)) throw new Error("The link must be an http(s) URL");
+    getDb()
+      .prepare(
+        `UPDATE posts SET link = ?, link_title = NULL, link_image = NULL,
+         updated_at = datetime('now') WHERE id = ?`,
+      )
+      .run(url || null, id);
+  });
+  revalidatePath("/posts");
+  return res;
+}
+
+/**
+ * Reads the og: tags of the stored link once and caches them, so the preview
+ * never fetches anything while rendering.
+ */
+export async function actionUnfurlPostLink(id: number): Promise<Result> {
+  const res = await guard(async () => {
+    const row = getDb().prepare("SELECT link FROM posts WHERE id = ?").get(id) as
+      | { link: string | null }
+      | undefined;
+    const url = row?.link?.trim();
+    if (!url) throw new Error("This post has no link yet");
+    const { image, title } = parseOg(await fetchText(url, 8000), url);
+    getDb()
+      .prepare(
+        "UPDATE posts SET link_title = ?, link_image = ?, updated_at = datetime('now') WHERE id = ?",
+      )
+      .run(title, image, id);
+  });
+  revalidatePath("/posts");
+  return res;
 }
 
 export async function actionSetPostStatus(id: number, status: string, scheduledAt?: string | null) {
@@ -90,6 +166,25 @@ export async function actionRefinePost(id: number, instruction: string): Promise
   return res;
 }
 
+/** Rewrites a post in another language. Does not run the pipeline again. */
+export async function actionTranslatePost(id: number, language: string): Promise<Result> {
+  const res = await guard(async () => {
+    await translatePost(id, language, getVoice());
+  });
+  revalidatePath("/posts");
+  return res;
+}
+
+/** Same, for the weekly digest. */
+export async function actionTranslateDigest(id: number, language: string): Promise<Result> {
+  const res = await guard(async () => {
+    await translateDigest(id, language, getVoice());
+  });
+  revalidatePath("/digest");
+  revalidatePath(`/digest/${id}`);
+  return res;
+}
+
 /** Sends a post through its channel's publisher. */
 export async function actionPublishPost(id: number): Promise<Result & { url?: string | null }> {
   const db = getDb();
@@ -109,11 +204,16 @@ export async function actionPublishPost(id: number): Promise<Result & { url?: st
     : undefined;
 
   try {
+    // The post's own link when it has one, the source signal's otherwise.
+    const link = post.link ?? source?.url ?? null;
+    const imageUrl = await absoluteUrl(post.image_url);
+
     const { url } = await publisher.publish({
       channel,
       post,
-      rendered: renderPost(post, channel, { link: source?.url, title: source?.title }),
-      link: source?.url ?? null,
+      rendered: renderPost(post, channel, { link, title: post.link_title ?? source?.title }),
+      link,
+      imageUrl,
       secret: channel.credential_id ? readSecret(channel.credential_id) : null,
       config: channelConfig(channel),
     });
@@ -131,10 +231,33 @@ export async function actionPublishPost(id: number): Promise<Result & { url?: st
   }
 }
 
+/**
+ * Stores an uploaded image and returns its URL. It writes nothing else: the
+ * caller decides whether that URL becomes a post's image or the author's
+ * avatar, and saves it the way it saves everything else.
+ */
+export async function actionUploadImage(form: FormData): Promise<Result & { url?: string }> {
+  try {
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new Error("No file received");
+    if (file.size > MAX_UPLOAD_BYTES) throw new Error("The image is larger than 8 MB");
+    const url = saveMedia(Buffer.from(await file.arrayBuffer()), file.type);
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /* ---------- voice and general settings ---------- */
 
 export async function actionSaveVoice(voice: VoiceProfile) {
   setSetting("voice", voice);
+  revalidatePath("/", "layout");
+}
+
+/** The language of the interface. Not the language the model writes in. */
+export async function actionSaveUiLanguage(locale: string) {
+  setSetting("ui_language", locale);
   revalidatePath("/", "layout");
 }
 
@@ -249,6 +372,16 @@ export async function actionDeleteCredential(id: number): Promise<Result> {
 
 export async function actionSaveLlmConfig(cfg: Partial<LlmConfig>): Promise<Result> {
   const res = await guard(() => saveLlmConfig(cfg));
+  revalidatePath("/", "layout");
+  return res;
+}
+
+/** Non-secret provider settings, such as the Anthropic workspace id. */
+export async function actionSaveProviderOptions(
+  provider: string,
+  values: Record<string, string>,
+): Promise<Result> {
+  const res = await guard(() => saveProviderOptions(provider, values));
   revalidatePath("/", "layout");
   return res;
 }

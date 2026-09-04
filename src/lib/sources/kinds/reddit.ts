@@ -16,6 +16,7 @@ type Listing = {
         created_utc: number;
         selftext?: string;
         is_self: boolean;
+        thumbnail?: string;
       };
     }[];
   };
@@ -58,6 +59,8 @@ export const redditKind: SourceKind = {
               p.selftext ?? "",
             )}`.slice(0, 800),
             published_at: new Date(p.created_utc * 1000).toISOString(),
+            // Reddit answers "self", "default" or "nsfw" when there is no image.
+            image_url: /^https?:\/\//i.test(p.thumbnail ?? "") ? (p.thumbnail ?? null) : null,
           }),
         );
     } catch {

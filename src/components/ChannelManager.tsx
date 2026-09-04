@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionDeleteChannel, actionSaveChannel, actionSaveCredential } from "@/lib/actions";
+import { useT } from "./I18nProvider";
+import LanguageSelect from "./LanguageSelect";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { PublisherInfo } from "@/lib/publishers";
 import type { Channel } from "@/lib/types";
@@ -13,6 +15,7 @@ type Draft = {
   char_limit: number;
   color: string;
   hint: string;
+  language: string;
   template: string;
   publisher: string;
   config: Record<string, string>;
@@ -28,6 +31,7 @@ const BLANK: Draft = {
   char_limit: 1000,
   color: "#8b93a1",
   hint: "",
+  language: "",
   template: "{{body}}\n\n{{hashtags}}",
   publisher: "manual",
   config: {},
@@ -50,6 +54,7 @@ function toDraft(c: Channel): Draft {
     char_limit: c.char_limit,
     color: c.color,
     hint: c.hint ?? "",
+    language: c.language ?? "",
     template: c.template ?? "{{body}}",
     publisher: c.publisher,
     config,
@@ -80,6 +85,7 @@ function Editor({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const t = useT();
 
   const publisher = publishers.find((p) => p.id === d.publisher) ?? publishers[0];
   const linked = credentials.find((c) => c.id === d.credential_id);
@@ -97,14 +103,14 @@ function Editor({
           secret,
         });
         if (!cred.ok) {
-          setError(cred.error ?? "Could not store the credential");
+          setError(cred.error ?? t.channels.credentialError);
           return;
         }
         credentialId = cred.id ?? null;
       }
 
       const res = await actionSaveChannel({ ...d, credential_id: credentialId });
-      if (!res.ok) setError(res.error ?? "Error");
+      if (!res.ok) setError(res.error ?? t.common.error);
       else {
         setSecret("");
         onDone();
@@ -117,11 +123,11 @@ function Editor({
     <div className="px-5 pb-5 border-t border-line pt-4 flex flex-col gap-4">
       <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3">
         <div>
-          <span className="label">Name</span>
+          <span className="label">{t.channels.name}</span>
           <input className="input" value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} />
         </div>
         <div>
-          <span className="label">Key</span>
+          <span className="label">{t.channels.key}</span>
           <input
             className="input font-mono !text-[12px]"
             value={d.key}
@@ -131,7 +137,7 @@ function Editor({
           />
         </div>
         <div className="w-28">
-          <span className="label">Char limit</span>
+          <span className="label">{t.channels.charLimit}</span>
           <input
             type="number"
             className="input"
@@ -140,7 +146,7 @@ function Editor({
           />
         </div>
         <div className="w-24">
-          <span className="label">Colour</span>
+          <span className="label">{t.channels.colour}</span>
           <input
             className="input font-mono !text-[11px]"
             value={d.color}
@@ -150,7 +156,7 @@ function Editor({
       </div>
 
       <div>
-        <span className="label">Format hint (goes into the writer prompt)</span>
+        <span className="label">{t.channels.formatHint}</span>
         <textarea
           className="textarea min-h-[70px]"
           value={d.hint}
@@ -158,8 +164,32 @@ function Editor({
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <span className="label">{t.channels.language}</span>
+          <LanguageSelect
+            value={d.language}
+            onChange={(language) => setD({ ...d, language })}
+            inheritLabel={t.channels.inherit}
+          />
+          <p className="text-[11px] text-faint mt-1">{t.channels.languageHint}</p>
+        </div>
+        {!publisher.configFields.some((f) => f.key === "handle") && (
+          <div>
+            <span className="label">{t.channels.handle}</span>
+            <input
+              className="input font-mono !text-[12px]"
+              placeholder="@you"
+              value={d.config.handle ?? ""}
+              onChange={(e) => setD({ ...d, config: { ...d.config, handle: e.target.value } })}
+            />
+            <p className="text-[11px] text-faint mt-1">{t.channels.handleHint}</p>
+          </div>
+        )}
+      </div>
+
       <div>
-        <span className="label">Publication template</span>
+        <span className="label">{t.channels.template}</span>
         <textarea
           className="textarea min-h-[90px] font-mono !text-[12px]"
           value={d.template}
@@ -176,11 +206,18 @@ function Editor({
 
       <div className="grid grid-cols-[1fr_auto_auto] gap-3 items-end">
         <div>
-          <span className="label">Publisher</span>
+          <span className="label">{t.channels.publisher}</span>
           <select
             className="select"
             value={d.publisher}
-            onChange={(e) => setD({ ...d, publisher: e.target.value, config: {} })}
+            onChange={(e) =>
+              setD({
+                ...d,
+                publisher: e.target.value,
+                // Publisher options are per publisher, but the preview handle is not.
+                config: d.config.handle ? { handle: d.config.handle } : {},
+              })
+            }
           >
             {publishers.map((p) => (
               <option key={p.id} value={p.id}>
@@ -190,7 +227,7 @@ function Editor({
           </select>
         </div>
         <div className="w-32">
-          <span className="label">Posts per run</span>
+          <span className="label">{t.channels.postsPerRun}</span>
           <input
             type="number"
             min={0}
@@ -207,7 +244,7 @@ function Editor({
             checked={d.enabled}
             onChange={(e) => setD({ ...d, enabled: e.target.checked })}
           />
-          Enabled
+          {t.common.enabled}
         </label>
       </div>
 
@@ -233,14 +270,18 @@ function Editor({
       {publisher.needsCredential && (
         <div>
           <span className="label">
-            {publisher.credentialLabel || "Secret"}
-            {linked && <span className="font-mono text-faint normal-case"> · stored {linked.hint}</span>}
+            {publisher.credentialLabel || t.channels.secret}
+            {linked && (
+              <span className="font-mono text-faint normal-case">
+                {t.channels.storedHint(linked.hint ?? "")}
+              </span>
+            )}
           </span>
           <input
             className="input font-mono !text-[12px]"
             type="password"
             autoComplete="off"
-            placeholder={linked ? "Leave empty to keep the stored one" : "Paste the token"}
+            placeholder={linked ? t.channels.keepStored : t.channels.pasteToken}
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
           />
@@ -255,10 +296,10 @@ function Editor({
 
       <div className="flex gap-2">
         <button className="btn btn-primary btn-sm" onClick={save} disabled={pending}>
-          {pending ? "Saving…" : isNew ? "Create channel" : "Save"}
+          {pending ? t.common.saving : isNew ? t.channels.createChannel : t.common.save}
         </button>
         <button className="btn btn-ghost btn-sm" onClick={onDone} disabled={pending}>
-          Cancel
+          {t.common.cancel}
         </button>
       </div>
     </div>
@@ -280,18 +321,21 @@ export default function ChannelManager({
   const [creating, setCreating] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const t = useT();
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
         <button className="btn btn-primary btn-sm" onClick={() => setCreating(true)} disabled={creating}>
-          New channel
+          {t.channels.newChannel}
         </button>
       </div>
 
       {creating && (
         <section className="card overflow-hidden">
-          <div className="px-5 pt-4 text-[14px] font-semibold tracking-tight">New channel</div>
+          <div className="px-5 pt-4 text-[14px] font-semibold tracking-tight">
+            {t.channels.newChannel}
+          </div>
           <Editor
             initial={BLANK}
             isNew
@@ -314,17 +358,17 @@ export default function ChannelManager({
               <div className="flex items-center gap-2.5">
                 <span className="text-[14px] font-semibold tracking-tight">{c.label}</span>
                 <span className="chip !text-[10px] !py-0">{c.publisher}</span>
-                {!c.enabled && <span className="chip !text-[10px] !py-0">disabled</span>}
+                {!c.enabled && <span className="chip !text-[10px] !py-0">{t.common.disabled}</span>}
               </div>
               <p className="text-[11.5px] text-faint mt-1">
-                {c.char_limit} chars · {c.posts_per_run} post{c.posts_per_run === 1 ? "" : "s"} per run
+                {t.channels.summary(c.char_limit, c.posts_per_run, c.language)}
               </p>
             </div>
             <button
               className="btn btn-sm"
               onClick={() => setEditing((k) => (k === c.key ? null : c.key))}
             >
-              {editing === c.key ? "Close" : "Edit"}
+              {editing === c.key ? t.common.close : t.common.edit}
             </button>
             <button
               className="btn btn-ghost btn-sm"
@@ -336,7 +380,7 @@ export default function ChannelManager({
                 })
               }
             >
-              Delete
+              {t.common.delete}
             </button>
           </div>
 

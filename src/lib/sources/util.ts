@@ -10,6 +10,8 @@ export type RawItem = {
   author?: string | null;
   summary?: string | null;
   published_at?: string | null;
+  /** Absolute URL of the item's own image, when the feed carries one. */
+  image_url?: string | null;
 };
 
 export const parser = new XMLParser({

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { channelLabel, getChannels } from "@/lib/channels";
 import { getDb, weekKey } from "@/lib/db";
+import { getDictionary } from "@/lib/i18n";
 import { seedSources } from "@/lib/ingest";
 import { llmStatus } from "@/lib/llm";
 import PageHeader from "@/components/PageHeader";
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const week = weekKey();
   const channels = getChannels();
   const status = llmStatus();
+  const t = getDictionary();
 
   const count = (sql: string, ...p: unknown[]) => (db.prepare(sql).get(...p) as { c: number }).c;
 
@@ -50,27 +52,23 @@ export default function Dashboard() {
     .prepare("SELECT id, platform, hook, body, status FROM posts WHERE status = 'draft' ORDER BY id DESC LIMIT 5")
     .all() as { id: number; platform: string; hook: string; body: string; status: string }[];
 
-  const lastRun = db.prepare("SELECT * FROM runs ORDER BY id DESC LIMIT 1").get() as
-    | { kind: string; status: string; log: string; started_at: string }
-    | undefined;
+  // One row per stage, so the last run of the pipeline is the last few rows.
+  const recentRuns = db
+    .prepare("SELECT id, kind, status, log, started_at FROM runs ORDER BY id DESC LIMIT 4")
+    .all() as { id: number; kind: string; status: string; log: string | null; started_at: string }[];
 
   return (
     <div>
-      <PageHeader
-        kicker={`Week ${week}`}
-        title="Dashboard"
-        sub="State of the radar, the digest and the publication queue."
-      />
+      <PageHeader kicker={t.dashboard.kicker(week)} title={t.dashboard.title} sub={t.dashboard.sub} />
 
       <div className="p-8 flex flex-col gap-7">
         {!status.ready && (
           <div className="card p-4 border-l-2" style={{ borderLeftColor: "var(--warn)" }}>
-            <div className="text-[13px] font-medium mb-1">Demo mode</div>
+            <div className="text-[13px] font-medium mb-1">{t.dashboard.demoTitle}</div>
             <p className="text-[12.5px] text-muted leading-relaxed">
-              {status.reason} Ingest works either way, but curation, the digest and the posts come out as
-              filler text. Pick a provider and paste a key under{" "}
+              {status.reason} {t.dashboard.demoBody}{" "}
               <Link href="/settings/model" className="text-accent">
-                Model &amp; keys
+                {t.nav.model}
               </Link>
               .
             </p>
@@ -78,20 +76,20 @@ export default function Dashboard() {
         )}
 
         <section className="grid grid-cols-6 gap-3">
-          <Stat n={items} label="Items this week" href="/radar" />
-          <Stat n={selected} label="Selected signals" href="/radar" />
-          <Stat n={drafts} label="Drafts to review" href="/posts" />
-          <Stat n={approved} label="Approved / scheduled" href="/posts" />
-          <Stat n={published} label="Published" href="/posts" />
-          <Stat n={sources} label="Active sources" href="/sources" />
+          <Stat n={items} label={t.dashboard.stats.items} href="/radar" />
+          <Stat n={selected} label={t.dashboard.stats.selected} href="/radar" />
+          <Stat n={drafts} label={t.dashboard.stats.drafts} href="/posts" />
+          <Stat n={approved} label={t.dashboard.stats.approved} href="/posts" />
+          <Stat n={published} label={t.dashboard.stats.published} href="/posts" />
+          <Stat n={sources} label={t.dashboard.stats.sources} href="/sources" />
         </section>
 
         <div className="grid grid-cols-[1.15fr_1fr] gap-7 items-start">
           <section>
             <div className="flex items-baseline justify-between mb-3">
-              <h2 className="kicker">Digest of this week</h2>
+              <h2 className="kicker">{t.dashboard.digestOfWeek}</h2>
               <Link href="/digest" className="text-[12px] text-muted hover:text-ink">
-                See all →
+                {t.dashboard.seeAll}
               </Link>
             </div>
             {digest ? (
@@ -101,12 +99,10 @@ export default function Dashboard() {
                 <div className="text-[11px] text-faint mt-4 font-mono">{digest.created_at} UTC</div>
               </Link>
             ) : (
-              <div className="card p-5 text-[13px] text-muted">
-                No digest for {week} yet. Run the pipeline from the sidebar.
-              </div>
+              <div className="card p-5 text-[13px] text-muted">{t.dashboard.noDigest(week)}</div>
             )}
 
-            <h2 className="kicker mt-7 mb-3">Approval queue</h2>
+            <h2 className="kicker mt-7 mb-3">{t.dashboard.approvalQueue}</h2>
             <div className="flex flex-col gap-2">
               {queue.length ? (
                 queue.map((p) => {
@@ -127,13 +123,13 @@ export default function Dashboard() {
                   );
                 })
               ) : (
-                <div className="card p-5 text-[13px] text-muted">No pending drafts.</div>
+                <div className="card p-5 text-[13px] text-muted">{t.dashboard.noDrafts}</div>
               )}
             </div>
           </section>
 
           <section>
-            <h2 className="kicker mb-3">Top signals</h2>
+            <h2 className="kicker mb-3">{t.dashboard.topSignals}</h2>
             <div className="flex flex-col gap-2">
               {topItems.length ? (
                 topItems.map((i) => (
@@ -160,28 +156,39 @@ export default function Dashboard() {
                   </div>
                 ))
               ) : (
-                <div className="card p-5 text-[13px] text-muted">
-                  No scored signals yet. Run ingest + curate.
-                </div>
+                <div className="card p-5 text-[13px] text-muted">{t.dashboard.noSignals}</div>
               )}
             </div>
 
-            {lastRun && (
+            {recentRuns.length > 0 && (
               <>
-                <h2 className="kicker mt-7 mb-3">Last run</h2>
-                <div className="card p-4">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: lastRun.status === "ok" ? "var(--good)" : "var(--bad)" }}
-                    />
-                    <span className="text-[12px] font-mono text-muted">
-                      {lastRun.kind} · {lastRun.started_at}
-                    </span>
-                  </div>
-                  <pre className="text-[11.5px] font-mono text-faint whitespace-pre-wrap leading-relaxed max-h-40 overflow-auto">
-                    {lastRun.log}
-                  </pre>
+                <h2 className="kicker mt-7 mb-3">{t.dashboard.recentRuns}</h2>
+                <div className="card p-4 flex flex-col gap-3">
+                  {recentRuns.map((r, i) => (
+                    <div key={r.id} className={i ? "border-t border-line pt-3" : ""}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{
+                            background:
+                              r.status === "ok"
+                                ? "var(--good)"
+                                : r.status === "error"
+                                  ? "var(--bad)"
+                                  : "var(--warn)",
+                          }}
+                        />
+                        <span className="text-[12px] font-mono text-muted">
+                          {r.kind} · {r.started_at}
+                        </span>
+                      </div>
+                      {r.log && (
+                        <pre className="text-[11.5px] font-mono text-faint whitespace-pre-wrap leading-relaxed max-h-28 overflow-auto">
+                          {r.log}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </>
             )}

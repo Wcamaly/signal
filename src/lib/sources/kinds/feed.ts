@@ -1,6 +1,35 @@
 import type { RawItem, SourceKind, SourceRef } from "../types";
 import { asArray, fetchText, normalizeDate, num, parser, stripHtml, textOf } from "../util";
 
+/**
+ * Picks an image out of whatever the feed offers. RSS puts it in `enclosure`,
+ * `media:thumbnail` or `media:content`; Atom feeds that carry video — YouTube
+ * above all — nest the same tags inside a `media:group`.
+ */
+function feedImage(node: Record<string, unknown>): string | null {
+  const scopes = [node, node["media:group"] as Record<string, unknown> | undefined];
+  for (const scope of scopes) {
+    if (!scope) continue;
+    for (const key of ["media:thumbnail", "media:content", "enclosure"]) {
+      for (const entry of asArray(scope[key] as Record<string, unknown>[])) {
+        const url = String(entry?.["@_url"] ?? "").trim();
+        if (!/^https?:\/\//i.test(url)) continue;
+        // An enclosure is also how a podcast ships its audio file.
+        const type = String(entry?.["@_type"] ?? entry?.["@_medium"] ?? "");
+        if (
+          key === "enclosure" &&
+          !type.startsWith("image") &&
+          !/\.(jpe?g|png|webp|gif)(\?|$)/i.test(url)
+        ) {
+          continue;
+        }
+        return url;
+      }
+    }
+  }
+  return null;
+}
+
 /** Parses both RSS 2.0 and Atom. Reused by every kind that is a feed underneath. */
 export async function parseFeed(url: string, maxItems = 40): Promise<RawItem[]> {
   const doc = parser.parse(await fetchText(url));
@@ -16,6 +45,7 @@ export async function parseFeed(url: string, maxItems = 40): Promise<RawItem[]> 
         author: stripHtml(textOf(it["dc:creator"] ?? it.author)) || null,
         summary: stripHtml(textOf(it.description ?? it["content:encoded"])).slice(0, 1200) || null,
         published_at: normalizeDate(textOf(it.pubDate ?? it["dc:date"])),
+        image_url: feedImage(it),
       };
     });
   }
@@ -38,6 +68,7 @@ export async function parseFeed(url: string, maxItems = 40): Promise<RawItem[]> 
           stripHtml(textOf(e.summary ?? e.content ?? media?.["media:description"])).slice(0, 1200) ||
           null,
         published_at: normalizeDate(textOf(e.published ?? e.updated)),
+        image_url: feedImage(e),
       };
     });
   }

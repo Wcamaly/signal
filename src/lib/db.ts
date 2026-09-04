@@ -141,6 +141,16 @@ function init(db: Database.Database) {
   // Migrations for databases created by earlier versions.
   ensureColumn(db, "sources", "config", "TEXT DEFAULT '{}'");
   ensureColumn(db, "posts", "published_url", "TEXT");
+  // Post language, images and links.
+  ensureColumn(db, "items", "image_url", "TEXT");
+  ensureColumn(db, "channels", "language", "TEXT"); // NULL = inherit the voice profile
+  ensureColumn(db, "digests", "language", "TEXT");
+  ensureColumn(db, "posts", "language", "TEXT");
+  ensureColumn(db, "posts", "link", "TEXT");
+  ensureColumn(db, "posts", "link_title", "TEXT");
+  ensureColumn(db, "posts", "link_image", "TEXT");
+  ensureColumn(db, "posts", "image_url", "TEXT");
+  ensureColumn(db, "posts", "image_alt", "TEXT");
 }
 
 function ensureColumn(db: Database.Database, table: string, column: string, ddl: string) {

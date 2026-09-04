@@ -2,31 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const GROUPS: { title: string | null; links: { href: string; label: string; exact?: boolean }[] }[] = [
-  {
-    title: null,
-    links: [
-      { href: "/", label: "Dashboard", exact: true },
-      { href: "/radar", label: "Radar" },
-      { href: "/digest", label: "Weekly digest" },
-      { href: "/posts", label: "Publications" },
-      { href: "/sources", label: "Sources" },
-    ],
-  },
-  {
-    title: "Configure",
-    links: [
-      { href: "/settings", label: "Voice & settings", exact: true },
-      { href: "/settings/channels", label: "Channels" },
-      { href: "/settings/prompts", label: "Prompts" },
-      { href: "/settings/model", label: "Model & keys" },
-    ],
-  },
-];
+import { useT } from "./I18nProvider";
 
 export default function Nav() {
   const path = usePathname();
+  const t = useT();
+
+  const GROUPS: { title: string | null; links: { href: string; label: string; exact?: boolean }[] }[] = [
+    {
+      title: null,
+      links: [
+        { href: "/", label: t.nav.dashboard, exact: true },
+        { href: "/radar", label: t.nav.radar },
+        { href: "/digest", label: t.nav.digest },
+        { href: "/posts", label: t.nav.posts },
+        { href: "/sources", label: t.nav.sources },
+      ],
+    },
+    {
+      title: t.nav.configure,
+      links: [
+        { href: "/settings", label: t.nav.voice, exact: true },
+        { href: "/settings/channels", label: t.nav.channels },
+        { href: "/settings/prompts", label: t.nav.prompts },
+        { href: "/settings/model", label: t.nav.model },
+      ],
+    },
+  ];
+
   return (
     <nav className="px-2.5 flex flex-col gap-4">
       {GROUPS.map((group) => (

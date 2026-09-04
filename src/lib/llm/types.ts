@@ -6,12 +6,27 @@ export type ChatRequest = {
   temperature?: number;
 };
 
+/**
+ * A non-secret value a provider needs next to its key — Anthropic's workspace
+ * id, for instance. Rendered as an input under Model & keys.
+ */
+export type ProviderOption = {
+  key: string;
+  label: string;
+  placeholder?: string;
+  help?: string;
+  /** Read as a fallback when nothing is stored in the UI. */
+  envKeys?: string[];
+};
+
 export type ProviderContext = {
   apiKey: string | null;
   baseUrl: string;
   model: string;
   maxTokens: number;
   temperature: number;
+  /** Values for `LlmProvider.options`, already resolved from UI or environment. */
+  options: Record<string, string>;
 };
 
 /**
@@ -29,6 +44,8 @@ export type LlmProvider = {
   keyPlaceholder: string;
   /** Environment variables read as a fallback when nothing is stored in the UI. */
   envKeys: string[];
+  /** Non-secret fields the provider needs besides the key. */
+  options?: ProviderOption[];
   defaultBaseUrl: string;
   /** Shown as suggestions; any string is accepted. */
   models: string[];

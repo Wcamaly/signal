@@ -1,7 +1,7 @@
 import { getDb } from "./db";
 import { renderTemplate } from "./template";
 
-export type PromptKey = "curator" | "digest" | "writer" | "refine";
+export type PromptKey = "curator" | "digest" | "writer" | "refine" | "translate";
 
 export type PromptVariable = { name: string; description: string };
 
@@ -151,6 +151,7 @@ DIGEST OF THE WEEK ({{week}})
 {{digest}}
 
 SIGNALS WITH THEIR ANGLE
+Each signal carries the image of its source page in "image", when it has one.
 {{signals}}
 
 CHANNEL: {{channel_label}}
@@ -161,9 +162,10 @@ TASK
 Write {{count}} different publications for {{channel_label}}.
 Each one takes a DIFFERENT signal and a DIFFERENT angle. At least one must take a position that is not the consensus.
 Write them in this language: {{language}}.
+Set "use_source_image" to false when that signal's image adds nothing to the post. Never invent an image: the only one available is the one the signal carries.
 
 Return ONLY this JSON:
-[{"item_index":0,"angle":"the thesis of the post","hook":"the first line","body":"the full post","hashtags":["#tag"],"visual_brief":"only if the channel is visual: one line per slide"}]`,
+[{"item_index":0,"angle":"the thesis of the post","hook":"the first line","body":"the full post","hashtags":["#tag"],"visual_brief":"only if the channel is visual: one line per slide","link":"the URL of the signal this post is built on","image_alt":"one line describing that signal's image, empty if there is none","use_source_image":true}]`,
   },
 
   refine: {
@@ -187,6 +189,36 @@ CURRENT POST ({{channel_label}}, limit {{channel_limit}}):
 AUTHOR INSTRUCTION: {{instruction}}
 
 Rewrite it following the instruction. Return ONLY: {"hook":"...","body":"...","hashtags":["#tag"]}`,
+  },
+
+  translate: {
+    key: "translate",
+    label: "Translate",
+    description:
+      "Rewrites an existing post or the weekly digest in another language, keeping your voice. Used by the language selector in the queue and on the digest — it never regenerates the piece from scratch.",
+    variables: [
+      ...VOICE_VARS,
+      { name: "target_language", description: "Language to translate into" },
+      { name: "content", description: "JSON object with the fields to translate" },
+    ],
+    system: `You translate an author's own writing into another language. You are not a dictionary: you rewrite it so it reads as if they had written it in that language from the start.
+
+RULES
+- Keep the register, the rhythm and the length. A short line with an edge stays a short line with an edge.
+- Keep the technical vocabulary the target audience actually uses in English (prompt, embedding, fine-tuning, deploy) in English.
+- Do not translate hashtags word for word: use the tag that audience searches, or leave it as it is.
+- Never translate URLs, product names, company names, or code.
+- Obey the banned list literally in the target language too: not one of those words or phrases may appear.
+- Add nothing, remove nothing, explain nothing. Same content, another language.`,
+    template: `AUTHOR: {{role}}, {{company}}. Tone: {{tone}}.
+Never use: {{banned}}
+
+TARGET LANGUAGE: {{target_language}}
+
+CONTENT (JSON):
+{{content}}
+
+Translate the values into {{target_language}}. Return ONLY a JSON object with exactly the same keys as the input, nothing else.`,
   },
 };
 

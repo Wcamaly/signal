@@ -1,5 +1,8 @@
-import { channelLabel, getChannels } from "@/lib/channels";
+import { channelConfig, channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
+import { getDictionary } from "@/lib/i18n";
+import { resolveLanguage } from "@/lib/languages";
+import { getVoice } from "@/lib/pipeline";
 import { publisherCatalog } from "@/lib/publishers";
 import PageHeader from "@/components/PageHeader";
 import PostCard from "@/components/PostCard";
@@ -7,13 +10,7 @@ import type { Post } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const STATUSES = [
-  { key: "draft", label: "Drafts" },
-  { key: "approved", label: "Approved" },
-  { key: "scheduled", label: "Scheduled" },
-  { key: "published", label: "Published" },
-  { key: "discarded", label: "Discarded" },
-];
+const STATUS_KEYS = ["draft", "approved", "scheduled", "published", "discarded"] as const;
 
 type Search = Promise<{ status?: string; channel?: string }>;
 
@@ -24,6 +21,9 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
   const db = getDb();
   const channels = getChannels();
   const publishers = publisherCatalog();
+  const voice = getVoice();
+  const t = getDictionary();
+  const STATUSES = STATUS_KEYS.map((key) => ({ key, label: t.posts.statuses[key] }));
 
   const counts = Object.fromEntries(
     (db.prepare("SELECT status, COUNT(*) c FROM posts GROUP BY status").all() as {
@@ -41,11 +41,15 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
 
   const posts = db
     .prepare(
-      `SELECT p.*, i.url AS source_url, i.title AS source_title
+      `SELECT p.*, i.url AS source_url, i.title AS source_title, i.image_url AS source_image
        FROM posts p LEFT JOIN items i ON i.id = p.item_id
        WHERE ${where.join(" AND ")} ORDER BY p.updated_at DESC, p.id DESC`,
     )
-    .all(...args) as (Post & { source_url: string | null; source_title: string | null })[];
+    .all(...args) as (Post & {
+    source_url: string | null;
+    source_title: string | null;
+    source_image: string | null;
+  })[];
 
   const qs = (o: Record<string, string>) =>
     "/posts?" + new URLSearchParams({ status, channel: channelKey, ...o }).toString();
@@ -53,9 +57,9 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
   return (
     <div>
       <PageHeader
-        kicker="Publication queue"
-        title="Publications"
-        sub="Nothing goes out on its own. You review, edit or ask for a rewrite, and only then it is approved."
+        kicker={t.posts.kicker}
+        title={t.posts.title}
+        sub={t.posts.sub}
       />
 
       <div className="px-8 py-4 border-b border-line flex items-center gap-4 flex-wrap">
@@ -77,7 +81,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             href={qs({ channel: "all" })}
             className={`chip ${channelKey === "all" ? "!text-ink !border-line-strong" : ""}`}
           >
-            All
+            {t.common.all}
           </a>
           {channels.map((c) => (
             <a
@@ -98,11 +102,26 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             // A post whose channel was deleted still has to render: channelLabel
             // falls back to neutral metadata built from the stored key.
             const channel = channelLabel(channels, p.platform);
+            // A post written before this feature has no language of its own, so
+            // it falls back the same way a new channel does.
+            const language = resolveLanguage(
+              p.language,
+              resolveLanguage(channel.language, voice.language),
+            );
+            const config = channelConfig(channel);
+            const handle =
+              typeof config.handle === "string" && config.handle.trim()
+                ? config.handle.trim()
+                : null;
             return (
               <PostCard
                 key={p.id}
                 post={p}
                 channel={channel}
+                language={language}
+                author={voice.author}
+                avatar={voice.avatar || null}
+                handle={handle}
                 publisherLabel={
                   publishers.find((pub) => pub.id === channel.publisher)?.label ?? "Manual"
                 }
@@ -110,9 +129,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             );
           })
         ) : (
-          <div className="card p-6 text-[13px] text-muted">
-            Nothing in this state. Run the writing stage from the sidebar.
-          </div>
+          <div className="card p-6 text-[13px] text-muted">{t.posts.empty}</div>
         )}
       </div>
     </div>

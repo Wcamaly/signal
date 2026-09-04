@@ -45,7 +45,7 @@ export async function runPipeline(stages: Stage[] = ["ingest", "curate", "digest
     if (stages.includes("curate")) {
       const r = await curateWeek(week, voice);
       stats.curate = r;
-      log.push(`Curation: ${r.scored} scored, ${r.selected} selected.`);
+      log.push(`Curation: ${r.scored} scored, ${r.selected} selected, ${r.images} images found.`);
     }
     let digestId: number | undefined;
     if (stages.includes("digest")) {

@@ -1,3 +1,4 @@
+import { getDictionary } from "../i18n";
 import { getSetting, setSetting } from "../db";
 import { resolveSecret } from "../credentials";
 import { extractJson } from "./json";
@@ -47,6 +48,10 @@ export type LlmConfig = {
 };
 
 const SETTING_KEY = "llm";
+const OPTIONS_KEY = "llm.options";
+
+/** Non-secret provider settings, kept per provider so switching keeps both. */
+type StoredOptions = Record<string, Record<string, string>>;
 
 /** Provider guessed from the environment the first time the app runs. */
 function defaultProviderId(): string {
@@ -66,6 +71,40 @@ export function getLlmConfig(): LlmConfig {
     temperature: stored.temperature ?? 0.7,
     maxTokens: stored.maxTokens ?? 16000,
   };
+}
+
+/** What the UI has stored for a provider, with no environment fallback. */
+export function getProviderOptions(providerId: string): Record<string, string> {
+  return getSetting<StoredOptions>(OPTIONS_KEY, {})[providerId] ?? {};
+}
+
+export function allProviderOptions(): StoredOptions {
+  return getSetting<StoredOptions>(OPTIONS_KEY, {});
+}
+
+export function saveProviderOptions(providerId: string, values: Record<string, string>) {
+  const provider = getProvider(providerId);
+  if (!provider) throw new Error(`Unknown LLM provider "${providerId}"`);
+  const kept: Record<string, string> = {};
+  for (const opt of provider.options ?? []) {
+    const value = (values[opt.key] ?? "").trim();
+    if (value) kept[opt.key] = value;
+  }
+  setSetting(OPTIONS_KEY, { ...allProviderOptions(), [providerId]: kept });
+}
+
+/** Stored value wins, the environment is the fallback — same rule as the keys. */
+function resolveOptions(provider: LlmProvider): Record<string, string> {
+  const stored = getProviderOptions(provider.id);
+  const out: Record<string, string> = {};
+  for (const opt of provider.options ?? []) {
+    const value =
+      stored[opt.key]?.trim() ||
+      (opt.envKeys ?? []).map((k) => process.env[k]?.trim()).find(Boolean) ||
+      "";
+    if (value) out[opt.key] = value;
+  }
+  return out;
 }
 
 export function saveLlmConfig(patch: Partial<LlmConfig>) {
@@ -99,7 +138,7 @@ export function llmStatus(): LlmStatus {
       providerLabel: cfg.provider,
       model: cfg.model,
       keyFrom: null,
-      reason: `Unknown provider "${cfg.provider}"`,
+      reason: getDictionary().model.unknownProvider(cfg.provider),
     };
   }
   const { secret, from } = provider.needsKey
@@ -116,8 +155,8 @@ export function llmStatus(): LlmStatus {
     reason: ready
       ? null
       : provider.needsKey
-        ? `No API key for ${provider.label}. Add one in Model & keys.`
-        : "Choose a model for this provider.",
+        ? getDictionary().model.noKey(provider.label)
+        : getDictionary().model.chooseModel,
   };
 }
 
@@ -150,6 +189,7 @@ export async function chat(req: ChatRequest): Promise<string> {
     model: cfg.model,
     maxTokens: cfg.maxTokens,
     temperature: cfg.temperature,
+    options: resolveOptions(provider),
   });
 }
 

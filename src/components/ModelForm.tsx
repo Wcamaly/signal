@@ -1,8 +1,15 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useT } from "./I18nProvider";
 import { useRouter } from "next/navigation";
-import { actionDeleteCredential, actionSaveCredential, actionSaveLlmConfig, actionTestLlm } from "@/lib/actions";
+import {
+  actionDeleteCredential,
+  actionSaveCredential,
+  actionSaveLlmConfig,
+  actionSaveProviderOptions,
+  actionTestLlm,
+} from "@/lib/actions";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { LlmConfig, ProviderInfo } from "@/lib/llm";
 import type { LlmStatus } from "@/lib/llm";
@@ -10,22 +17,27 @@ import type { LlmStatus } from "@/lib/llm";
 export default function ModelForm({
   providers,
   config: initial,
+  options: initialOptions,
   status,
   credentials,
   keyIsManaged,
 }: {
   providers: ProviderInfo[];
   config: LlmConfig;
+  /** Non-secret provider settings the UI has stored, keyed by provider. */
+  options: Record<string, Record<string, string>>;
   status: LlmStatus;
   credentials: CredentialInfo[];
   keyIsManaged: boolean;
 }) {
   const [cfg, setCfg] = useState(initial);
+  const [options, setOptions] = useState(initialOptions);
   const [secret, setSecret] = useState("");
   const [saved, setSaved] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; detail: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const t = useT();
   const router = useRouter();
 
   const provider = useMemo(
@@ -41,16 +53,28 @@ export default function ModelForm({
     setCfg((c) => ({ ...c, provider: id, model: next.defaultModel, baseUrl: next.defaultBaseUrl }));
   }
 
+  function setOption(key: string, value: string) {
+    setOptions((o) => ({ ...o, [provider.id]: { ...o[provider.id], [key]: value } }));
+  }
+
   function save() {
     setError(null);
     start(async () => {
       const res = await actionSaveLlmConfig(cfg);
-      if (!res.ok) setError(res.error ?? "Error");
-      else {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-        router.refresh();
+      if (!res.ok) {
+        setError(res.error ?? t.common.error);
+        return;
       }
+      if (provider.options?.length) {
+        const opts = await actionSaveProviderOptions(provider.id, options[provider.id] ?? {});
+        if (!opts.ok) {
+          setError(opts.error ?? t.common.error);
+          return;
+        }
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      router.refresh();
     });
   }
 
@@ -63,7 +87,7 @@ export default function ModelForm({
         label: "default",
         secret,
       });
-      if (!res.ok) setError(res.error ?? "Error");
+      if (!res.ok) setError(res.error ?? t.common.error);
       else {
         setSecret("");
         router.refresh();
@@ -87,8 +111,7 @@ export default function ModelForm({
         />
         <div className="text-[12.5px] text-muted">
           {status.ready ? (
-            <>
-              Active: <span className="font-mono text-ink">{status.provider}/{status.model}</span>
+            <>{t.model.active}<span className="font-mono text-ink">{status.provider}/{status.model}</span>
               {status.keyFrom === "env" && " · key read from the environment"}
             </>
           ) : (
@@ -98,11 +121,11 @@ export default function ModelForm({
       </div>
 
       <section className="card p-6">
-        <h2 className="kicker mb-5">Provider</h2>
+        <h2 className="kicker mb-5">{t.model.provider}</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <span className="label">Provider</span>
+            <span className="label">{t.model.provider}</span>
             <select className="select" value={cfg.provider} onChange={(e) => selectProvider(e.target.value)}>
               {providers.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -112,7 +135,7 @@ export default function ModelForm({
             </select>
           </div>
           <div>
-            <span className="label">Model</span>
+            <span className="label">{t.model.model}</span>
             <input
               className="input"
               list="model-suggestions"
@@ -130,9 +153,29 @@ export default function ModelForm({
 
         {provider.note && <p className="text-[11.5px] text-faint mt-3 leading-snug">{provider.note}</p>}
 
+        {provider.options?.map((opt) => (
+          <div key={opt.key} className="mt-5">
+            <span className="label">{opt.label}</span>
+            <input
+              className="input font-mono !text-[12px]"
+              autoComplete="off"
+              placeholder={opt.placeholder}
+              value={options[provider.id]?.[opt.key] ?? ""}
+              onChange={(e) => setOption(opt.key, e.target.value)}
+            />
+            {opt.help && <p className="text-[11.5px] text-faint mt-2 leading-snug">{opt.help}</p>}
+            {opt.envKeys && opt.envKeys.length > 0 && (
+              <p className="text-[11.5px] text-faint mt-1 leading-snug">
+                Left empty, Signal falls back to{" "}
+                <code className="font-mono text-[11.5px]">{opt.envKeys.join(" / ")}</code>.
+              </p>
+            )}
+          </div>
+        ))}
+
         <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 mt-5">
           <div>
-            <span className="label">Base URL</span>
+            <span className="label">{t.model.baseUrl}</span>
             <input
               className="input font-mono !text-[12px]"
               value={cfg.baseUrl}
@@ -140,7 +183,7 @@ export default function ModelForm({
             />
           </div>
           <div>
-            <span className="label">Temperature</span>
+            <span className="label">{t.model.temperature}</span>
             <input
               type="number"
               step="0.1"
@@ -152,7 +195,7 @@ export default function ModelForm({
             />
           </div>
           <div>
-            <span className="label">Max tokens</span>
+            <span className="label">{t.model.maxTokens}</span>
             <input
               type="number"
               min={512}
@@ -167,15 +210,11 @@ export default function ModelForm({
 
         <div className="flex items-center gap-3 mt-6">
           <button className="btn btn-primary" onClick={save} disabled={pending}>
-            {pending ? "Saving…" : "Save"}
+            {pending ? t.common.saving : t.common.save}
           </button>
-          <button className="btn" onClick={runTest} disabled={pending}>
-            Test connection
-          </button>
+          <button className="btn" onClick={runTest} disabled={pending}>{t.model.testConnection}</button>
           {saved && (
-            <span className="text-[12.5px]" style={{ color: "var(--good)" }}>
-              Saved ✓
-            </span>
+            <span className="text-[12.5px]" style={{ color: "var(--good)" }}>{t.common.saved}</span>
           )}
         </div>
 
@@ -210,9 +249,7 @@ export default function ModelForm({
           ) : (
             <>
               This provider does not need a key.{" "}
-              <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">
-                Setup instructions
-              </a>
+              <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">{t.model.setupInstructions}</a>
               .
             </>
           )}
@@ -235,9 +272,7 @@ export default function ModelForm({
                     })
                   }
                   disabled={pending}
-                >
-                  Delete
-                </button>
+                >{t.common.delete}</button>
               </div>
             ))}
           </div>
@@ -257,7 +292,7 @@ export default function ModelForm({
               />
             </div>
             <button className="btn btn-primary" onClick={saveKey} disabled={pending || !secret.trim()}>
-              {stored.length ? "Replace key" : "Save key"}
+              {stored.length ? t.model.replaceKey : t.model.saveKey}
             </button>
           </div>
         )}

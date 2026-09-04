@@ -87,6 +87,9 @@ Nothing about this is hardcoded to one person's setup:
   next to the editor and a one-click reset to the shipped version.
 - **Your voice.** Positioning, audience, pillars, banned phrases, writing
   samples, output language.
+- **Your language, twice.** The interface ships in English and Spanish. What the
+  model writes is a separate setting: a working language for the digest, an
+  output language per channel, and an override on any single post.
 
 Details in **[docs/configuring.md](docs/configuring.md)**.
 
@@ -115,7 +118,7 @@ see [docs/extending.md](docs/extending.md).
 
 ## Extending it
 
-Four plugin points, each a single file plus one line in a registry:
+Six plugin points, each a single file plus one line in a registry:
 
 | I want to… | Add a… | In |
 |---|---|---|
@@ -123,6 +126,8 @@ Four plugin points, each a single file plus one line in a registry:
 | use a different model | LLM provider | `src/lib/llm/providers/` |
 | write for another platform | channel | the UI |
 | actually deliver a post | publisher | `src/lib/publishers/` |
+| see a post as a network draws it | preview skin | `src/components/previews/` |
+| read the interface in your language | locale | `src/lib/i18n/` |
 
 Walkthroughs with working code: **[docs/extending.md](docs/extending.md)**.
 

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { actionSaveGeneral, actionSaveVoice } from "@/lib/actions";
+import { useRef, useState, useTransition } from "react";
+import { actionSaveGeneral, actionSaveUiLanguage, actionSaveVoice, actionUploadImage } from "@/lib/actions";
+import { useT } from "./I18nProvider";
+import LanguageSelect from "./LanguageSelect";
 import type { VoiceProfile } from "@/lib/types";
 
 /** Filled-in example, loaded from the button. Replace every line with yours. */
@@ -32,6 +34,7 @@ const EXAMPLE: VoiceProfile = {
   ],
   cta: "Low-pressure close: an open question to the reader or a link to the live demo. Never 'book a call' on every post.",
   language: "English",
+  avatar: "",
   samples: "",
 };
 
@@ -48,14 +51,21 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export default function VoiceForm({
   voice: initial,
   general: initialGeneral,
+  uiLocale,
+  uiLocales,
 }: {
   voice: VoiceProfile;
   general: { signals_per_week: number; ingest_max_age_days: number };
+  /** The interface language, which is not the language the model writes in. */
+  uiLocale: string;
+  uiLocales: { code: string; label: string }[];
 }) {
   const [v, setV] = useState(initial);
   const [general, setGeneral] = useState(initialGeneral);
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const t = useT();
 
   const set = <K extends keyof VoiceProfile>(k: K, val: VoiceProfile[K]) =>
     setV((p) => ({ ...p, [k]: val }));
@@ -72,30 +82,80 @@ export default function VoiceForm({
   return (
     <div className="flex flex-col gap-7">
       <section className="card p-6">
+        <Field label={t.settings.interfaceLanguage} hint={t.settings.interfaceLanguageHint}>
+          <select
+            className="select !w-56"
+            value={uiLocale}
+            onChange={(e) => start(async () => void (await actionSaveUiLanguage(e.target.value)))}
+            disabled={pending}
+          >
+            {uiLocales.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </section>
+
+      <section className="card p-6">
         <div className="flex items-start justify-between gap-4 mb-5">
-          <h2 className="kicker">Voice profile</h2>
+          <h2 className="kicker">{t.settings.voiceProfile}</h2>
           <button className="btn btn-ghost btn-sm" onClick={() => setV(EXAMPLE)} type="button">
-            Load example
+            {t.settings.loadExample}
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-x-4">
-          <Field label="Name">
+          <Field label={t.settings.name}>
             <input className="input" value={v.author} onChange={(e) => set("author", e.target.value)} />
           </Field>
-          <Field label="Role">
+          <Field label={t.settings.role}>
             <input className="input" value={v.role} onChange={(e) => set("role", e.target.value)} />
           </Field>
         </div>
 
-        <Field label="Company / what you build">
+        <Field label={t.settings.company}>
           <input className="input" value={v.company} onChange={(e) => set("company", e.target.value)} />
         </Field>
 
-        <Field
-          label="Positioning"
-          hint="Your central thesis. It goes into every prompt: this is what makes the posts say something of yours instead of something generic."
-        >
+        <Field label={t.settings.picture} hint={t.settings.pictureHint}>
+          <div className="flex gap-2">
+            <input
+              className="input font-mono !text-[12px]"
+              placeholder={t.settings.picturePlaceholder}
+              value={v.avatar}
+              onChange={(e) => set("avatar", e.target.value)}
+            />
+            <input
+              ref={avatarInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                start(async () => {
+                  const form = new FormData();
+                  form.set("file", file);
+                  const res = await actionUploadImage(form);
+                  if (res.ok && res.url) set("avatar", res.url);
+                });
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-sm shrink-0"
+              onClick={() => avatarInput.current?.click()}
+              disabled={pending}
+            >
+              {t.common.upload}
+            </button>
+          </div>
+        </Field>
+
+        <Field label={t.settings.positioning} hint={t.settings.positioningHint}>
           <textarea
             className="textarea min-h-[90px]"
             value={v.positioning}
@@ -103,10 +163,7 @@ export default function VoiceForm({
           />
         </Field>
 
-        <Field
-          label="Audience"
-          hint="Who you write for. The more concrete (role, sector, what worries them), the better the curator filters."
-        >
+        <Field label={t.settings.audience} hint={t.settings.audienceHint}>
           <textarea
             className="textarea min-h-[70px]"
             value={v.audience}
@@ -114,11 +171,11 @@ export default function VoiceForm({
           />
         </Field>
 
-        <Field label="Tone">
+        <Field label={t.settings.tone}>
           <textarea className="textarea min-h-[70px]" value={v.tone} onChange={(e) => set("tone", e.target.value)} />
         </Field>
 
-        <Field label="Editorial pillars" hint="One per line. The curator scores items in these topics higher.">
+        <Field label={t.settings.pillars} hint={t.settings.pillarsHint}>
           <textarea
             className="textarea min-h-[110px] font-mono !text-[12.5px]"
             value={v.pillars.join("\n")}
@@ -126,10 +183,7 @@ export default function VoiceForm({
           />
         </Field>
 
-        <Field
-          label="Banned"
-          hint="One per line. Phrases, tics and emoji you never want to see. This is the setting that changes the output the most."
-        >
+        <Field label={t.settings.banned} hint={t.settings.bannedHint}>
           <textarea
             className="textarea min-h-[110px] font-mono !text-[12.5px]"
             value={v.banned.join("\n")}
@@ -138,18 +192,15 @@ export default function VoiceForm({
         </Field>
 
         <div className="grid grid-cols-2 gap-x-4">
-          <Field label="Language" hint="The language the digest and the posts are written in.">
-            <input className="input" value={v.language} onChange={(e) => set("language", e.target.value)} />
+          <Field label={t.settings.workingLanguage} hint={t.settings.workingLanguageHint}>
+            <LanguageSelect value={v.language} onChange={(l) => set("language", l)} />
           </Field>
-          <Field label="Close / CTA">
+          <Field label={t.settings.cta}>
             <input className="input" value={v.cta} onChange={(e) => set("cta", e.target.value)} />
           </Field>
         </div>
 
-        <Field
-          label="Samples of your writing"
-          hint="Paste 2 or 3 of your own posts that worked. Without this the agent writes correct but neutral text; with it, it starts to sound like you."
-        >
+        <Field label={t.settings.samples} hint={t.settings.samplesHint}>
           <textarea
             className="textarea min-h-[160px]"
             value={v.samples}
@@ -160,9 +211,9 @@ export default function VoiceForm({
       </section>
 
       <section className="card p-6">
-        <h2 className="kicker mb-5">Pipeline</h2>
+        <h2 className="kicker mb-5">{t.settings.pipeline}</h2>
         <div className="grid grid-cols-2 gap-x-4">
-          <Field label="Signals selected per week" hint="How many items survive curation and feed the digest.">
+          <Field label={t.settings.signalsPerWeek} hint={t.settings.signalsPerWeekHint}>
             <input
               type="number"
               min={1}
@@ -172,7 +223,7 @@ export default function VoiceForm({
               onChange={(e) => setGeneral((g) => ({ ...g, signals_per_week: Number(e.target.value) }))}
             />
           </Field>
-          <Field label="Ignore items older than (days)" hint="Anything published before this window is dropped at ingest.">
+          <Field label={t.settings.maxAge} hint={t.settings.maxAgeHint}>
             <input
               type="number"
               min={1}
@@ -184,17 +235,17 @@ export default function VoiceForm({
           </Field>
         </div>
         <p className="text-[12px] text-muted">
-          How many posts each channel gets is set per channel, under <strong>Channels</strong>.
+          {t.settings.perChannelNote} <strong>{t.nav.channels}</strong>.
         </p>
       </section>
 
       <div className="flex items-center gap-3">
         <button className="btn btn-primary" onClick={save} disabled={pending}>
-          {pending ? "Saving…" : "Save"}
+          {pending ? t.common.saving : t.common.save}
         </button>
         {saved && (
           <span className="text-[12.5px]" style={{ color: "var(--good)" }}>
-            Saved ✓
+            {t.common.saved}
           </span>
         )}
       </div>

@@ -52,11 +52,12 @@ export async function buildDigest(week: string, voice: VoiceProfile) {
   }
 
   db.prepare(
-    `INSERT INTO digests (week_key, title, subtitle, markdown, item_ids, model, status)
-     VALUES (@week, @title, @subtitle, @markdown, @item_ids, @model, 'draft')
+    `INSERT INTO digests (week_key, title, subtitle, markdown, item_ids, model, status, language)
+     VALUES (@week, @title, @subtitle, @markdown, @item_ids, @model, 'draft', @language)
      ON CONFLICT(week_key) DO UPDATE SET
        title = excluded.title, subtitle = excluded.subtitle, markdown = excluded.markdown,
-       item_ids = excluded.item_ids, model = excluded.model, created_at = datetime('now')`,
+       item_ids = excluded.item_ids, model = excluded.model, language = excluded.language,
+       created_at = datetime('now')`,
   ).run({
     week,
     title: result.title,
@@ -64,6 +65,7 @@ export async function buildDigest(week: string, voice: VoiceProfile) {
     markdown: result.markdown,
     item_ids: JSON.stringify(items.map((i) => i.id)),
     model: modelLabel(),
+    language: voice.language,
   });
 
   const row = db.prepare("SELECT * FROM digests WHERE week_key = ?").get(week) as { id: number };

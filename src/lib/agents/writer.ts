@@ -1,5 +1,6 @@
 import { getDb } from "../db";
 import { getChannel } from "../channels";
+import { resolveLanguage } from "../languages";
 import { chatJson, llmReady, modelLabel } from "../llm";
 import { getPrompt, renderPrompt } from "../prompts";
 import type { Channel, Item, VoiceProfile } from "../types";
@@ -12,6 +13,10 @@ type Draft = {
   hashtags: string[];
   visual_brief?: string;
   item_index?: number;
+  /** Optional: a customised writer prompt will not return these. */
+  link?: string;
+  image_alt?: string;
+  use_source_image?: boolean;
 };
 
 function demoDraft(item: Item): Draft {
@@ -41,28 +46,41 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
   const prompt = getPrompt("writer");
   const created: number[] = [];
   const insert = db.prepare(
-    `INSERT INTO posts (digest_id, item_id, platform, angle, hook, body, hashtags, visual_brief, char_count, model, status)
-     VALUES (@digest_id, @item_id, @platform, @angle, @hook, @body, @hashtags, @visual_brief, @char_count, @model, 'draft')`,
+    `INSERT INTO posts (digest_id, item_id, platform, angle, hook, body, hashtags, visual_brief, char_count, model, status, language, link, image_url, image_alt)
+     VALUES (@digest_id, @item_id, @platform, @angle, @hook, @body, @hashtags, @visual_brief, @char_count, @model, 'draft', @language, @link, @image_url, @image_alt)`,
   );
 
   for (const channel of channels) {
+    // The channel's language wins over the working language of the profile.
+    // The prompt variable keeps its name — a user who has customised the writer
+    // prompt has `{{language}}` in it and overrides are never migrated.
+    const language = resolveLanguage(channel.language, voice.language);
     const count = Math.max(1, channel.posts_per_run);
     let drafts: Draft[];
 
     if (!llmReady()) {
-      drafts = items.slice(0, count).map(demoDraft);
+      // Carry the index, or the draft has no item and so no link and no image.
+      drafts = items.slice(0, count).map((item, index) => ({ ...demoDraft(item), item_index: index }));
     } else {
       drafts = await chatJson<Draft[]>({
         system: prompt.system,
         prompt: renderPrompt(prompt.template, {
           ...voiceVars(voice, digest.week_key),
+          language,
           channel_label: channel.label,
           channel_hint: channel.hint ?? "",
           channel_limit: String(channel.char_limit),
           count: String(count),
           digest: (digest.markdown ?? "").slice(0, 6000),
           signals: JSON.stringify(
-            items.map((i, index) => ({ index, title: i.title, url: i.url, angle: i.angle, why: i.why })),
+            items.map((i, index) => ({
+              index,
+              title: i.title,
+              url: i.url,
+              angle: i.angle,
+              why: i.why,
+              image: i.image_url,
+            })),
             null,
             1,
           ),
@@ -75,6 +93,9 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
     for (const d of drafts) {
       if (!d?.body) continue;
       const item = typeof d.item_index === "number" ? items[d.item_index] : undefined;
+      // Declining the image is allowed; inventing one is not. `undefined` means
+      // a customised prompt that does not know the field, and defaults to yes.
+      const useImage = d.use_source_image !== false;
       const res = insert.run({
         digest_id: digestId,
         item_id: item?.id ?? null,
@@ -86,6 +107,10 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
         visual_brief: d.visual_brief ?? null,
         char_count: d.body.length,
         model: modelLabel(),
+        language,
+        link: (typeof d.link === "string" && d.link.trim()) || item?.url || null,
+        image_url: useImage ? (item?.image_url ?? null) : null,
+        image_alt: useImage ? (d.image_alt?.trim() || null) : null,
       });
       created.push(Number(res.lastInsertRowid));
     }
