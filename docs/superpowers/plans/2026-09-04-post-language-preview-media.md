@@ -134,6 +134,14 @@ Add to `DEFAULT_VOICE`, after `language: "English",`:
   avatar: "",
 ```
 
+`Channel` gaining a required field breaks the fallback object in
+`channelLabel` (`src/lib/channels.ts:158`), and this task has to end green, so
+add there too, after `hint: null,`:
+
+```ts
+      language: null,
+```
+
 - [ ] **Step 3: Keep the example profile compiling**
 
 `EXAMPLE` in `src/components/VoiceForm.tsx` is typed `VoiceProfile`, so it needs the new field too. Add after `language: "English",` (line 34):
@@ -164,7 +172,7 @@ Expected: no output beyond the npm banners.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/db.ts src/lib/types.ts src/components/VoiceForm.tsx
+git add src/lib/db.ts src/lib/types.ts src/lib/channels.ts src/components/VoiceForm.tsx
 git commit -m "feat: schema for post language, images and links"
 ```
 
@@ -415,7 +423,8 @@ Replace the INSERT (lines 196-207) with:
     .run(row);
 ```
 
-Add `language: null,` to the `channelLabel` fallback object, after `hint: null,` (line 164).
+(`channelLabel`'s fallback already carries `language: null` — Task 1 had to add
+it to keep the typecheck green.)
 
 - [ ] **Step 3: Add the field to the channel editor**
 
@@ -1641,12 +1650,24 @@ Replace the body of the draft loop (lines 75-91) with:
     }
 ```
 
-- [ ] **Step 5: Verify the build**
+- [ ] **Step 5: Keep demo mode coherent**
+
+`demoDraft` does not set `item_index`, so a demo draft has no item — and
+therefore no link and no image. Demo mode is what the README recommends for a
+first run, so the feature would be invisible there. Replace the demo branch
+(line 53):
+
+```ts
+      // Carry the index, or the draft has no item and so no link and no image.
+      drafts = items.slice(0, count).map((item, index) => ({ ...demoDraft(item), item_index: index }));
+```
+
+- [ ] **Step 6: Verify the build**
 
 Run: `npm run check`
 Expected: clean.
 
-- [ ] **Step 6: Verify what the writer stored**
+- [ ] **Step 7: Verify what the writer stored**
 
 Run the writing stage with a model configured, then:
 
@@ -1659,7 +1680,7 @@ console.table(getDb().prepare('SELECT id, platform, language, link, image_url, s
 
 Expected: every new row has a `link` (the signal's URL at worst) and the rows built on a signal that had an image carry that `image_url`. A row where the writer answered `use_source_image: false` has `image_url` and `image_alt` both null — that is the intended outcome, not a failure.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/lib/prompts.ts src/lib/agents/writer.ts
@@ -1860,8 +1881,27 @@ const TYPES: Record<string, string> = {
   "image/gif": "gif",
 };
 
-export function extensionFor(contentType: string): string | null {
-  return TYPES[contentType.split(";")[0].trim().toLowerCase()] ?? null;
+/**
+ * The format of an upload, read from its first bytes.
+ *
+ * A browser fills in a file's MIME type from its extension, so a text file
+ * renamed to .png arrives claiming to be an image. Sniffing is what makes
+ * "only these four formats" true rather than merely stated.
+ */
+export function sniffExtension(bytes: Buffer): string | null {
+  if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "png";
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpg";
+  if (bytes.length >= 6 && /^GIF8[79]a$/.test(bytes.subarray(0, 6).toString("latin1"))) return "gif";
+  if (
+    bytes.length >= 12 &&
+    bytes.subarray(0, 4).toString("latin1") === "RIFF" &&
+    bytes.subarray(8, 12).toString("latin1") === "WEBP"
+  ) {
+    return "webp";
+  }
+  return null;
 }
 
 export function contentTypeFor(name: string): string {
@@ -1874,11 +1914,16 @@ export function contentTypeFor(name: string): string {
  * the content, so uploading the same image twice does not produce two files —
  * and so the served bytes can be cached forever.
  */
-export function saveMedia(bytes: Buffer, contentType: string): string {
-  const ext = extensionFor(contentType);
-  if (!ext) throw new Error(`Unsupported image type "${contentType}". Use JPEG, PNG, WebP or GIF.`);
+export function saveMedia(bytes: Buffer, declaredType: string): string {
   if (!bytes.byteLength) throw new Error("The file is empty");
   if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error("The image is larger than 8 MB");
+
+  const ext = sniffExtension(bytes);
+  if (!ext) {
+    throw new Error(
+      `That file is not a JPEG, PNG, WebP or GIF${declaredType ? ` (it says it is "${declaredType}")` : ""}.`,
+    );
+  }
 
   fs.mkdirSync(MEDIA_DIR, { recursive: true });
   const name = `${crypto.createHash("sha256").update(bytes).digest("hex").slice(0, 32)}.${ext}`;
@@ -1902,42 +1947,12 @@ export function readMedia(name: string): { bytes: Buffer; contentType: string } 
 }
 ```
 
-- [ ] **Step 2: Verify the store, the dedupe and the traversal refusal**
+- [ ] **Step 2: Note how this gets verified**
 
-```bash
-node --input-type=module --no-warnings -e "
-import { saveMedia, readMedia, MEDIA_DIR, extensionFor } from './src/lib/media.ts';
-
-// A one-pixel PNG.
-const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
-
-const a = saveMedia(png, 'image/png');
-const b = saveMedia(png, 'image/png');
-console.log('same name twice:', a === b, a);
-
-const read = readMedia(a.replace('/media/', ''));
-console.log('read back:', read?.bytes.length === png.length, read?.contentType);
-
-console.log('traversal:', readMedia('../signal.db'));
-console.log('unknown name:', readMedia('nope.png'));
-console.log('bad type:', extensionFor('image/svg+xml'));
-try { saveMedia(png, 'image/svg+xml'); } catch (e) { console.log('refused:', e.message); }
-console.log('dir:', MEDIA_DIR);
-"
-```
-
-Expected:
-```
-same name twice: true /media/<32 hex chars>.png
-read back: true image/png
-traversal: null
-unknown name: null
-bad type: null
-refused: Unsupported image type "image/svg+xml". Use JPEG, PNG, WebP or GIF.
-dir: /srv/projects/owns/signal/data/media
-```
-
-Clean up the test file: `rm -f data/media/*.png` — or leave it, Task 17 needs something to serve.
+`media.ts` imports `DATA_DIR` from `./db`, an extensionless relative import,
+so unlike `og.ts` and `languages.ts` it cannot be loaded by the Node one-liner.
+Its behaviour is verified through the real UI in Task 20 step 5 — upload,
+dedupe and refusal — and through the route in Task 17.
 
 - [ ] **Step 3: Verify the build**
 
