@@ -240,6 +240,59 @@ Two rules:
 
 ---
 
+## Add a language
+
+The interface ships in English and Spanish. A locale is one file plus one line
+in the registry.
+
+`src/lib/i18n/en.ts` is the source of truth, and `Dictionary` is derived from
+it, so a locale that loses a key fails the build rather than falling back
+silently. Copy `es.ts` and translate the values:
+
+```ts
+// src/lib/i18n/pt.ts
+import type { Dictionary } from "./en";
+
+export const pt: Dictionary = {
+  localeLabel: "Português",
+  app: {
+    metaTitle: "Signal — radar de IA e publicações",
+    // …
+  },
+  // …
+};
+```
+
+Register it in `src/lib/i18n/locales.ts`:
+
+```ts
+import { pt } from "./pt";
+
+export const UI_LOCALES: Record<string, Dictionary> = { en, es, pt };
+```
+
+It appears in **Settings → Interface language** immediately; `localeLabel` is
+what the picker shows, written in its own language.
+
+Three things to know:
+
+- **Strings that take a value are functions**, not format strings:
+  `summary: (chars, posts, language) => …`. The argument is typed, and your
+  language puts it where its grammar needs it — including plurals, which no
+  format string gets right for every language.
+- **`registry` translates the plugin registries by id** — source kinds,
+  publishers and prompts. Leave an entry out and it keeps the English it ships
+  with, so a third-party source kind works untranslated instead of breaking.
+- **Client components import `lib/i18n/locales`, never `lib/i18n`.** The index
+  reads the stored setting and therefore imports the database; pulling that into
+  the browser bundle breaks every page. Server components call
+  `getDictionary()`, client components call `useT()`.
+
+This is the language of the *interface*. What the model writes is a different
+setting entirely — see `src/lib/languages.ts`.
+
+---
+
 ## Add a prompt variable
 
 Prompts are rendered with the same `{{variable}}` engine as templates. The
