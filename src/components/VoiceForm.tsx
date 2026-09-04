@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { actionSaveGeneral, actionSaveVoice } from "@/lib/actions";
+import LanguageSelect from "./LanguageSelect";
 import type { VoiceProfile } from "@/lib/types";
 
 /** Filled-in example, loaded from the button. Replace every line with yours. */
@@ -139,8 +140,11 @@ export default function VoiceForm({
         </Field>
 
         <div className="grid grid-cols-2 gap-x-4">
-          <Field label="Language" hint="The language the digest and the posts are written in.">
-            <input className="input" value={v.language} onChange={(e) => set("language", e.target.value)} />
+          <Field
+            label="Working language"
+            hint="The language the curator and the weekly digest are written in. Each channel can write its posts in another one, under Channels."
+          >
+            <LanguageSelect value={v.language} onChange={(l) => set("language", l)} />
           </Field>
           <Field label="Close / CTA">
             <input className="input" value={v.cta} onChange={(e) => set("cta", e.target.value)} />
