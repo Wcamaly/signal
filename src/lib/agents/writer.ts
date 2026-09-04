@@ -1,5 +1,6 @@
 import { getDb } from "../db";
 import { getChannel } from "../channels";
+import { resolveLanguage } from "../languages";
 import { chatJson, llmReady, modelLabel } from "../llm";
 import { getPrompt, renderPrompt } from "../prompts";
 import type { Channel, Item, VoiceProfile } from "../types";
@@ -41,11 +42,15 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
   const prompt = getPrompt("writer");
   const created: number[] = [];
   const insert = db.prepare(
-    `INSERT INTO posts (digest_id, item_id, platform, angle, hook, body, hashtags, visual_brief, char_count, model, status)
-     VALUES (@digest_id, @item_id, @platform, @angle, @hook, @body, @hashtags, @visual_brief, @char_count, @model, 'draft')`,
+    `INSERT INTO posts (digest_id, item_id, platform, angle, hook, body, hashtags, visual_brief, char_count, model, status, language)
+     VALUES (@digest_id, @item_id, @platform, @angle, @hook, @body, @hashtags, @visual_brief, @char_count, @model, 'draft', @language)`,
   );
 
   for (const channel of channels) {
+    // The channel's language wins over the working language of the profile.
+    // The prompt variable keeps its name — a user who has customised the writer
+    // prompt has `{{language}}` in it and overrides are never migrated.
+    const language = resolveLanguage(channel.language, voice.language);
     const count = Math.max(1, channel.posts_per_run);
     let drafts: Draft[];
 
@@ -56,6 +61,7 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
         system: prompt.system,
         prompt: renderPrompt(prompt.template, {
           ...voiceVars(voice, digest.week_key),
+          language,
           channel_label: channel.label,
           channel_hint: channel.hint ?? "",
           channel_limit: String(channel.char_limit),
@@ -86,6 +92,7 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
         visual_brief: d.visual_brief ?? null,
         char_count: d.body.length,
         model: modelLabel(),
+        language,
       });
       created.push(Number(res.lastInsertRowid));
     }
