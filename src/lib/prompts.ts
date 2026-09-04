@@ -151,6 +151,7 @@ DIGEST OF THE WEEK ({{week}})
 {{digest}}
 
 SIGNALS WITH THEIR ANGLE
+Each signal carries the image of its source page in "image", when it has one.
 {{signals}}
 
 CHANNEL: {{channel_label}}
@@ -161,9 +162,10 @@ TASK
 Write {{count}} different publications for {{channel_label}}.
 Each one takes a DIFFERENT signal and a DIFFERENT angle. At least one must take a position that is not the consensus.
 Write them in this language: {{language}}.
+Set "use_source_image" to false when that signal's image adds nothing to the post. Never invent an image: the only one available is the one the signal carries.
 
 Return ONLY this JSON:
-[{"item_index":0,"angle":"the thesis of the post","hook":"the first line","body":"the full post","hashtags":["#tag"],"visual_brief":"only if the channel is visual: one line per slide"}]`,
+[{"item_index":0,"angle":"the thesis of the post","hook":"the first line","body":"the full post","hashtags":["#tag"],"visual_brief":"only if the channel is visual: one line per slide","link":"the URL of the signal this post is built on","image_alt":"one line describing that signal's image, empty if there is none","use_source_image":true}]`,
   },
 
   refine: {

@@ -13,6 +13,10 @@ type Draft = {
   hashtags: string[];
   visual_brief?: string;
   item_index?: number;
+  /** Optional: a customised writer prompt will not return these. */
+  link?: string;
+  image_alt?: string;
+  use_source_image?: boolean;
 };
 
 function demoDraft(item: Item): Draft {
@@ -42,8 +46,8 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
   const prompt = getPrompt("writer");
   const created: number[] = [];
   const insert = db.prepare(
-    `INSERT INTO posts (digest_id, item_id, platform, angle, hook, body, hashtags, visual_brief, char_count, model, status, language)
-     VALUES (@digest_id, @item_id, @platform, @angle, @hook, @body, @hashtags, @visual_brief, @char_count, @model, 'draft', @language)`,
+    `INSERT INTO posts (digest_id, item_id, platform, angle, hook, body, hashtags, visual_brief, char_count, model, status, language, link, image_url, image_alt)
+     VALUES (@digest_id, @item_id, @platform, @angle, @hook, @body, @hashtags, @visual_brief, @char_count, @model, 'draft', @language, @link, @image_url, @image_alt)`,
   );
 
   for (const channel of channels) {
@@ -55,7 +59,8 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
     let drafts: Draft[];
 
     if (!llmReady()) {
-      drafts = items.slice(0, count).map(demoDraft);
+      // Carry the index, or the draft has no item and so no link and no image.
+      drafts = items.slice(0, count).map((item, index) => ({ ...demoDraft(item), item_index: index }));
     } else {
       drafts = await chatJson<Draft[]>({
         system: prompt.system,
@@ -68,7 +73,14 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
           count: String(count),
           digest: (digest.markdown ?? "").slice(0, 6000),
           signals: JSON.stringify(
-            items.map((i, index) => ({ index, title: i.title, url: i.url, angle: i.angle, why: i.why })),
+            items.map((i, index) => ({
+              index,
+              title: i.title,
+              url: i.url,
+              angle: i.angle,
+              why: i.why,
+              image: i.image_url,
+            })),
             null,
             1,
           ),
@@ -81,6 +93,9 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
     for (const d of drafts) {
       if (!d?.body) continue;
       const item = typeof d.item_index === "number" ? items[d.item_index] : undefined;
+      // Declining the image is allowed; inventing one is not. `undefined` means
+      // a customised prompt that does not know the field, and defaults to yes.
+      const useImage = d.use_source_image !== false;
       const res = insert.run({
         digest_id: digestId,
         item_id: item?.id ?? null,
@@ -93,6 +108,9 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
         char_count: d.body.length,
         model: modelLabel(),
         language,
+        link: (typeof d.link === "string" && d.link.trim()) || item?.url || null,
+        image_url: useImage ? (item?.image_url ?? null) : null,
+        image_alt: useImage ? (d.image_alt?.trim() || null) : null,
       });
       created.push(Number(res.lastInsertRowid));
     }
