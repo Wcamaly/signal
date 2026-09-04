@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionDeleteChannel, actionSaveChannel, actionSaveCredential } from "@/lib/actions";
+import LanguageSelect from "./LanguageSelect";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { PublisherInfo } from "@/lib/publishers";
 import type { Channel } from "@/lib/types";
@@ -13,6 +14,7 @@ type Draft = {
   char_limit: number;
   color: string;
   hint: string;
+  language: string;
   template: string;
   publisher: string;
   config: Record<string, string>;
@@ -28,6 +30,7 @@ const BLANK: Draft = {
   char_limit: 1000,
   color: "#8b93a1",
   hint: "",
+  language: "",
   template: "{{body}}\n\n{{hashtags}}",
   publisher: "manual",
   config: {},
@@ -50,6 +53,7 @@ function toDraft(c: Channel): Draft {
     char_limit: c.char_limit,
     color: c.color,
     hint: c.hint ?? "",
+    language: c.language ?? "",
     template: c.template ?? "{{body}}",
     publisher: c.publisher,
     config,
@@ -158,6 +162,35 @@ function Editor({
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <span className="label">Language</span>
+          <LanguageSelect
+            value={d.language}
+            onChange={(language) => setD({ ...d, language })}
+            inheritLabel="Inherit from the voice profile"
+          />
+          <p className="text-[11px] text-faint mt-1">
+            The posts of this channel are written in this language. Any single post can still be
+            changed from the queue.
+          </p>
+        </div>
+        {!publisher.configFields.some((f) => f.key === "handle") && (
+          <div>
+            <span className="label">Handle (preview only)</span>
+            <input
+              className="input font-mono !text-[12px]"
+              placeholder="@you"
+              value={d.config.handle ?? ""}
+              onChange={(e) => setD({ ...d, config: { ...d.config, handle: e.target.value } })}
+            />
+            <p className="text-[11px] text-faint mt-1">
+              Shown under your name in the preview. Not sent anywhere.
+            </p>
+          </div>
+        )}
+      </div>
+
       <div>
         <span className="label">Publication template</span>
         <textarea
@@ -180,7 +213,14 @@ function Editor({
           <select
             className="select"
             value={d.publisher}
-            onChange={(e) => setD({ ...d, publisher: e.target.value, config: {} })}
+            onChange={(e) =>
+              setD({
+                ...d,
+                publisher: e.target.value,
+                // Publisher options are per publisher, but the preview handle is not.
+                config: d.config.handle ? { handle: d.config.handle } : {},
+              })
+            }
           >
             {publishers.map((p) => (
               <option key={p.id} value={p.id}>
@@ -318,6 +358,7 @@ export default function ChannelManager({
               </div>
               <p className="text-[11.5px] text-faint mt-1">
                 {c.char_limit} chars · {c.posts_per_run} post{c.posts_per_run === 1 ? "" : "s"} per run
+                {c.language ? ` · ${c.language}` : ""}
               </p>
             </div>
             <button

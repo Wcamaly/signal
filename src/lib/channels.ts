@@ -8,6 +8,8 @@ export type ChannelInput = {
   char_limit: number;
   color: string;
   hint: string;
+  /** Output language. Empty inherits the working language of the voice profile. */
+  language: string;
   template: string;
   publisher: string;
   config: Record<string, unknown>;
@@ -17,7 +19,9 @@ export type ChannelInput = {
   sort_order?: number;
 };
 
-type Seed = Omit<ChannelInput, "credential_id" | "config"> & { config?: Record<string, unknown> };
+type Seed = Omit<ChannelInput, "credential_id" | "config" | "language"> & {
+  config?: Record<string, unknown>;
+};
 
 /**
  * Channels installed on first run. Nothing here is special-cased in the code:
@@ -185,6 +189,7 @@ export function saveChannel(input: ChannelInput & { id?: number }) {
     char_limit: Math.max(1, Math.round(input.char_limit) || 3000),
     color: input.color || "#8b93a1",
     hint: input.hint ?? "",
+    language: input.language?.trim() || null,
     template: input.template ?? "{{body}}",
     publisher: input.publisher || "manual",
     config: JSON.stringify(input.config ?? {}),
@@ -196,12 +201,13 @@ export function saveChannel(input: ChannelInput & { id?: number }) {
 
   getDb()
     .prepare(
-      `INSERT INTO channels (key, label, char_limit, color, hint, template, publisher, config, credential_id, posts_per_run, enabled, sort_order)
-       VALUES (@key, @label, @char_limit, @color, @hint, @template, @publisher, @config, @credential_id, @posts_per_run, @enabled, @sort_order)
+      `INSERT INTO channels (key, label, char_limit, color, hint, language, template, publisher, config, credential_id, posts_per_run, enabled, sort_order)
+       VALUES (@key, @label, @char_limit, @color, @hint, @language, @template, @publisher, @config, @credential_id, @posts_per_run, @enabled, @sort_order)
        ON CONFLICT(key) DO UPDATE SET
          label = excluded.label, char_limit = excluded.char_limit, color = excluded.color,
-         hint = excluded.hint, template = excluded.template, publisher = excluded.publisher,
-         config = excluded.config, credential_id = excluded.credential_id,
+         hint = excluded.hint, language = excluded.language, template = excluded.template,
+         publisher = excluded.publisher, config = excluded.config,
+         credential_id = excluded.credential_id,
          posts_per_run = excluded.posts_per_run, enabled = excluded.enabled,
          sort_order = excluded.sort_order`,
     )
