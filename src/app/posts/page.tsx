@@ -1,5 +1,7 @@
 import { channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
+import { resolveLanguage } from "@/lib/languages";
+import { getVoice } from "@/lib/pipeline";
 import { publisherCatalog } from "@/lib/publishers";
 import PageHeader from "@/components/PageHeader";
 import PostCard from "@/components/PostCard";
@@ -24,6 +26,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
   const db = getDb();
   const channels = getChannels();
   const publishers = publisherCatalog();
+  const voice = getVoice();
 
   const counts = Object.fromEntries(
     (db.prepare("SELECT status, COUNT(*) c FROM posts GROUP BY status").all() as {
@@ -98,11 +101,18 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             // A post whose channel was deleted still has to render: channelLabel
             // falls back to neutral metadata built from the stored key.
             const channel = channelLabel(channels, p.platform);
+            // A post written before this feature has no language of its own, so
+            // it falls back the same way a new channel does.
+            const language = resolveLanguage(
+              p.language,
+              resolveLanguage(channel.language, voice.language),
+            );
             return (
               <PostCard
                 key={p.id}
                 post={p}
                 channel={channel}
+                language={language}
                 publisherLabel={
                   publishers.find((pub) => pub.id === channel.publisher)?.label ?? "Manual"
                 }

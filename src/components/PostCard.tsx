@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import CopyButton from "./CopyButton";
+import PostLanguage from "./PostLanguage";
 import {
   actionPublishPost,
   actionRefinePost,
@@ -24,10 +25,13 @@ export default function PostCard({
   post,
   channel,
   publisherLabel,
+  language,
 }: {
   post: Post & { source_url?: string | null; source_title?: string | null };
   channel: Channel;
   publisherLabel: string;
+  /** Already resolved: the post's own language, or the channel's, or the profile's. */
+  language: string;
 }) {
   const [body, setBody] = useState(post.body);
   const [editing, setEditing] = useState(false);
@@ -110,6 +114,7 @@ export default function PostCard({
               {body.length}/{channel.char_limit}
             </span>
             <span className="chip !text-[10px] !py-0">{post.status}</span>
+            <PostLanguage postId={post.id} language={language} />
             {post.scheduled_at && (
               <span className="chip !text-[10px] !py-0" style={{ color: "var(--accent)" }}>
                 {post.scheduled_at}
