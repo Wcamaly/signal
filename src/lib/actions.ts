@@ -17,6 +17,7 @@ import { getPublisher } from "./publishers";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { getVoice, runPipeline, type Stage } from "./pipeline";
 import { refinePost } from "./agents/writer";
+import { translateDigest, translatePost } from "./agents/translate";
 import type { Post, Source, VoiceProfile } from "./types";
 
 type Result = { ok: boolean; error?: string };
@@ -87,6 +88,25 @@ export async function actionRefinePost(id: number, instruction: string): Promise
     await refinePost(id, instruction, getVoice());
   });
   revalidatePath("/posts");
+  return res;
+}
+
+/** Rewrites a post in another language. Does not run the pipeline again. */
+export async function actionTranslatePost(id: number, language: string): Promise<Result> {
+  const res = await guard(async () => {
+    await translatePost(id, language, getVoice());
+  });
+  revalidatePath("/posts");
+  return res;
+}
+
+/** Same, for the weekly digest. */
+export async function actionTranslateDigest(id: number, language: string): Promise<Result> {
+  const res = await guard(async () => {
+    await translateDigest(id, language, getVoice());
+  });
+  revalidatePath("/digest");
+  revalidatePath(`/digest/${id}`);
   return res;
 }
 
