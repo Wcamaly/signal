@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import {
   channelConfig,
   deleteChannel,
@@ -32,6 +33,22 @@ async function guard(fn: () => void | Promise<void>): Promise<Result> {
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/**
+ * An uploaded image lives at `/media/<hash>` on this instance, and a webhook
+ * receiver is somewhere else entirely, so the path has to become an absolute
+ * URL. The origin comes from the request rather than from configuration, which
+ * means it is correct behind a proxy without anyone setting anything.
+ */
+async function absoluteUrl(pathOrUrl: string | null): Promise<string | null> {
+  if (!pathOrUrl) return null;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return null;
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}${pathOrUrl}`;
 }
 
 /* ---------- pipeline ---------- */
@@ -189,12 +206,14 @@ export async function actionPublishPost(id: number): Promise<Result & { url?: st
   try {
     // The post's own link when it has one, the source signal's otherwise.
     const link = post.link ?? source?.url ?? null;
+    const imageUrl = await absoluteUrl(post.image_url);
 
     const { url } = await publisher.publish({
       channel,
       post,
       rendered: renderPost(post, channel, { link, title: post.link_title ?? source?.title }),
       link,
+      imageUrl,
       secret: channel.credential_id ? readSecret(channel.credential_id) : null,
       config: channelConfig(channel),
     });

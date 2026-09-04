@@ -36,7 +36,10 @@ const webhook: Publisher = {
         hashtags: ctx.post.hashtags ? JSON.parse(ctx.post.hashtags) : [],
         visual_brief: ctx.post.visual_brief,
         angle: ctx.post.angle,
+        language: ctx.post.language,
         link: ctx.link,
+        image_url: ctx.imageUrl,
+        image_alt: ctx.post.image_alt,
         text: ctx.rendered,
       },
       headers,
@@ -59,6 +62,9 @@ const mastodon: Publisher = {
     const instance = requireConfig(ctx.config, "instance", "Instance URL").replace(/\/$/, "");
     if (!ctx.secret) throw new Error("This channel has no access token stored");
 
+    // Text only, on purpose. Attaching the image means uploading it first
+    // (POST /api/v2/media) and passing the returned ids as media_ids here.
+    // `ctx.imageUrl` already has the image when the post carries one.
     const { json } = await postJson(
       `${instance}/api/v1/statuses`,
       { status: ctx.rendered },
@@ -71,7 +77,7 @@ const mastodon: Publisher = {
 const bluesky: Publisher = {
   id: "bluesky",
   label: "Bluesky",
-  help: "Posts through the AT Protocol. Use an app password (Settings → App Passwords), never your account password. Links are posted as plain text.",
+  help: "Posts through the AT Protocol. Use an app password (Settings → App Passwords), never your account password. Links and images are posted as plain text.",
   needsCredential: true,
   credentialLabel: "App password",
   configFields: [
@@ -92,6 +98,9 @@ const bluesky: Publisher = {
     const did = session.json.did as string | undefined;
     if (!jwt || !did) throw new Error("Bluesky did not return a session");
 
+    // Text only, on purpose. An image would need com.atproto.repo.uploadBlob
+    // first and the returned blob reference in `record.embed`. `ctx.imageUrl`
+    // already has the image when the post carries one.
     const created = await postJson(
       `${service.replace(/\/$/, "")}/xrpc/com.atproto.repo.createRecord`,
       {

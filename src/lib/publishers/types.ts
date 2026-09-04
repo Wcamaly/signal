@@ -6,6 +6,12 @@ export type PublishContext = {
   /** The post already run through the channel template. */
   rendered: string;
   link: string | null;
+  /**
+   * The post's image as an absolute URL, whatever the receiver is. An uploaded
+   * image is served from this Signal instance, so the origin is resolved from
+   * the request before it is handed over.
+   */
+  imageUrl: string | null;
   /** Decrypted credential for this channel, when it has one. */
   secret: string | null;
   config: Record<string, unknown>;
