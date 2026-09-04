@@ -32,6 +32,7 @@ const EXAMPLE: VoiceProfile = {
   ],
   cta: "Low-pressure close: an open question to the reader or a link to the live demo. Never 'book a call' on every post.",
   language: "English",
+  avatar: "",
   samples: "",
 };
 

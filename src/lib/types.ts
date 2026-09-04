@@ -26,6 +26,7 @@ export type Item = {
   angle: string | null;
   topics: string | null;
   cluster: string | null;
+  image_url: string | null;
   status: "new" | "scored" | "selected" | "rejected" | "used";
   created_at: string;
 };
@@ -37,6 +38,7 @@ export type Digest = {
   subtitle: string | null;
   markdown: string | null;
   item_ids: string | null;
+  language: string | null;
   status: string;
   model: string | null;
   created_at: string;
@@ -50,6 +52,8 @@ export type Channel = {
   char_limit: number;
   color: string;
   hint: string | null;
+  /** Output language of this channel's posts. NULL inherits the voice profile. */
+  language: string | null;
   template: string | null;
   publisher: string;
   config: string | null;
@@ -70,6 +74,12 @@ export type Post = {
   body: string;
   hashtags: string | null;
   visual_brief: string | null;
+  language: string | null;
+  link: string | null;
+  link_title: string | null;
+  link_image: string | null;
+  image_url: string | null;
+  image_alt: string | null;
   char_count: number | null;
   status: "draft" | "approved" | "scheduled" | "published" | "discarded";
   scheduled_at: string | null;
@@ -92,6 +102,8 @@ export type VoiceProfile = {
   banned: string[];
   cta: string;
   language: string;
+  /** URL of the author's picture, shown in the previews. */
+  avatar: string;
   samples: string;
 };
 
@@ -125,5 +137,6 @@ export const DEFAULT_VOICE: VoiceProfile = {
   ],
   cta: "Low-pressure close: an open question to the reader, or a link. Never 'book a call' on every post.",
   language: "English",
+  avatar: "",
   samples: "",
 };
