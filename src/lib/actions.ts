@@ -13,6 +13,7 @@ import { deleteCredential, readSecret, saveCredential, type CredentialScope } fr
 import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
 import { saveLlmConfig, saveProviderOptions, testLlm, type LlmConfig } from "./llm";
+import { MAX_UPLOAD_BYTES, saveMedia } from "./media";
 import { getPublisher } from "./publishers";
 import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
@@ -206,6 +207,23 @@ export async function actionPublishPost(id: number): Promise<Result & { url?: st
     revalidatePath("/posts");
     revalidatePath("/");
     return { ok: true, url: url ?? null };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * Stores an uploaded image and returns its URL. It writes nothing else: the
+ * caller decides whether that URL becomes a post's image or the author's
+ * avatar, and saves it the way it saves everything else.
+ */
+export async function actionUploadImage(form: FormData): Promise<Result & { url?: string }> {
+  try {
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new Error("No file received");
+    if (file.size > MAX_UPLOAD_BYTES) throw new Error("The image is larger than 8 MB");
+    const url = saveMedia(Buffer.from(await file.arrayBuffer()), file.type);
+    return { ok: true, url };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
