@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { dictionaryFor, DEFAULT_UI_LOCALE, type Dictionary } from "@/lib/i18n";
+// ./locales, not the package index: the index reads the stored setting and so
+// imports the database, which must not reach the browser bundle.
+import { dictionaryFor, DEFAULT_UI_LOCALE, type Dictionary } from "@/lib/i18n/locales";
 
 /**
  * Only the locale code crosses the boundary, never the dictionary: the strings

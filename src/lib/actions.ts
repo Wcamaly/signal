@@ -255,6 +255,12 @@ export async function actionSaveVoice(voice: VoiceProfile) {
   revalidatePath("/", "layout");
 }
 
+/** The language of the interface. Not the language the model writes in. */
+export async function actionSaveUiLanguage(locale: string) {
+  setSetting("ui_language", locale);
+  revalidatePath("/", "layout");
+}
+
 export async function actionSaveGeneral(cfg: { signals_per_week: number; ingest_max_age_days: number }) {
   setSetting("signals_per_week", Math.max(1, Math.min(30, Math.round(cfg.signals_per_week) || 8)));
   setSetting("ingest_max_age_days", Math.max(1, Math.min(90, Math.round(cfg.ingest_max_age_days) || 14)));

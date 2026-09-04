@@ -1,4 +1,5 @@
 import { listCredentials } from "@/lib/credentials";
+import { getDictionary } from "@/lib/i18n";
 import { allProviderOptions, getLlmConfig, llmStatus, providerCatalog } from "@/lib/llm";
 import { secretKeyIsManaged } from "@/lib/secrets";
 import PageHeader from "@/components/PageHeader";
@@ -8,12 +9,13 @@ import ModelForm from "@/components/ModelForm";
 export const dynamic = "force-dynamic";
 
 export default function ModelPage() {
+  const t = getDictionary();
   return (
     <div>
       <PageHeader
-        kicker="Configuration"
-        title="Model & keys"
-        sub="Which model writes, and with which credentials. Keys are encrypted before they touch the database and are never sent back to the browser."
+        kicker={t.common.configuration}
+        title={t.model.title}
+        sub={t.model.sub}
       />
       <SettingsTabs />
       <div className="p-8 max-w-3xl">

@@ -168,6 +168,14 @@ export const en = {
       discarded: "Discarded",
     },
     empty: "Nothing in this state. Run the writing stage from the sidebar.",
+    /** Singular, for the chip on one card. `statuses` above is the filter tab. */
+    status: {
+      draft: "draft",
+      approved: "approved",
+      scheduled: "scheduled",
+      published: "published",
+      discarded: "discarded",
+    } as Record<string, string>,
     tabs: { edit: "Edit", preview: "Preview", template: "Template" },
     thread: (n: number) => `thread · ${n}`,
     discardChanges: "Discard changes",
@@ -219,6 +227,17 @@ export const en = {
   sources: {
     kicker: "Input",
     title: "Sources",
+    addSource: "Add a source",
+    name: "Name",
+    namePlaceholder: "Someone's blog",
+    type: "Type",
+    category: "Category",
+    urlFallback: "URL",
+    add: "Add",
+    restoreDefaults: "Restore default sources",
+    test: "Test",
+    testing: "testing…",
+    testResult: (found: number, sample: string) => `${found} items · ${sample}`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit and YouTube — none of them needs an API key. Add the ones you actually read: the radar is worth what its sources are worth.",
   },
 
@@ -317,6 +336,14 @@ export const en = {
     testing: "Testing…",
     maxTokens: "Max tokens",
     temperature: "Temperature",
+    model: "Model",
+    active: "Active:",
+    setupInstructions: "Setup instructions",
+    replaceKey: "Replace key",
+    saveKey: "Save key",
+    unknownProvider: (id: string) => `Unknown provider "${id}"`,
+    noKey: (provider: string) => `No API key for ${provider}. Add one in Model & keys.`,
+    chooseModel: "Choose a model for this provider.",
   },
 
   /**

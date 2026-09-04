@@ -1,3 +1,4 @@
+import { getDictionary } from "../i18n";
 import { getSetting, setSetting } from "../db";
 import { resolveSecret } from "../credentials";
 import { extractJson } from "./json";
@@ -137,7 +138,7 @@ export function llmStatus(): LlmStatus {
       providerLabel: cfg.provider,
       model: cfg.model,
       keyFrom: null,
-      reason: `Unknown provider "${cfg.provider}"`,
+      reason: getDictionary().model.unknownProvider(cfg.provider),
     };
   }
   const { secret, from } = provider.needsKey
@@ -154,8 +155,8 @@ export function llmStatus(): LlmStatus {
     reason: ready
       ? null
       : provider.needsKey
-        ? `No API key for ${provider.label}. Add one in Model & keys.`
-        : "Choose a model for this provider.",
+        ? getDictionary().model.noKey(provider.label)
+        : getDictionary().model.chooseModel,
   };
 }
 

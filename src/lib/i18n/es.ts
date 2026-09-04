@@ -163,6 +163,13 @@ export const es: Dictionary = {
       discarded: "Descartados",
     },
     empty: "No hay nada en este estado. Ejecutá la etapa de escritura desde la barra lateral.",
+    status: {
+      draft: "borrador",
+      approved: "aprobado",
+      scheduled: "programado",
+      published: "publicado",
+      discarded: "descartado",
+    } as Record<string, string>,
     tabs: { edit: "Editar", preview: "Vista previa", template: "Plantilla" },
     thread: (n: number) => `hilo · ${n}`,
     discardChanges: "Descartar cambios",
@@ -215,6 +222,17 @@ export const es: Dictionary = {
   sources: {
     kicker: "Entrada",
     title: "Fuentes",
+    addSource: "Agregar una fuente",
+    name: "Nombre",
+    namePlaceholder: "El blog de alguien",
+    type: "Tipo",
+    category: "Categoría",
+    urlFallback: "URL",
+    add: "Agregar",
+    restoreDefaults: "Restaurar las fuentes por defecto",
+    test: "Probar",
+    testing: "probando…",
+    testResult: (found: number, sample: string) => `${found} items · ${sample}`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit y YouTube — ninguna necesita clave de API. Agregá las que leés de verdad: el radar vale lo que valen sus fuentes.",
   },
 
@@ -313,6 +331,15 @@ export const es: Dictionary = {
     testing: "Probando…",
     maxTokens: "Tokens máximos",
     temperature: "Temperatura",
+    model: "Modelo",
+    active: "Activo:",
+    setupInstructions: "Instrucciones de configuración",
+    replaceKey: "Reemplazar clave",
+    saveKey: "Guardar clave",
+    unknownProvider: (id: string) => `Proveedor desconocido "${id}"`,
+    noKey: (provider: string) =>
+      `No hay clave de API para ${provider}. Agregá una en Modelo y claves.`,
+    chooseModel: "Elegí un modelo para este proveedor.",
   },
 
   registry: {

@@ -135,7 +135,9 @@ export default function PostCard({
             >
               {body.length}/{channel.char_limit}
             </span>
-            <span className="chip !text-[10px] !py-0">{post.status}</span>
+            <span className="chip !text-[10px] !py-0">
+              {t.posts.status[post.status] ?? post.status}
+            </span>
             <PostLanguage postId={post.id} language={language} />
             {post.scheduled_at && (
               <span className="chip !text-[10px] !py-0" style={{ color: "var(--accent)" }}>

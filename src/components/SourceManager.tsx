@@ -10,6 +10,7 @@ import {
   actionToggleSource,
 } from "@/lib/actions";
 import type { SourceKindInfo } from "@/lib/sources";
+import { useT } from "./I18nProvider";
 import type { Source } from "@/lib/types";
 
 type Row = Source & { item_count: number };
@@ -30,6 +31,7 @@ export default function SourceManager({
   const [config, setConfig] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [tested, setTested] = useState<Record<number, string>>({});
+  const t = useT();
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -44,7 +46,7 @@ export default function SourceManager({
     setError(null);
     start(async () => {
       const res = await actionAddSource({ name, url, kind: kindId, category, config });
-      if (!res.ok) setError(res.error ?? "Error");
+      if (!res.ok) setError(res.error ?? t.common.error);
       else {
         setName("");
         setUrl("");
@@ -55,12 +57,14 @@ export default function SourceManager({
   }
 
   function test(id: number) {
-    setTested((t) => ({ ...t, [id]: "testing…" }));
+    setTested((prev) => ({ ...prev, [id]: t.sources.testing }));
     start(async () => {
       const res = await actionTestSource(id);
-      setTested((t) => ({
-        ...t,
-        [id]: res.ok ? `${res.found} items · ${res.sample?.slice(0, 60) ?? ""}` : `✖ ${res.error}`,
+      setTested((prev) => ({
+        ...prev,
+        [id]: res.ok
+          ? t.sources.testResult(res.found ?? 0, res.sample?.slice(0, 60) ?? "")
+          : `✖ ${res.error}`,
       }));
     });
   }
@@ -68,15 +72,15 @@ export default function SourceManager({
   return (
     <div className="flex flex-col gap-7">
       <div className="card p-5">
-        <h2 className="kicker mb-3.5">Add a source</h2>
+        <h2 className="kicker mb-3.5">{t.sources.addSource}</h2>
 
         <div className="grid grid-cols-[1fr_1.6fr_auto_auto] gap-2 items-end">
           <div>
-            <span className="label">Name</span>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Someone's blog" />
+            <span className="label">{t.sources.name}</span>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t.sources.namePlaceholder} />
           </div>
           <div>
-            <span className="label">{kind?.urlLabel ?? "URL"}</span>
+            <span className="label">{kind?.urlLabel ?? t.sources.urlFallback}</span>
             <input
               className="input"
               value={url}
@@ -85,7 +89,7 @@ export default function SourceManager({
             />
           </div>
           <div>
-            <span className="label">Type</span>
+            <span className="label">{t.sources.type}</span>
             <select
               className="select !w-auto"
               value={kindId}
@@ -102,7 +106,7 @@ export default function SourceManager({
             </select>
           </div>
           <div>
-            <span className="label">Category</span>
+            <span className="label">{t.sources.category}</span>
             <select className="select !w-auto" value={category} onChange={(e) => setCategory(e.target.value)}>
               {categories.map((c) => (
                 <option key={c}>{c}</option>
@@ -131,9 +135,7 @@ export default function SourceManager({
         )}
 
         <div className="flex items-center gap-2 mt-4">
-          <button className="btn btn-primary" onClick={add} disabled={pending || !name || !url}>
-            Add
-          </button>
+          <button className="btn btn-primary" onClick={add} disabled={pending || !name || !url}>{t.sources.add}</button>
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => start(async () => {
@@ -141,9 +143,7 @@ export default function SourceManager({
               router.refresh();
             })}
             disabled={pending}
-          >
-            Restore default sources
-          </button>
+          >{t.sources.restoreDefaults}</button>
         </div>
 
         {error && (
@@ -182,9 +182,7 @@ export default function SourceManager({
                 </div>
                 <span className="chip !text-[10.5px] shrink-0">{s.kind}</span>
                 <span className="font-mono text-[11.5px] text-faint w-12 text-right shrink-0">{s.item_count}</span>
-                <button className="btn btn-ghost btn-sm shrink-0" onClick={() => test(s.id)} disabled={pending}>
-                  Test
-                </button>
+                <button className="btn btn-ghost btn-sm shrink-0" onClick={() => test(s.id)} disabled={pending}>{t.sources.test}</button>
                 <button
                   className="btn btn-ghost btn-sm shrink-0"
                   onClick={() =>
@@ -193,9 +191,7 @@ export default function SourceManager({
                       router.refresh();
                     })
                   }
-                >
-                  Delete
-                </button>
+                >{t.common.delete}</button>
               </div>
             ))}
           </div>
