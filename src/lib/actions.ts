@@ -14,7 +14,9 @@ import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
 import { saveLlmConfig, saveProviderOptions, testLlm, type LlmConfig } from "./llm";
 import { getPublisher } from "./publishers";
+import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
+import { fetchText } from "./sources/util";
 import { getVoice, runPipeline, type Stage } from "./pipeline";
 import { refinePost } from "./agents/writer";
 import { translateDigest, translatePost } from "./agents/translate";
@@ -43,7 +45,13 @@ export async function actionRunPipeline(stages: Stage[]) {
 
 export async function actionUpdatePost(
   id: number,
-  patch: { body?: string; hook?: string; notes?: string },
+  patch: {
+    body?: string;
+    hook?: string;
+    notes?: string;
+    image_url?: string | null;
+    image_alt?: string | null;
+  },
 ) {
   const db = getDb();
   const fields: string[] = [];
@@ -60,10 +68,59 @@ export async function actionUpdatePost(
     fields.push("notes = ?");
     values.push(patch.notes);
   }
+  if (patch.image_url !== undefined) {
+    fields.push("image_url = ?");
+    values.push(patch.image_url || null);
+  }
+  if (patch.image_alt !== undefined) {
+    fields.push("image_alt = ?");
+    values.push(patch.image_alt || null);
+  }
   if (!fields.length) return;
   fields.push("updated_at = datetime('now')");
   db.prepare(`UPDATE posts SET ${fields.join(", ")} WHERE id = ?`).run(...values, id);
   revalidatePath("/posts");
+}
+
+/**
+ * Sets the link of a post. The cached link card belongs to the old URL, so it
+ * goes with it — `actionUnfurlPostLink` fills it in again.
+ */
+export async function actionSetPostLink(id: number, link: string): Promise<Result> {
+  const res = await guard(() => {
+    const url = link.trim();
+    if (url && !/^https?:\/\//i.test(url)) throw new Error("The link must be an http(s) URL");
+    getDb()
+      .prepare(
+        `UPDATE posts SET link = ?, link_title = NULL, link_image = NULL,
+         updated_at = datetime('now') WHERE id = ?`,
+      )
+      .run(url || null, id);
+  });
+  revalidatePath("/posts");
+  return res;
+}
+
+/**
+ * Reads the og: tags of the stored link once and caches them, so the preview
+ * never fetches anything while rendering.
+ */
+export async function actionUnfurlPostLink(id: number): Promise<Result> {
+  const res = await guard(async () => {
+    const row = getDb().prepare("SELECT link FROM posts WHERE id = ?").get(id) as
+      | { link: string | null }
+      | undefined;
+    const url = row?.link?.trim();
+    if (!url) throw new Error("This post has no link yet");
+    const { image, title } = parseOg(await fetchText(url, 8000), url);
+    getDb()
+      .prepare(
+        "UPDATE posts SET link_title = ?, link_image = ?, updated_at = datetime('now') WHERE id = ?",
+      )
+      .run(title, image, id);
+  });
+  revalidatePath("/posts");
+  return res;
 }
 
 export async function actionSetPostStatus(id: number, status: string, scheduledAt?: string | null) {
@@ -129,11 +186,14 @@ export async function actionPublishPost(id: number): Promise<Result & { url?: st
     : undefined;
 
   try {
+    // The post's own link when it has one, the source signal's otherwise.
+    const link = post.link ?? source?.url ?? null;
+
     const { url } = await publisher.publish({
       channel,
       post,
-      rendered: renderPost(post, channel, { link: source?.url, title: source?.title }),
-      link: source?.url ?? null,
+      rendered: renderPost(post, channel, { link, title: post.link_title ?? source?.title }),
+      link,
       secret: channel.credential_id ? readSecret(channel.credential_id) : null,
       config: channelConfig(channel),
     });
