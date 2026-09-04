@@ -176,6 +176,70 @@ Zapier, a scheduler or a CMS of your own without an app review from anyone.
 
 ---
 
+## Add a preview skin
+
+A skin draws a post the way one network draws it. It is pure frontend: it
+receives what the agent produced and what the channel template rendered, and
+returns markup. Nothing it does costs a token.
+
+Create `src/components/previews/threads.tsx`:
+
+```tsx
+import Avatar from "./Avatar";
+import { cut, type PreviewProps, type PreviewSkin } from "./types";
+
+// Observed value, not a documented one.
+const FOLD = 500;
+
+function Threads({ author, avatar, handle, color, text, image, imageAlt }: PreviewProps) {
+  const { shown, hidden } = cut(text, FOLD);
+  return (
+    <div style={{ background: "#101010", color: "#f3f5f7", border: "1px solid #2a2a2a", borderRadius: 12, padding: 12 }}>
+      <div style={{ display: "flex", gap: 10 }}>
+        <Avatar src={avatar} name={author} color={color} size={36} />
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{handle || author}</div>
+          <div style={{ fontSize: 15, whiteSpace: "pre-wrap" }}>
+            {shown}
+            {hidden && <span style={{ color: "#999" }}>… more</span>}
+          </div>
+          {image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt={imageAlt ?? ""} style={{ width: "100%", marginTop: 8, borderRadius: 8 }} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const threads: PreviewSkin = { key: "threads", label: "Threads", Component: Threads };
+export default threads;
+```
+
+Register it in `src/components/previews/index.ts`:
+
+```ts
+import threads from "./threads";
+
+export const PREVIEW_SKINS: PreviewSkin[] = [linkedin, x, instagram, threads];
+```
+
+`key` is the channel key. A channel with no skin — and any channel can be
+invented from the UI — gets the generic one, so this is never required.
+
+Two rules:
+
+- **The theme is the skin's own.** A LinkedIn preview is white even though
+  Signal is black, so use inline styles rather than the application's tokens.
+  `globals.css` sets a default border colour on everything, so state yours.
+- **`text` is the channel template's output**, not the raw body — the same
+  string the Copy button gives you. A preview of anything else would lie. That
+  also means the hashtags are usually already inside `text`: render the
+  `hashtags` prop as well and they appear twice.
+
+---
+
 ## Add a prompt variable
 
 Prompts are rendered with the same `{{variable}}` engine as templates. The

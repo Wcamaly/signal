@@ -64,8 +64,15 @@ Two fields do most of the work:
 highly, so the radar filters by what is useful for you to say, not by what is
 trending.
 
-**Language** is the language of the output. The interface is in English; a
-Spanish voice profile produces Spanish posts.
+**Working language** is the language the curator and the weekly digest are
+written in. Posts do not have to follow it: each channel under **Channels** can
+write in another language, and any single post can be rewritten into another one
+from the queue. The digest has the same override on its own page. All three
+translate what already exists rather than regenerating it, so your edits
+survive. The interface itself is in English.
+
+**Picture** is used only by the previews in the publication queue. It is stored
+next to the database and sent nowhere.
 
 The **Pipeline** section holds two knobs: how many signals survive curation each
 week, and how old an item can be at ingest before it is dropped.

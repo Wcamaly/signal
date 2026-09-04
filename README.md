@@ -115,7 +115,7 @@ see [docs/extending.md](docs/extending.md).
 
 ## Extending it
 
-Four plugin points, each a single file plus one line in a registry:
+Five plugin points, each a single file plus one line in a registry:
 
 | I want to… | Add a… | In |
 |---|---|---|
@@ -123,6 +123,7 @@ Four plugin points, each a single file plus one line in a registry:
 | use a different model | LLM provider | `src/lib/llm/providers/` |
 | write for another platform | channel | the UI |
 | actually deliver a post | publisher | `src/lib/publishers/` |
+| see a post as a network draws it | preview skin | `src/components/previews/` |
 
 Walkthroughs with working code: **[docs/extending.md](docs/extending.md)**.
 
