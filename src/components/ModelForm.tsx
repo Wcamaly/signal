@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useT } from "./I18nProvider";
 import { useRouter } from "next/navigation";
 import {
   actionDeleteCredential,
@@ -36,6 +37,7 @@ export default function ModelForm({
   const [test, setTest] = useState<{ ok: boolean; detail: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const t = useT();
   const router = useRouter();
 
   const provider = useMemo(
@@ -60,13 +62,13 @@ export default function ModelForm({
     start(async () => {
       const res = await actionSaveLlmConfig(cfg);
       if (!res.ok) {
-        setError(res.error ?? "Error");
+        setError(res.error ?? t.common.error);
         return;
       }
       if (provider.options?.length) {
         const opts = await actionSaveProviderOptions(provider.id, options[provider.id] ?? {});
         if (!opts.ok) {
-          setError(opts.error ?? "Error");
+          setError(opts.error ?? t.common.error);
           return;
         }
       }
@@ -85,7 +87,7 @@ export default function ModelForm({
         label: "default",
         secret,
       });
-      if (!res.ok) setError(res.error ?? "Error");
+      if (!res.ok) setError(res.error ?? t.common.error);
       else {
         setSecret("");
         router.refresh();
@@ -109,8 +111,7 @@ export default function ModelForm({
         />
         <div className="text-[12.5px] text-muted">
           {status.ready ? (
-            <>
-              Active: <span className="font-mono text-ink">{status.provider}/{status.model}</span>
+            <>{t.model.active}<span className="font-mono text-ink">{status.provider}/{status.model}</span>
               {status.keyFrom === "env" && " · key read from the environment"}
             </>
           ) : (
@@ -120,11 +121,11 @@ export default function ModelForm({
       </div>
 
       <section className="card p-6">
-        <h2 className="kicker mb-5">Provider</h2>
+        <h2 className="kicker mb-5">{t.model.provider}</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <span className="label">Provider</span>
+            <span className="label">{t.model.provider}</span>
             <select className="select" value={cfg.provider} onChange={(e) => selectProvider(e.target.value)}>
               {providers.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -134,7 +135,7 @@ export default function ModelForm({
             </select>
           </div>
           <div>
-            <span className="label">Model</span>
+            <span className="label">{t.model.model}</span>
             <input
               className="input"
               list="model-suggestions"
@@ -174,7 +175,7 @@ export default function ModelForm({
 
         <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 mt-5">
           <div>
-            <span className="label">Base URL</span>
+            <span className="label">{t.model.baseUrl}</span>
             <input
               className="input font-mono !text-[12px]"
               value={cfg.baseUrl}
@@ -182,7 +183,7 @@ export default function ModelForm({
             />
           </div>
           <div>
-            <span className="label">Temperature</span>
+            <span className="label">{t.model.temperature}</span>
             <input
               type="number"
               step="0.1"
@@ -194,7 +195,7 @@ export default function ModelForm({
             />
           </div>
           <div>
-            <span className="label">Max tokens</span>
+            <span className="label">{t.model.maxTokens}</span>
             <input
               type="number"
               min={512}
@@ -209,15 +210,11 @@ export default function ModelForm({
 
         <div className="flex items-center gap-3 mt-6">
           <button className="btn btn-primary" onClick={save} disabled={pending}>
-            {pending ? "Saving…" : "Save"}
+            {pending ? t.common.saving : t.common.save}
           </button>
-          <button className="btn" onClick={runTest} disabled={pending}>
-            Test connection
-          </button>
+          <button className="btn" onClick={runTest} disabled={pending}>{t.model.testConnection}</button>
           {saved && (
-            <span className="text-[12.5px]" style={{ color: "var(--good)" }}>
-              Saved ✓
-            </span>
+            <span className="text-[12.5px]" style={{ color: "var(--good)" }}>{t.common.saved}</span>
           )}
         </div>
 
@@ -252,9 +249,7 @@ export default function ModelForm({
           ) : (
             <>
               This provider does not need a key.{" "}
-              <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">
-                Setup instructions
-              </a>
+              <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">{t.model.setupInstructions}</a>
               .
             </>
           )}
@@ -277,9 +272,7 @@ export default function ModelForm({
                     })
                   }
                   disabled={pending}
-                >
-                  Delete
-                </button>
+                >{t.common.delete}</button>
               </div>
             ))}
           </div>
@@ -299,7 +292,7 @@ export default function ModelForm({
               />
             </div>
             <button className="btn btn-primary" onClick={saveKey} disabled={pending || !secret.trim()}>
-              {stored.length ? "Replace key" : "Save key"}
+              {stored.length ? t.model.replaceKey : t.model.saveKey}
             </button>
           </div>
         )}

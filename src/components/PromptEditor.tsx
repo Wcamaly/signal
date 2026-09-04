@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionResetPrompt, actionSavePrompt } from "@/lib/actions";
+import { useT } from "./I18nProvider";
 import type { PromptKey, PromptVariable } from "@/lib/prompts";
 
 type Editable = {
@@ -21,6 +22,7 @@ function PromptCard({ prompt }: { prompt: Editable }) {
   const [template, setTemplate] = useState(prompt.template);
   const [status, setStatus] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const t = useT();
   const router = useRouter();
 
   const dirty = system !== prompt.system || template !== prompt.template;
@@ -29,7 +31,7 @@ function PromptCard({ prompt }: { prompt: Editable }) {
     setStatus(null);
     start(async () => {
       const res = await actionSavePrompt(prompt.key, { system, template });
-      setStatus(res.ok ? "Saved ✓" : (res.error ?? "Error"));
+      setStatus(res.ok ? t.common.saved : (res.error ?? t.common.error));
       router.refresh();
     });
   }
@@ -41,10 +43,10 @@ function PromptCard({ prompt }: { prompt: Editable }) {
       if (res.ok && res.prompt) {
         setSystem(res.prompt.system);
         setTemplate(res.prompt.template);
-        setStatus("Restored to default");
+        setStatus(t.promptsPage.restored);
         router.refresh();
       } else {
-        setStatus(res.error ?? "Error");
+        setStatus(res.error ?? t.common.error);
       }
     });
   }
@@ -59,26 +61,24 @@ function PromptCard({ prompt }: { prompt: Editable }) {
           <div className="flex items-center gap-2.5">
             <span className="text-[14px] font-semibold tracking-tight">{prompt.label}</span>
             {prompt.customized && (
-              <span className="chip !text-[10px] !py-0" style={{ color: "var(--accent)" }}>
-                customised
-              </span>
+              <span className="chip !text-[10px] !py-0" style={{ color: "var(--accent)" }}>{t.promptsPage.customised}</span>
             )}
           </div>
           <p className="text-[12.5px] text-muted mt-1.5 leading-relaxed">{prompt.description}</p>
         </div>
-        <span className="text-[12px] text-faint shrink-0 pt-1">{open ? "Close" : "Edit"}</span>
+        <span className="text-[12px] text-faint shrink-0 pt-1">{open ? t.common.close : t.common.edit}</span>
       </button>
 
       {open && (
         <div className="px-5 pb-5 border-t border-line pt-4">
-          <span className="label">System prompt</span>
+          <span className="label">{t.promptsPage.systemPrompt}</span>
           <textarea
             className="textarea min-h-[220px] font-mono !text-[12px]"
             value={system}
             onChange={(e) => setSystem(e.target.value)}
           />
 
-          <span className="label mt-5">User message template</span>
+          <span className="label mt-5">{t.promptsPage.template}</span>
           <textarea
             className="textarea min-h-[260px] font-mono !text-[12px]"
             value={template}
@@ -86,7 +86,7 @@ function PromptCard({ prompt }: { prompt: Editable }) {
           />
 
           <div className="mt-4">
-            <span className="label">Variables</span>
+            <span className="label">{t.promptsPage.variables}</span>
             <div className="flex flex-wrap gap-1.5">
               {prompt.variables.map((v) => (
                 <span key={v.name} className="chip !text-[11px]" title={v.description}>
@@ -103,11 +103,9 @@ function PromptCard({ prompt }: { prompt: Editable }) {
 
           <div className="flex items-center gap-3 mt-5">
             <button className="btn btn-primary btn-sm" onClick={save} disabled={pending || !dirty}>
-              {pending ? "Saving…" : "Save"}
+              {pending ? t.common.saving : t.common.save}
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={reset} disabled={pending || !prompt.customized}>
-              Reset to default
-            </button>
+            <button className="btn btn-ghost btn-sm" onClick={reset} disabled={pending || !prompt.customized}>{t.promptsPage.restore}</button>
             {status && <span className="text-[12px] text-muted">{status}</span>}
           </div>
         </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "./I18nProvider";
+
 /** The body of a post and the two buttons that go with it. Nothing else. */
 export default function PostEditor({
   value,
@@ -16,6 +18,7 @@ export default function PostEditor({
   dirty: boolean;
   pending: boolean;
 }) {
+  const t = useT();
   return (
     <>
       <textarea
@@ -25,10 +28,10 @@ export default function PostEditor({
       />
       <div className="flex gap-2 mt-3">
         <button className="btn btn-primary btn-sm" onClick={onSave} disabled={pending || !dirty}>
-          {pending ? "Saving…" : "Save"}
+          {pending ? t.common.saving : t.common.save}
         </button>
         <button className="btn btn-ghost btn-sm" onClick={onDiscard} disabled={pending || !dirty}>
-          Discard changes
+          {t.posts.discardChanges}
         </button>
       </div>
     </>

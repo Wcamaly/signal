@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
+import { getDictionary } from "@/lib/i18n";
 import { resolveLanguage } from "@/lib/languages";
 import { renderMarkdown } from "@/lib/md";
 import { getVoice } from "@/lib/pipeline";
@@ -31,6 +32,7 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
 
   const channels = getChannels();
   const language = resolveLanguage(digest.language, getVoice().language);
+  const t = getDictionary();
   const ids = JSON.parse(digest.item_ids || "[]") as number[];
   const items = ids.length
     ? (db
@@ -52,9 +54,9 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
         sub={digest.subtitle}
         right={
           <>
-            <CopyButton text={digest.markdown} label="Copy markdown" />
+            <CopyButton text={digest.markdown} label={t.digestPage.copyMarkdown} />
             <Link href="/posts" className="btn btn-primary">
-              See publications
+              {t.digestPage.seePublications}
             </Link>
           </>
         }
@@ -69,7 +71,7 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
           <DigestLanguage digestId={digest.id} language={language} />
 
           <div>
-            <h3 className="kicker mb-2.5">Signals used ({items.length})</h3>
+            <h3 className="kicker mb-2.5">{t.digestPage.signalsUsed(items.length)}</h3>
             <div className="flex flex-col gap-1.5">
               {items.map((i) => (
                 <a
@@ -87,7 +89,7 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div>
-            <h3 className="kicker mb-2.5">Posts written ({posts.length})</h3>
+            <h3 className="kicker mb-2.5">{t.digestPage.postsWritten(posts.length)}</h3>
             <div className="flex flex-col gap-1.5">
               {posts.length ? (
                 posts.map((p) => {
@@ -107,7 +109,7 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
                   );
                 })
               ) : (
-                <p className="text-[12px] text-faint">No posts yet. Run the writing stage.</p>
+                <p className="text-[12px] text-faint">{t.digestPage.noPosts}</p>
               )}
             </div>
           </div>

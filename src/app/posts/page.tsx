@@ -1,5 +1,6 @@
 import { channelConfig, channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
+import { getDictionary } from "@/lib/i18n";
 import { resolveLanguage } from "@/lib/languages";
 import { getVoice } from "@/lib/pipeline";
 import { publisherCatalog } from "@/lib/publishers";
@@ -9,13 +10,7 @@ import type { Post } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const STATUSES = [
-  { key: "draft", label: "Drafts" },
-  { key: "approved", label: "Approved" },
-  { key: "scheduled", label: "Scheduled" },
-  { key: "published", label: "Published" },
-  { key: "discarded", label: "Discarded" },
-];
+const STATUS_KEYS = ["draft", "approved", "scheduled", "published", "discarded"] as const;
 
 type Search = Promise<{ status?: string; channel?: string }>;
 
@@ -27,6 +22,8 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
   const channels = getChannels();
   const publishers = publisherCatalog();
   const voice = getVoice();
+  const t = getDictionary();
+  const STATUSES = STATUS_KEYS.map((key) => ({ key, label: t.posts.statuses[key] }));
 
   const counts = Object.fromEntries(
     (db.prepare("SELECT status, COUNT(*) c FROM posts GROUP BY status").all() as {
@@ -60,9 +57,9 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
   return (
     <div>
       <PageHeader
-        kicker="Publication queue"
-        title="Publications"
-        sub="Nothing goes out on its own. You review, edit or ask for a rewrite, and only then it is approved."
+        kicker={t.posts.kicker}
+        title={t.posts.title}
+        sub={t.posts.sub}
       />
 
       <div className="px-8 py-4 border-b border-line flex items-center gap-4 flex-wrap">
@@ -84,7 +81,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             href={qs({ channel: "all" })}
             className={`chip ${channelKey === "all" ? "!text-ink !border-line-strong" : ""}`}
           >
-            All
+            {t.common.all}
           </a>
           {channels.map((c) => (
             <a
@@ -132,9 +129,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             );
           })
         ) : (
-          <div className="card p-6 text-[13px] text-muted">
-            Nothing in this state. Run the writing stage from the sidebar.
-          </div>
+          <div className="card p-6 text-[13px] text-muted">{t.posts.empty}</div>
         )}
       </div>
     </div>

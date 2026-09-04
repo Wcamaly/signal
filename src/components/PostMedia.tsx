@@ -8,6 +8,7 @@ import {
   actionUpdatePost,
   actionUploadImage,
 } from "@/lib/actions";
+import { useT } from "./I18nProvider";
 import type { Post } from "@/lib/types";
 
 /**
@@ -30,6 +31,7 @@ export default function PostMedia({
   const [pending, start] = useTransition();
   const fileInput = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const t = useT();
 
   const isStored = image.startsWith("/media/");
 
@@ -48,7 +50,7 @@ export default function PostMedia({
       form.set("file", file);
       const res = await actionUploadImage(form);
       if (!res.ok || !res.url) {
-        setError(res.error ?? "Could not store the image");
+        setError(res.error ?? t.posts.storeError);
         return;
       }
       setImage(res.url);
@@ -62,7 +64,7 @@ export default function PostMedia({
     start(async () => {
       const saved = await actionSetPostLink(post.id, link);
       if (!saved.ok) {
-        setError(saved.error ?? "Error");
+        setError(saved.error ?? t.common.error);
         return;
       }
       if (link.trim()) {
@@ -78,11 +80,11 @@ export default function PostMedia({
   return (
     <div className="mt-4 border-t border-line pt-3.5 flex flex-col gap-3">
       <div>
-        <span className="kicker">Image</span>
+        <span className="kicker">{t.posts.image}</span>
         <div className="flex gap-2 mt-1.5">
           <input
             className="input font-mono !text-[12px]"
-            placeholder="https://… or upload one"
+            placeholder={t.posts.imagePlaceholder}
             value={image}
             onChange={(e) => setImage(e.target.value)}
             onBlur={() => {
@@ -105,7 +107,7 @@ export default function PostMedia({
             onClick={() => fileInput.current?.click()}
             disabled={pending}
           >
-            Upload
+            {t.common.upload}
           </button>
         </div>
 
@@ -119,13 +121,13 @@ export default function PostMedia({
               }}
               disabled={pending}
             >
-              Use the source image
+              {t.posts.useSourceImage}
             </button>
           )}
           {image &&
             (isStored ? (
               <a className="chip hover:!text-ink hover:!border-line-strong" href={image} download>
-                Download image
+                {t.posts.downloadImage}
               </a>
             ) : (
               // A cross-origin file cannot be forced to download from here, so
@@ -136,7 +138,7 @@ export default function PostMedia({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open image ↗
+                {t.posts.openImage}
               </a>
             ))}
           {image && (
@@ -149,7 +151,7 @@ export default function PostMedia({
               }}
               disabled={pending}
             >
-              Remove
+              {t.common.remove}
             </button>
           )}
         </div>
@@ -157,7 +159,7 @@ export default function PostMedia({
         {image && (
           <input
             className="input !text-[12px] mt-2"
-            placeholder="Alt text — one line describing the image"
+            placeholder={t.posts.altPlaceholder}
             value={alt}
             onChange={(e) => setAlt(e.target.value)}
             onBlur={() => {
@@ -168,7 +170,7 @@ export default function PostMedia({
       </div>
 
       <div>
-        <span className="kicker">Link</span>
+        <span className="kicker">{t.posts.link}</span>
         <div className="flex gap-2 mt-1.5">
           <input
             className="input font-mono !text-[12px]"
@@ -181,13 +183,12 @@ export default function PostMedia({
             onClick={saveLink}
             disabled={pending || link === (post.link ?? "")}
           >
-            {pending ? "…" : "Save & fetch card"}
+            {pending ? "…" : t.posts.saveAndFetch}
           </button>
         </div>
         {post.link_title && (
           <p className="text-[11.5px] text-faint mt-1.5 truncate">
-            Card: {post.link_title}
-            {post.link_image ? " · with image" : ""}
+            {t.posts.card(post.link_title, !!post.link_image)}
           </p>
         )}
       </div>

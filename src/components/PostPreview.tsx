@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "./I18nProvider";
 import { getPreviewSkin } from "./previews";
 import type { Channel } from "@/lib/types";
 
@@ -28,11 +29,12 @@ export default function PostPreview({
   linkCard: { title: string; image: string | null } | null;
 }) {
   const skin = getPreviewSkin(channel.key);
+  const t = useT();
 
   return (
     <div>
       <p className="kicker mb-2.5">
-        {skin.key === "generic" ? `Generic preview — no skin for "${channel.key}"` : skin.label}
+        {skin.key === "generic" ? t.preview.generic(channel.key) : skin.label}
       </p>
       <div className="max-w-[520px]">
         <skin.Component
@@ -49,11 +51,7 @@ export default function PostPreview({
           charLimit={channel.char_limit}
         />
       </div>
-      <p className="text-[11px] text-faint mt-2 leading-snug">
-        Rendered from the channel template — the same text the Copy button gives you. Where the
-        text folds and how it is spaced are approximations: the platforms change both without
-        notice.
-      </p>
+      <p className="text-[11px] text-faint mt-2 leading-snug">{t.preview.caveat}</p>
     </div>
   );
 }

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { getDb } from "@/lib/db";
+import { getDictionary } from "@/lib/i18n";
 import PageHeader from "@/components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default function DigestList() {
+  const t = getDictionary();
   const digests = getDb()
     .prepare("SELECT id, week_key, title, subtitle, created_at, model FROM digests ORDER BY week_key DESC")
     .all() as { id: number; week_key: string; title: string; subtitle: string; created_at: string; model: string }[];
@@ -12,9 +14,9 @@ export default function DigestList() {
   return (
     <div>
       <PageHeader
-        kicker="Archive"
-        title="Weekly digests"
-        sub="The working document every publication is derived from. It has an opinion; it is not a newsletter."
+        kicker={t.digestList.kicker}
+        title={t.digestList.title}
+        sub={t.digestList.sub}
       />
       <div className="p-8 flex flex-col gap-2 max-w-3xl">
         {digests.length ? (
@@ -29,9 +31,7 @@ export default function DigestList() {
             </Link>
           ))
         ) : (
-          <div className="card p-6 text-[13px] text-muted">
-            No digest yet. Run the pipeline from the sidebar.
-          </div>
+          <div className="card p-6 text-[13px] text-muted">{t.digestList.empty}</div>
         )}
       </div>
     </div>

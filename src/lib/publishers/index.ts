@@ -1,3 +1,4 @@
+import { getDictionary } from "../i18n";
 import { postJson, requireConfig, type Publisher } from "./types";
 
 const manual: Publisher = {
@@ -131,8 +132,20 @@ export function getPublisher(id: string): Publisher | undefined {
 /** Publisher metadata without the implementation, safe for client components. */
 export type PublisherInfo = Omit<Publisher, "publish">;
 
+/** Publisher metadata in the interface language; untranslated ones stay English. */
 export function publisherCatalog(): PublisherInfo[] {
-  return PUBLISHERS.map(({ publish: _publish, ...info }) => info);
+  const t = getDictionary();
+  return PUBLISHERS.map(({ publish: _publish, ...info }) => {
+    const o = t.registry.publishers[info.id];
+    if (!o) return info;
+    return {
+      ...info,
+      label: o.label ?? info.label,
+      help: o.help ?? info.help,
+      credentialLabel: o.credentialLabel ?? info.credentialLabel,
+      configFields: info.configFields.map((f) => ({ ...f, label: o.fields?.[f.key] ?? f.label })),
+    };
+  });
 }
 
 export type { PublishContext, Publisher, PublisherConfigField } from "./types";

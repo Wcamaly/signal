@@ -1,3 +1,4 @@
+import { useT } from "../I18nProvider";
 import Avatar from "./Avatar";
 import { hostOf, type PreviewProps, type PreviewSkin } from "./types";
 
@@ -18,6 +19,7 @@ function Generic({
   linkCard,
   charLimit,
 }: PreviewProps) {
+  const t = useT();
   const over = text.length > charLimit;
 
   return (
@@ -33,7 +35,7 @@ function Generic({
       <div style={{ display: "flex", gap: 10, padding: 14 }}>
         <Avatar src={avatar} name={author} color={color} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{author || "Your name"}</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{author || t.preview.yourName}</div>
           {handle && <div style={{ fontSize: 12.5, color: "#8b929c" }}>{handle}</div>}
         </div>
         <span

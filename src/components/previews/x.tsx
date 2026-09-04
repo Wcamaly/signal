@@ -1,3 +1,4 @@
+import { useT } from "../I18nProvider";
 import Avatar from "./Avatar";
 import { hostOf, type PreviewProps, type PreviewSkin } from "./types";
 
@@ -12,6 +13,7 @@ const DIM = "#71767b";
 const LINE = "#2f3336";
 
 function X({ author, avatar, handle, color, text, image, imageAlt, link, linkCard }: PreviewProps) {
+  const t = useT();
   const posts = text
     .split(SPLIT)
     .map((t) => t.trim())
@@ -47,7 +49,7 @@ function X({ author, avatar, handle, color, text, image, imageAlt, link, linkCar
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: "flex", gap: 5, alignItems: "baseline", flexWrap: "wrap" }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>{author || "Your name"}</span>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{author || t.preview.yourName}</span>
               <span style={{ fontSize: 15, color: DIM }}>{handle || "@you"} · now</span>
               <span
                 style={{

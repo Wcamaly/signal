@@ -1,3 +1,4 @@
+import { useT } from "../I18nProvider";
 import Avatar from "./Avatar";
 import { cut, hostOf, type PreviewProps, type PreviewSkin } from "./types";
 
@@ -22,6 +23,7 @@ function LinkedIn({
   linkCard,
 }: PreviewProps) {
   const { shown, hidden } = cut(text, FOLD);
+  const t = useT();
 
   return (
     <div
@@ -38,10 +40,10 @@ function LinkedIn({
         <Avatar src={avatar} name={author} color={color} size={48} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>
-            {author || "Your name"}
+            {author || t.preview.yourName}
           </div>
           <div style={{ fontSize: 12, color: DIM, lineHeight: 1.4 }}>
-            {handle || "Your headline"}
+            {handle || t.preview.yourHeadline}
           </div>
           <div style={{ fontSize: 12, color: DIM }}>now · 🌐</div>
         </div>

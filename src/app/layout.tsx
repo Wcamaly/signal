@@ -1,22 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import I18nProvider from "@/components/I18nProvider";
 import Nav from "@/components/Nav";
 import RunButton from "@/components/RunButton";
+import { getDictionary, getUiLocale } from "@/lib/i18n";
 import { llmStatus } from "@/lib/llm";
 
-export const metadata: Metadata = {
-  title: "Signal — AI radar and publications",
-  description:
-    "Reads your sources, picks what is worth saying, writes the weekly digest and drafts the posts. You approve them.",
-};
+export function generateMetadata(): Metadata {
+  const t = getDictionary();
+  return { title: t.app.metaTitle, description: t.app.metaDescription };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const status = llmStatus();
+  const locale = getUiLocale();
+  const t = getDictionary();
 
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className="min-h-screen">
+        <I18nProvider locale={locale}>
         <div className="flex min-h-screen">
           <aside className="w-[212px] shrink-0 border-r border-line bg-[#0d0e11] flex flex-col">
             <div className="px-5 pt-5 pb-4">
@@ -29,9 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
                 <span className="font-semibold text-[15px] tracking-tight">Signal</span>
               </div>
-              <p className="text-[11px] text-faint mt-2 leading-snug">
-                Radar → weekly digest → publications
-              </p>
+              <p className="text-[11px] text-faint mt-2 leading-snug">{t.app.tagline}</p>
             </div>
             <Nav />
             <div className="mt-auto px-5 py-4 border-t border-line">
@@ -41,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   style={{ background: status.ready ? "var(--good)" : "var(--warn)" }}
                 />
                 <span className="text-[10.5px] text-faint font-mono truncate group-hover:text-muted">
-                  {status.ready ? `${status.provider}/${status.model}` : "demo mode · no model"}
+                  {status.ready ? `${status.provider}/${status.model}` : t.app.noModel}
                 </span>
               </Link>
               <RunButton />
@@ -49,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </aside>
           <main className="flex-1 min-w-0">{children}</main>
         </div>
+        </I18nProvider>
       </body>
     </html>
   );

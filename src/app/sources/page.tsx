@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { getDictionary } from "@/lib/i18n";
 import { seedSources } from "@/lib/ingest";
 import { SOURCE_CATEGORIES, sourceKindCatalog } from "@/lib/sources";
 import PageHeader from "@/components/PageHeader";
@@ -8,6 +9,7 @@ import type { Source } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export default function SourcesPage() {
+  const t = getDictionary();
   seedSources();
   const rows = getDb()
     .prepare(
@@ -19,9 +21,9 @@ export default function SourcesPage() {
   return (
     <div>
       <PageHeader
-        kicker="Input"
-        title="Sources"
-        sub="RSS, Hacker News, arXiv, GitHub, Reddit and YouTube — none of them needs an API key. Add the ones you actually read: the radar is worth what its sources are worth."
+        kicker={t.sources.kicker}
+        title={t.sources.title}
+        sub={t.sources.sub}
       />
       <div className="p-8 max-w-4xl">
         <SourceManager

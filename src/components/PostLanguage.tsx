@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionTranslatePost } from "@/lib/actions";
+import { useT } from "./I18nProvider";
 import LanguageSelect from "./LanguageSelect";
 
 /**
@@ -15,12 +16,13 @@ export default function PostLanguage({ postId, language }: { postId: number; lan
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const t = useT();
 
   function translate() {
     setError(null);
     start(async () => {
       const res = await actionTranslatePost(postId, target);
-      if (!res.ok) setError(res.error ?? "Error");
+      if (!res.ok) setError(res.error ?? t.common.error);
       else {
         setOpen(false);
         router.refresh();
@@ -33,9 +35,9 @@ export default function PostLanguage({ postId, language }: { postId: number; lan
       <button
         className="chip hover:!text-ink hover:!border-line-strong !text-[10px] !py-0"
         onClick={() => setOpen(true)}
-        title="Rewrite this post in another language"
+        title={t.posts.languageTitle}
       >
-        {language || "language"} ▾
+        {language || t.posts.language} ▾
       </button>
     );
   }
@@ -50,7 +52,7 @@ export default function PostLanguage({ postId, language }: { postId: number; lan
         onClick={translate}
         disabled={pending || !target.trim() || target === language}
       >
-        {pending ? "Translating…" : "Rewrite"}
+        {pending ? t.posts.translating : t.posts.rewrite}
       </button>
       <button
         className="btn btn-ghost btn-sm"
@@ -61,7 +63,7 @@ export default function PostLanguage({ postId, language }: { postId: number; lan
         }}
         disabled={pending}
       >
-        Cancel
+        {t.common.cancel}
       </button>
       {error && (
         <span className="text-[11.5px]" style={{ color: "var(--bad)" }}>

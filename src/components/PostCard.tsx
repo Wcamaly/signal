@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import CopyButton from "./CopyButton";
+import { useT } from "./I18nProvider";
 import PostEditor from "./PostEditor";
 import PostLanguage from "./PostLanguage";
 import PostMedia from "./PostMedia";
@@ -16,21 +17,9 @@ import {
 import { renderTemplate } from "@/lib/template";
 import type { Channel, Post } from "@/lib/types";
 
-const QUICK = [
-  "Shorter and sharper",
-  "More technical, for someone who deploys this",
-  "Change the hook, this one does not land",
-  "Drop the sales tone",
-  "Take the position against the consensus",
-];
+const TAB_KEYS = ["edit", "preview", "template"] as const;
 
-const TABS = [
-  { key: "edit", label: "Edit" },
-  { key: "preview", label: "Preview" },
-  { key: "template", label: "Template" },
-] as const;
-
-type Tab = (typeof TABS)[number]["key"];
+type Tab = (typeof TAB_KEYS)[number];
 
 export default function PostCard({
   post,
@@ -61,6 +50,7 @@ export default function PostCard({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const t = useT();
 
   const hashtags = (() => {
     try {
@@ -138,14 +128,16 @@ export default function PostCard({
             <span className="text-[12px] font-semibold" style={{ color: channel.color }}>
               {channel.label}
             </span>
-            {isThread && <span className="chip !text-[10px] !py-0">thread · {threadLength}</span>}
+            {isThread && <span className="chip !text-[10px] !py-0">{t.posts.thread(threadLength)}</span>}
             <span
               className="font-mono text-[11px]"
               style={{ color: over ? "var(--bad)" : "var(--faint)" }}
             >
               {body.length}/{channel.char_limit}
             </span>
-            <span className="chip !text-[10px] !py-0">{post.status}</span>
+            <span className="chip !text-[10px] !py-0">
+              {t.posts.status[post.status] ?? post.status}
+            </span>
             <PostLanguage postId={post.id} language={language} />
             {post.scheduled_at && (
               <span className="chip !text-[10px] !py-0" style={{ color: "var(--accent)" }}>
@@ -159,26 +151,26 @@ export default function PostCard({
                 rel="noopener noreferrer"
                 className="chip !text-[10px] !py-0 hover:!text-ink"
               >
-                live ↗
+                {t.posts.live}
               </a>
             )}
           </div>
           {post.angle && <p className="text-[12px] text-muted leading-snug">{post.angle}</p>}
         </div>
         <div className="shrink-0">
-          <CopyButton text={rendered} label="Copy" className="btn btn-sm" />
+          <CopyButton text={rendered} label={t.common.copy} className="btn btn-sm" />
         </div>
       </div>
 
       <div className="px-5 py-4">
         <div className="flex gap-1.5 mb-3.5">
-          {TABS.map((t) => (
+          {TAB_KEYS.map((key) => (
             <button
-              key={t.key}
-              className={`chip ${tab === t.key ? "!text-ink !border-line-strong !bg-[#1e2228]" : "hover:!text-ink"}`}
-              onClick={() => setTab(t.key)}
+              key={key}
+              className={`chip ${tab === key ? "!text-ink !border-line-strong !bg-[#1e2228]" : "hover:!text-ink"}`}
+              onClick={() => setTab(key)}
             >
-              {t.label}
+              {t.posts.tabs[key]}
             </button>
           ))}
         </div>
@@ -211,7 +203,7 @@ export default function PostCard({
 
         {tab === "template" && (
           <div>
-            <span className="kicker">What gets published ({channel.label} template)</span>
+            <span className="kicker">{t.posts.whatGetsPublished(channel.label)}</span>
             <pre className="text-[12.5px] text-muted whitespace-pre-wrap leading-relaxed mt-1.5 font-sans bg-[#0e1013] border border-line rounded-md p-3">
               {rendered}
             </pre>
@@ -230,7 +222,7 @@ export default function PostCard({
 
         {post.visual_brief && (
           <div className="mt-4 border-t border-line pt-3.5">
-            <span className="kicker">Visual brief</span>
+            <span className="kicker">{t.posts.visualBrief}</span>
             <pre className="text-[12px] text-muted whitespace-pre-wrap leading-relaxed mt-1.5 font-sans">
               {post.visual_brief}
             </pre>
@@ -246,7 +238,7 @@ export default function PostCard({
             rel="noopener noreferrer"
             className="text-[11.5px] text-faint hover:text-accent mt-3.5 block truncate"
           >
-            Source: {post.source_title}
+            {t.posts.source(post.source_title ?? "")}
           </a>
         )}
       </div>
@@ -254,7 +246,7 @@ export default function PostCard({
       {refineOpen && (
         <div className="px-5 pb-4">
           <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {QUICK.map((q) => (
+            {t.posts.quick.map((q) => (
               <button
                 key={q}
                 className="chip hover:!text-ink hover:!border-line-strong"
@@ -268,7 +260,7 @@ export default function PostCard({
           <div className="flex gap-2">
             <input
               className="input"
-              placeholder="Or write your own instruction…"
+              placeholder={t.posts.ownInstruction}
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && instruction && refine(instruction)}
@@ -278,7 +270,7 @@ export default function PostCard({
               onClick={() => refine(instruction)}
               disabled={pending || !instruction}
             >
-              {pending ? "…" : "Rewrite"}
+              {pending ? "…" : t.posts.rewrite}
             </button>
           </div>
         </div>
@@ -292,7 +284,7 @@ export default function PostCard({
 
       <div className="px-5 py-3 border-t border-line flex items-center gap-2 flex-wrap bg-[#0f1113]">
         <button className="btn btn-sm" onClick={() => setRefineOpen((o) => !o)} disabled={pending}>
-          Ask for a rewrite
+          {t.posts.askRewrite}
         </button>
         <div className="flex-1" />
         {post.status !== "published" && (
@@ -307,13 +299,13 @@ export default function PostCard({
         )}
         {post.status === "draft" && (
           <button className="btn btn-sm" onClick={() => setStatus("approved")} disabled={pending}>
-            Approve
+            {t.posts.approve}
           </button>
         )}
         {post.status !== "published" &&
           (canPublish ? (
             <button className="btn btn-primary btn-sm" onClick={publish} disabled={pending}>
-              {pending ? "Publishing…" : `Publish via ${publisherLabel}`}
+              {pending ? t.posts.publishing : t.posts.publishVia(publisherLabel)}
             </button>
           ) : (
             <button
@@ -321,7 +313,7 @@ export default function PostCard({
               onClick={() => setStatus("published")}
               disabled={pending}
             >
-              Mark published
+              {t.posts.markPublished}
             </button>
           ))}
         {post.status !== "discarded" && (
@@ -330,7 +322,7 @@ export default function PostCard({
             onClick={() => setStatus("discarded")}
             disabled={pending}
           >
-            Discard
+            {t.posts.discard}
           </button>
         )}
         {(post.status === "discarded" || post.status === "published") && (
@@ -339,7 +331,7 @@ export default function PostCard({
             onClick={() => setStatus("draft")}
             disabled={pending}
           >
-            Back to draft
+            {t.posts.backToDraft}
           </button>
         )}
       </div>
