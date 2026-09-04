@@ -3,14 +3,10 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionRunPipeline } from "@/lib/actions";
+import { useT } from "./I18nProvider";
 import type { Stage } from "@/lib/pipeline";
 
-const STAGES: { key: Stage; label: string; hint: string }[] = [
-  { key: "ingest", label: "Ingest sources", hint: "Downloads new items from every enabled source." },
-  { key: "curate", label: "Curate", hint: "Scores, clusters and selects the signals of the week." },
-  { key: "digest", label: "Weekly digest", hint: "Writes the working document from the selected signals." },
-  { key: "posts", label: "Write posts", hint: "Drafts posts for every enabled channel." },
-];
+const STAGE_KEYS: Stage[] = ["ingest", "curate", "digest", "posts"];
 
 /** `skipped` is what the stages after a failure get: the chain stops there. */
 type StageState = "queued" | "running" | "ok" | "error" | "skipped";
@@ -44,6 +40,9 @@ export default function RunButton() {
   const [elapsed, setElapsed] = useState(0);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const t = useT();
+
+  const STAGES = STAGE_KEYS.map((key) => ({ key, ...t.run.stages[key] }));
 
   // A stage is one call now, so the run follows the canonical order, not the
   // order the checkboxes were clicked in.
@@ -89,7 +88,7 @@ export default function RunButton() {
   return (
     <>
       <button className="btn btn-primary w-full justify-center" onClick={() => setOpen(true)}>
-        {pending ? "Running…" : "Run pipeline"}
+        {pending ? t.run.running : t.run.button}
       </button>
 
       {open && (
@@ -98,11 +97,8 @@ export default function RunButton() {
           onClick={(e) => e.target === e.currentTarget && !pending && setOpen(false)}
         >
           <div className="card w-full max-w-lg p-6" style={{ background: "var(--surface)" }}>
-            <h2 className="text-[15px] font-semibold mb-1">Run the pipeline</h2>
-            <p className="text-[12.5px] text-muted mb-5">
-              Each stage consumes the output of the previous one. Run them separately if you already have
-              the earlier data.
-            </p>
+            <h2 className="text-[15px] font-semibold mb-1">{t.run.title}</h2>
+            <p className="text-[12.5px] text-muted mb-5">{t.run.intro}</p>
 
             <div className="flex flex-col gap-1.5 mb-5 max-h-[55vh] overflow-auto">
               {STAGES.map((s) => {
@@ -135,7 +131,11 @@ export default function RunButton() {
                         {!pending && st && <Indicator state={st.state} />}
                       </span>
                       <span className="block text-[11.5px] text-faint mt-0.5">
-                        {st?.state === "running" ? "Working…" : st?.state === "skipped" ? "Not run." : s.hint}
+                        {st?.state === "running"
+                          ? t.common.working
+                          : st?.state === "skipped"
+                            ? t.run.notRun
+                            : s.hint}
                       </span>
                       {st && st.log.length > 0 && (
                         <pre
@@ -161,18 +161,23 @@ export default function RunButton() {
                 </div>
                 <div className="text-[11.5px] text-faint mt-2 font-mono">
                   {pending
-                    ? `${Math.min(done + 1, total)}/${total} · ${current?.label ?? "Starting"} · ${elapsed}s`
-                    : `${done}/${total} stages · ${elapsed}s`}
+                    ? t.run.progressRunning(
+                        Math.min(done + 1, total),
+                        total,
+                        current?.label ?? t.run.starting,
+                        elapsed,
+                      )
+                    : t.run.progressDone(done, total, elapsed)}
                 </div>
               </div>
             )}
 
             <div className="flex gap-2 justify-end">
               <button className="btn btn-ghost" onClick={() => setOpen(false)} disabled={pending}>
-                Close
+                {t.common.close}
               </button>
               <button className="btn btn-primary" onClick={run} disabled={pending || !plan.length}>
-                {pending ? `${current?.label ?? "Starting"}…` : "Run"}
+                {pending ? `${current?.label ?? t.run.starting}…` : t.run.start}
               </button>
             </div>
           </div>

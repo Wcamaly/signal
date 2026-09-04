@@ -2,15 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { actionSetItemStatus } from "@/lib/actions";
+import { useT } from "./I18nProvider";
 import type { Item } from "@/lib/types";
-
-const STATUS_LABEL: Record<string, string> = {
-  new: "not scored",
-  scored: "scored",
-  selected: "selected",
-  rejected: "rejected",
-  used: "used",
-};
 
 export default function ItemRow({
   item,
@@ -19,6 +12,7 @@ export default function ItemRow({
 }) {
   const [open, setOpen] = useState(false);
   const [, start] = useTransition();
+  const t = useT();
   const score = item.score ?? null;
   const topics = (() => {
     try {
@@ -57,7 +51,7 @@ export default function ItemRow({
               className="chip !py-0 !px-1.5 !text-[10px]"
               style={item.status === "selected" || item.status === "used" ? { color: "var(--accent)" } : undefined}
             >
-              {STATUS_LABEL[item.status] ?? item.status}
+              {t.radar.statuses[item.status] ?? item.status}
             </span>
             {topics.slice(0, 3).map((t) => (
               <span key={t} className="chip !py-0 !px-1.5 !text-[10px]">
@@ -73,7 +67,7 @@ export default function ItemRow({
         <div className="shrink-0 flex gap-1">
           {item.why && (
             <button className="btn btn-ghost btn-sm" onClick={() => setOpen((o) => !o)}>
-              {open ? "Hide" : "Why"}
+              {open ? t.radar.hide : t.radar.why}
             </button>
           )}
           {item.status !== "selected" && (
@@ -81,7 +75,7 @@ export default function ItemRow({
               className="btn btn-sm"
               onClick={() => start(() => void actionSetItemStatus(item.id, "selected"))}
             >
-              Select
+              {t.radar.select}
             </button>
           )}
           {item.status !== "rejected" && (
@@ -89,7 +83,7 @@ export default function ItemRow({
               className="btn btn-ghost btn-sm"
               onClick={() => start(() => void actionSetItemStatus(item.id, "rejected"))}
             >
-              Reject
+              {t.radar.reject}
             </button>
           )}
         </div>
@@ -98,12 +92,12 @@ export default function ItemRow({
       {open && (
         <div className="px-4 pb-3.5 pl-[68px] text-[12.5px] text-muted leading-relaxed border-t border-line pt-3">
           <div className="mb-2">
-            <span className="kicker">Why it matters</span>
+            <span className="kicker">{t.radar.whyItMatters}</span>
             <p className="mt-1">{item.why}</p>
           </div>
           {item.summary && (
             <div>
-              <span className="kicker">Source summary</span>
+              <span className="kicker">{t.radar.sourceSummary}</span>
               <p className="mt-1 text-faint">{item.summary.slice(0, 600)}</p>
             </div>
           )}

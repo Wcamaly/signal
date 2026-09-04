@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "./I18nProvider";
 import { LANGUAGES } from "@/lib/languages";
 
 const OTHER = "__other__";
@@ -23,6 +24,7 @@ export default function LanguageSelect({
 }) {
   const known = value === "" || (LANGUAGES as readonly string[]).includes(value);
   const [free, setFree] = useState(!known);
+  const t = useT();
 
   if (free) {
     return (
@@ -30,7 +32,7 @@ export default function LanguageSelect({
         <input
           className="input"
           value={value}
-          placeholder="Nederlands, 日本語, Català…"
+          placeholder={t.settings.freeLanguagePlaceholder}
           onChange={(e) => onChange(e.target.value)}
         />
         <button
@@ -41,7 +43,7 @@ export default function LanguageSelect({
             onChange(inheritLabel === undefined ? "English" : "");
           }}
         >
-          List
+          {t.settings.backToList}
         </button>
       </div>
     );
@@ -65,7 +67,7 @@ export default function LanguageSelect({
           {l}
         </option>
       ))}
-      <option value={OTHER}>Other…</option>
+      <option value={OTHER}>{t.settings.otherLanguage}</option>
     </select>
   );
 }

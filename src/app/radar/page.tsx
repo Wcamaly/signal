@@ -1,4 +1,5 @@
 import { getDb, weekKey } from "@/lib/db";
+import { getDictionary } from "@/lib/i18n";
 import PageHeader from "@/components/PageHeader";
 import ItemRow from "@/components/ItemRow";
 import type { Item } from "@/lib/types";
@@ -29,13 +30,14 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
     .all(week, min - 1) as (Item & { source_name: string; source_category: string })[];
 
   const scored = items.filter((i) => i.score !== null).length;
+  const t = getDictionary();
 
   return (
     <div>
       <PageHeader
-        kicker="Radar"
-        title={`Signals of ${week}`}
-        sub={`${items.length} items · ${scored} scored by the curator. The score measures how publishable something is for your audience, not how important the news is.`}
+        kicker={t.radar.kicker}
+        title={t.radar.title(week)}
+        sub={t.radar.sub(items.length, scored)}
         right={
           <div className="flex gap-1.5">
             {weeks.map((w) => (
@@ -59,7 +61,7 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
               href={`/radar?week=${week}&min=${m}`}
               className={`chip ${min === m ? "!text-ink !border-line-strong" : ""}`}
             >
-              {m === 0 ? "All" : `≥ ${m}`}
+              {m === 0 ? t.common.all : t.radar.atLeast(m)}
             </a>
           ))}
         </div>
@@ -68,9 +70,7 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
           {items.length ? (
             items.map((i) => <ItemRow key={i.id} item={i} />)
           ) : (
-            <div className="card p-6 text-[13px] text-muted">
-              No items for this week. Run the ingest stage from the sidebar.
-            </div>
+            <div className="card p-6 text-[13px] text-muted">{t.radar.empty}</div>
           )}
         </div>
       </div>

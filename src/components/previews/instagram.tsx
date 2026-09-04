@@ -1,3 +1,4 @@
+import { useT } from "../I18nProvider";
 import Avatar from "./Avatar";
 import { cut, type PreviewProps, type PreviewSkin } from "./types";
 
@@ -9,6 +10,7 @@ const DIM = "#a8a8a8";
 const LINE = "#262626";
 
 function Instagram({ author, avatar, handle, color, text, image, imageAlt }: PreviewProps) {
+  const t = useT();
   const { shown, hidden } = cut(text, CAPTION_FOLD);
   const name = handle?.replace(/^@/, "") || author || "you";
 
@@ -53,8 +55,7 @@ function Instagram({ author, avatar, handle, color, text, image, imageAlt }: Pre
             padding: 24,
           }}
         >
-          No image yet. Instagram shows the picture first and the caption second — add one above
-          and this is what people will see.
+          {t.preview.instagramNoImage}
         </div>
       )}
 
