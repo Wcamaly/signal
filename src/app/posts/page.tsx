@@ -44,11 +44,15 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
 
   const posts = db
     .prepare(
-      `SELECT p.*, i.url AS source_url, i.title AS source_title
+      `SELECT p.*, i.url AS source_url, i.title AS source_title, i.image_url AS source_image
        FROM posts p LEFT JOIN items i ON i.id = p.item_id
        WHERE ${where.join(" AND ")} ORDER BY p.updated_at DESC, p.id DESC`,
     )
-    .all(...args) as (Post & { source_url: string | null; source_title: string | null })[];
+    .all(...args) as (Post & {
+    source_url: string | null;
+    source_title: string | null;
+    source_image: string | null;
+  })[];
 
   const qs = (o: Record<string, string>) =>
     "/posts?" + new URLSearchParams({ status, channel: channelKey, ...o }).toString();

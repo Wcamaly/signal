@@ -3,7 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import CopyButton from "./CopyButton";
+import PostEditor from "./PostEditor";
 import PostLanguage from "./PostLanguage";
+import PostMedia from "./PostMedia";
 import {
   actionPublishPost,
   actionRefinePost,
@@ -27,7 +29,11 @@ export default function PostCard({
   publisherLabel,
   language,
 }: {
-  post: Post & { source_url?: string | null; source_title?: string | null };
+  post: Post & {
+    source_url?: string | null;
+    source_title?: string | null;
+    source_image?: string | null;
+  };
   channel: Channel;
   publisherLabel: string;
   /** Already resolved: the post's own language, or the channel's, or the profile's. */
@@ -143,27 +149,17 @@ export default function PostCard({
 
       <div className="px-5 py-4">
         {editing ? (
-          <>
-            <textarea
-              className="textarea min-h-[220px] font-sans"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-            />
-            <div className="flex gap-2 mt-3">
-              <button className="btn btn-primary btn-sm" onClick={save} disabled={pending}>
-                Save
-              </button>
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => {
-                  setBody(post.body);
-                  setEditing(false);
-                }}
-              >
-                Discard changes
-              </button>
-            </div>
-          </>
+          <PostEditor
+            value={body}
+            onChange={setBody}
+            onSave={save}
+            onDiscard={() => {
+              setBody(post.body);
+              setEditing(false);
+            }}
+            dirty={body !== post.body}
+            pending={pending}
+          />
         ) : isThread ? (
           <div className="flex flex-col gap-2">
             {tweets.map((t, i) => (
@@ -210,6 +206,8 @@ export default function PostCard({
             </pre>
           </div>
         )}
+
+        <PostMedia post={post} sourceImage={post.source_image ?? null} />
 
         {post.source_url && (
           <a
