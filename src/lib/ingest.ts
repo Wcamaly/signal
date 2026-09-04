@@ -31,8 +31,8 @@ export async function ingestSource(source: Source): Promise<{ found: number; ins
 
   const db = getDb();
   const insert = db.prepare(
-    `INSERT INTO items (source_id, external_id, title, url, author, summary, published_at, week_key, status)
-     VALUES (@source_id, @external_id, @title, @url, @author, @summary, @published_at, @week_key, 'new')
+    `INSERT INTO items (source_id, external_id, title, url, author, summary, published_at, week_key, image_url, status)
+     VALUES (@source_id, @external_id, @title, @url, @author, @summary, @published_at, @week_key, @image_url, 'new')
      ON CONFLICT(external_id) DO NOTHING`,
   );
 
@@ -52,6 +52,7 @@ export async function ingestSource(source: Source): Promise<{ found: number; ins
         summary: r.summary ?? null,
         published_at: pub.toISOString(),
         week_key: weekKey(pub),
+        image_url: r.image_url ?? null,
       });
       inserted += res.changes;
     }
