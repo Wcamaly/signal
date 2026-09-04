@@ -50,9 +50,10 @@ export default function Dashboard() {
     .prepare("SELECT id, platform, hook, body, status FROM posts WHERE status = 'draft' ORDER BY id DESC LIMIT 5")
     .all() as { id: number; platform: string; hook: string; body: string; status: string }[];
 
-  const lastRun = db.prepare("SELECT * FROM runs ORDER BY id DESC LIMIT 1").get() as
-    | { kind: string; status: string; log: string; started_at: string }
-    | undefined;
+  // One row per stage, so the last run of the pipeline is the last few rows.
+  const recentRuns = db
+    .prepare("SELECT id, kind, status, log, started_at FROM runs ORDER BY id DESC LIMIT 4")
+    .all() as { id: number; kind: string; status: string; log: string | null; started_at: string }[];
 
   return (
     <div>
@@ -166,22 +167,35 @@ export default function Dashboard() {
               )}
             </div>
 
-            {lastRun && (
+            {recentRuns.length > 0 && (
               <>
-                <h2 className="kicker mt-7 mb-3">Last run</h2>
-                <div className="card p-4">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: lastRun.status === "ok" ? "var(--good)" : "var(--bad)" }}
-                    />
-                    <span className="text-[12px] font-mono text-muted">
-                      {lastRun.kind} · {lastRun.started_at}
-                    </span>
-                  </div>
-                  <pre className="text-[11.5px] font-mono text-faint whitespace-pre-wrap leading-relaxed max-h-40 overflow-auto">
-                    {lastRun.log}
-                  </pre>
+                <h2 className="kicker mt-7 mb-3">Recent runs</h2>
+                <div className="card p-4 flex flex-col gap-3">
+                  {recentRuns.map((r, i) => (
+                    <div key={r.id} className={i ? "border-t border-line pt-3" : ""}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{
+                            background:
+                              r.status === "ok"
+                                ? "var(--good)"
+                                : r.status === "error"
+                                  ? "var(--bad)"
+                                  : "var(--warn)",
+                          }}
+                        />
+                        <span className="text-[12px] font-mono text-muted">
+                          {r.kind} · {r.started_at}
+                        </span>
+                      </div>
+                      {r.log && (
+                        <pre className="text-[11.5px] font-mono text-faint whitespace-pre-wrap leading-relaxed max-h-28 overflow-auto">
+                          {r.log}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </>
             )}
