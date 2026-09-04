@@ -6,6 +6,7 @@ import CopyButton from "./CopyButton";
 import PostEditor from "./PostEditor";
 import PostLanguage from "./PostLanguage";
 import PostMedia from "./PostMedia";
+import PostPreview from "./PostPreview";
 import {
   actionPublishPost,
   actionRefinePost,
@@ -23,11 +24,22 @@ const QUICK = [
   "Take the position against the consensus",
 ];
 
+const TABS = [
+  { key: "edit", label: "Edit" },
+  { key: "preview", label: "Preview" },
+  { key: "template", label: "Template" },
+] as const;
+
+type Tab = (typeof TABS)[number]["key"];
+
 export default function PostCard({
   post,
   channel,
   publisherLabel,
   language,
+  author,
+  avatar,
+  handle,
 }: {
   post: Post & {
     source_url?: string | null;
@@ -38,11 +50,13 @@ export default function PostCard({
   publisherLabel: string;
   /** Already resolved: the post's own language, or the channel's, or the profile's. */
   language: string;
+  author: string;
+  avatar: string | null;
+  handle: string | null;
 }) {
   const [body, setBody] = useState(post.body);
-  const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState<Tab>("edit");
   const [refineOpen, setRefineOpen] = useState(false);
-  const [showTemplate, setShowTemplate] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -56,18 +70,28 @@ export default function PostCard({
     }
   })();
 
+  const link = post.link ?? post.source_url ?? null;
+
   const rendered = renderTemplate(channel.template || "{{body}}", {
     body,
     hook: post.hook ?? "",
     hashtags: hashtags.join(" "),
     angle: post.angle ?? "",
-    link: post.source_url ?? "",
-    title: post.source_title ?? "",
+    link: link ?? "",
+    title: post.link_title ?? post.source_title ?? "",
   });
+
+  // A link that was unfurled has its own card; a link that is still the source
+  // signal's already has one in `items`, fetched at ingest.
+  const linkCard = post.link_title
+    ? { title: post.link_title, image: post.link_image ?? null }
+    : post.source_title && link === post.source_url
+      ? { title: post.source_title, image: post.source_image ?? null }
+      : null;
 
   const over = body.length > channel.char_limit;
   const isThread = body.includes("\n---\n");
-  const tweets = isThread ? body.split("\n---\n").map((t) => t.trim()) : [];
+  const threadLength = isThread ? body.split("\n---\n").filter((t) => t.trim()).length : 0;
   const canPublish = channel.publisher !== "manual";
 
   function setStatus(s: string, when?: string) {
@@ -80,7 +104,6 @@ export default function PostCard({
   function save() {
     start(async () => {
       await actionUpdatePost(post.id, { body });
-      setEditing(false);
       router.refresh();
     });
   }
@@ -115,8 +138,11 @@ export default function PostCard({
             <span className="text-[12px] font-semibold" style={{ color: channel.color }}>
               {channel.label}
             </span>
-            {isThread && <span className="chip !text-[10px] !py-0">thread · {tweets.length}</span>}
-            <span className="font-mono text-[11px]" style={{ color: over ? "var(--bad)" : "var(--faint)" }}>
+            {isThread && <span className="chip !text-[10px] !py-0">thread · {threadLength}</span>}
+            <span
+              className="font-mono text-[11px]"
+              style={{ color: over ? "var(--bad)" : "var(--faint)" }}
+            >
               {body.length}/{channel.char_limit}
             </span>
             <span className="chip !text-[10px] !py-0">{post.status}</span>
@@ -139,44 +165,57 @@ export default function PostCard({
           </div>
           {post.angle && <p className="text-[12px] text-muted leading-snug">{post.angle}</p>}
         </div>
-        <div className="shrink-0 flex gap-1.5">
+        <div className="shrink-0">
           <CopyButton text={rendered} label="Copy" className="btn btn-sm" />
-          <button className="btn btn-sm" onClick={() => setEditing((e) => !e)} disabled={pending}>
-            {editing ? "Cancel" : "Edit"}
-          </button>
         </div>
       </div>
 
       <div className="px-5 py-4">
-        {editing ? (
+        <div className="flex gap-1.5 mb-3.5">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`chip ${tab === t.key ? "!text-ink !border-line-strong !bg-[#1e2228]" : "hover:!text-ink"}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "edit" && (
           <PostEditor
             value={body}
             onChange={setBody}
             onSave={save}
-            onDiscard={() => {
-              setBody(post.body);
-              setEditing(false);
-            }}
+            onDiscard={() => setBody(post.body)}
             dirty={body !== post.body}
             pending={pending}
           />
-        ) : isThread ? (
-          <div className="flex flex-col gap-2">
-            {tweets.map((t, i) => (
-              <div key={i} className="flex gap-3">
-                <span className="font-mono text-[11px] text-faint pt-0.5 shrink-0">{i + 1}/</span>
-                <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap flex-1">{t}</p>
-                <span
-                  className="font-mono text-[10.5px] pt-1 shrink-0"
-                  style={{ color: t.length > channel.char_limit ? "var(--bad)" : "var(--faint)" }}
-                >
-                  {t.length}
-                </span>
-              </div>
-            ))}
+        )}
+
+        {tab === "preview" && (
+          <PostPreview
+            channel={channel}
+            author={author}
+            avatar={avatar}
+            handle={handle}
+            text={rendered}
+            hashtags={hashtags}
+            image={post.image_url ?? null}
+            imageAlt={post.image_alt ?? null}
+            link={link}
+            linkCard={linkCard}
+          />
+        )}
+
+        {tab === "template" && (
+          <div>
+            <span className="kicker">What gets published ({channel.label} template)</span>
+            <pre className="text-[12.5px] text-muted whitespace-pre-wrap leading-relaxed mt-1.5 font-sans bg-[#0e1013] border border-line rounded-md p-3">
+              {rendered}
+            </pre>
           </div>
-        ) : (
-          <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap">{body}</p>
         )}
 
         {!!hashtags.length && (
@@ -194,15 +233,6 @@ export default function PostCard({
             <span className="kicker">Visual brief</span>
             <pre className="text-[12px] text-muted whitespace-pre-wrap leading-relaxed mt-1.5 font-sans">
               {post.visual_brief}
-            </pre>
-          </div>
-        )}
-
-        {showTemplate && (
-          <div className="mt-4 border-t border-line pt-3.5">
-            <span className="kicker">What gets published ({channel.label} template)</span>
-            <pre className="text-[12.5px] text-muted whitespace-pre-wrap leading-relaxed mt-1.5 font-sans bg-[#0e1013] border border-line rounded-md p-3">
-              {rendered}
             </pre>
           </div>
         )}
@@ -243,7 +273,11 @@ export default function PostCard({
               onChange={(e) => setInstruction(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && instruction && refine(instruction)}
             />
-            <button className="btn btn-sm" onClick={() => refine(instruction)} disabled={pending || !instruction}>
+            <button
+              className="btn btn-sm"
+              onClick={() => refine(instruction)}
+              disabled={pending || !instruction}
+            >
               {pending ? "…" : "Rewrite"}
             </button>
           </div>
@@ -260,16 +294,15 @@ export default function PostCard({
         <button className="btn btn-sm" onClick={() => setRefineOpen((o) => !o)} disabled={pending}>
           Ask for a rewrite
         </button>
-        <button className="btn btn-ghost btn-sm" onClick={() => setShowTemplate((o) => !o)}>
-          {showTemplate ? "Hide template" : "Template preview"}
-        </button>
         <div className="flex-1" />
         {post.status !== "published" && (
           <input
             type="datetime-local"
             className="input !w-auto !py-1.5 !text-[12px]"
             defaultValue={post.scheduled_at?.replace(" ", "T").slice(0, 16) ?? ""}
-            onChange={(e) => e.target.value && setStatus("scheduled", e.target.value.replace("T", " "))}
+            onChange={(e) =>
+              e.target.value && setStatus("scheduled", e.target.value.replace("T", " "))
+            }
           />
         )}
         {post.status === "draft" && (
@@ -283,17 +316,29 @@ export default function PostCard({
               {pending ? "Publishing…" : `Publish via ${publisherLabel}`}
             </button>
           ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => setStatus("published")} disabled={pending}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => setStatus("published")}
+              disabled={pending}
+            >
               Mark published
             </button>
           ))}
         {post.status !== "discarded" && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setStatus("discarded")} disabled={pending}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setStatus("discarded")}
+            disabled={pending}
+          >
             Discard
           </button>
         )}
         {(post.status === "discarded" || post.status === "published") && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setStatus("draft")} disabled={pending}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setStatus("draft")}
+            disabled={pending}
+          >
             Back to draft
           </button>
         )}

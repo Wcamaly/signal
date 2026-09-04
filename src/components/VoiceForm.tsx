@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { actionSaveGeneral, actionSaveVoice } from "@/lib/actions";
+import { useRef, useState, useTransition } from "react";
+import { actionSaveGeneral, actionSaveVoice, actionUploadImage } from "@/lib/actions";
 import LanguageSelect from "./LanguageSelect";
 import type { VoiceProfile } from "@/lib/types";
 
@@ -58,6 +58,7 @@ export default function VoiceForm({
   const [general, setGeneral] = useState(initialGeneral);
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
+  const avatarInput = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof VoiceProfile>(k: K, val: VoiceProfile[K]) =>
     setV((p) => ({ ...p, [k]: val }));
@@ -92,6 +93,45 @@ export default function VoiceForm({
 
         <Field label="Company / what you build">
           <input className="input" value={v.company} onChange={(e) => set("company", e.target.value)} />
+        </Field>
+
+        <Field
+          label="Picture"
+          hint="Shown in the previews of the publication queue. Paste a URL or upload a file — nothing is sent anywhere, it is stored next to the database."
+        >
+          <div className="flex gap-2">
+            <input
+              className="input font-mono !text-[12px]"
+              placeholder="https://… or upload"
+              value={v.avatar}
+              onChange={(e) => set("avatar", e.target.value)}
+            />
+            <input
+              ref={avatarInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                start(async () => {
+                  const form = new FormData();
+                  form.set("file", file);
+                  const res = await actionUploadImage(form);
+                  if (res.ok && res.url) set("avatar", res.url);
+                });
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-sm shrink-0"
+              onClick={() => avatarInput.current?.click()}
+              disabled={pending}
+            >
+              Upload
+            </button>
+          </div>
         </Field>
 
         <Field

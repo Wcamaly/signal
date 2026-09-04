@@ -1,4 +1,4 @@
-import { channelLabel, getChannels } from "@/lib/channels";
+import { channelConfig, channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
 import { resolveLanguage } from "@/lib/languages";
 import { getVoice } from "@/lib/pipeline";
@@ -111,12 +111,20 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
               p.language,
               resolveLanguage(channel.language, voice.language),
             );
+            const config = channelConfig(channel);
+            const handle =
+              typeof config.handle === "string" && config.handle.trim()
+                ? config.handle.trim()
+                : null;
             return (
               <PostCard
                 key={p.id}
                 post={p}
                 channel={channel}
                 language={language}
+                author={voice.author}
+                avatar={voice.avatar || null}
+                handle={handle}
                 publisherLabel={
                   publishers.find((pub) => pub.id === channel.publisher)?.label ?? "Manual"
                 }
