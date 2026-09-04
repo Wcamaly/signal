@@ -76,6 +76,7 @@ kubectl apply -f deploy/kubernetes/namespace.yaml
 export CRON_SECRET="a-long-secret"
 export SIGNAL_SECRET_KEY="another-long-secret"
 export ANTHROPIC_API_KEY="sk-ant-..."        # optional, can be pasted in the UI
+export ANTHROPIC_WORKSPACE_ID="wrkspc_..."   # only for identity-linked keys
 bash deploy/create-secret-k3s.sh
 
 # 3. Everything else

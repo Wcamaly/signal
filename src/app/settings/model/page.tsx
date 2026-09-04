@@ -1,5 +1,5 @@
 import { listCredentials } from "@/lib/credentials";
-import { getLlmConfig, llmStatus, providerCatalog } from "@/lib/llm";
+import { allProviderOptions, getLlmConfig, llmStatus, providerCatalog } from "@/lib/llm";
 import { secretKeyIsManaged } from "@/lib/secrets";
 import PageHeader from "@/components/PageHeader";
 import SettingsTabs from "@/components/SettingsTabs";
@@ -20,6 +20,7 @@ export default function ModelPage() {
         <ModelForm
           providers={providerCatalog()}
           config={getLlmConfig()}
+          options={allProviderOptions()}
           status={llmStatus()}
           credentials={listCredentials("llm")}
           keyIsManaged={secretKeyIsManaged()}

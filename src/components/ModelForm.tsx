@@ -2,7 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { actionDeleteCredential, actionSaveCredential, actionSaveLlmConfig, actionTestLlm } from "@/lib/actions";
+import {
+  actionDeleteCredential,
+  actionSaveCredential,
+  actionSaveLlmConfig,
+  actionSaveProviderOptions,
+  actionTestLlm,
+} from "@/lib/actions";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { LlmConfig, ProviderInfo } from "@/lib/llm";
 import type { LlmStatus } from "@/lib/llm";
@@ -10,17 +16,21 @@ import type { LlmStatus } from "@/lib/llm";
 export default function ModelForm({
   providers,
   config: initial,
+  options: initialOptions,
   status,
   credentials,
   keyIsManaged,
 }: {
   providers: ProviderInfo[];
   config: LlmConfig;
+  /** Non-secret provider settings the UI has stored, keyed by provider. */
+  options: Record<string, Record<string, string>>;
   status: LlmStatus;
   credentials: CredentialInfo[];
   keyIsManaged: boolean;
 }) {
   const [cfg, setCfg] = useState(initial);
+  const [options, setOptions] = useState(initialOptions);
   const [secret, setSecret] = useState("");
   const [saved, setSaved] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; detail: string } | null>(null);
@@ -41,16 +51,28 @@ export default function ModelForm({
     setCfg((c) => ({ ...c, provider: id, model: next.defaultModel, baseUrl: next.defaultBaseUrl }));
   }
 
+  function setOption(key: string, value: string) {
+    setOptions((o) => ({ ...o, [provider.id]: { ...o[provider.id], [key]: value } }));
+  }
+
   function save() {
     setError(null);
     start(async () => {
       const res = await actionSaveLlmConfig(cfg);
-      if (!res.ok) setError(res.error ?? "Error");
-      else {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-        router.refresh();
+      if (!res.ok) {
+        setError(res.error ?? "Error");
+        return;
       }
+      if (provider.options?.length) {
+        const opts = await actionSaveProviderOptions(provider.id, options[provider.id] ?? {});
+        if (!opts.ok) {
+          setError(opts.error ?? "Error");
+          return;
+        }
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      router.refresh();
     });
   }
 
@@ -129,6 +151,26 @@ export default function ModelForm({
         </div>
 
         {provider.note && <p className="text-[11.5px] text-faint mt-3 leading-snug">{provider.note}</p>}
+
+        {provider.options?.map((opt) => (
+          <div key={opt.key} className="mt-5">
+            <span className="label">{opt.label}</span>
+            <input
+              className="input font-mono !text-[12px]"
+              autoComplete="off"
+              placeholder={opt.placeholder}
+              value={options[provider.id]?.[opt.key] ?? ""}
+              onChange={(e) => setOption(opt.key, e.target.value)}
+            />
+            {opt.help && <p className="text-[11.5px] text-faint mt-2 leading-snug">{opt.help}</p>}
+            {opt.envKeys && opt.envKeys.length > 0 && (
+              <p className="text-[11.5px] text-faint mt-1 leading-snug">
+                Left empty, Signal falls back to{" "}
+                <code className="font-mono text-[11.5px]">{opt.envKeys.join(" / ")}</code>.
+              </p>
+            )}
+          </div>
+        ))}
 
         <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 mt-5">
           <div>

@@ -24,6 +24,11 @@ for anything else (vLLM, LM Studio, Together, DeepSeek, your own gateway).
   middle of a JSON value"*, this is the number to raise.
 - **Test connection** does one cheap round trip and shows the answer or the
   error verbatim.
+- **Workspace ID** (Anthropic only) is needed when the key is identity-linked,
+  that is shared across the workspaces of an organisation. Those keys are
+  rejected with *"anthropic-workspace-id is required"* until the request names
+  the workspace it acts in; paste the `wrkspc_...` id here, or set
+  `ANTHROPIC_WORKSPACE_ID`. Workspace-scoped keys ignore it.
 
 Keys are encrypted with AES-256-GCM before being stored, and the interface only
 ever shows the last four characters. The encryption key comes from

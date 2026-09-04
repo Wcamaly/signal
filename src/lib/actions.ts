@@ -12,7 +12,7 @@ import {
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
 import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
-import { saveLlmConfig, testLlm, type LlmConfig } from "./llm";
+import { saveLlmConfig, saveProviderOptions, testLlm, type LlmConfig } from "./llm";
 import { getPublisher } from "./publishers";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { getVoice, runPipeline, type Stage } from "./pipeline";
@@ -249,6 +249,16 @@ export async function actionDeleteCredential(id: number): Promise<Result> {
 
 export async function actionSaveLlmConfig(cfg: Partial<LlmConfig>): Promise<Result> {
   const res = await guard(() => saveLlmConfig(cfg));
+  revalidatePath("/", "layout");
+  return res;
+}
+
+/** Non-secret provider settings, such as the Anthropic workspace id. */
+export async function actionSaveProviderOptions(
+  provider: string,
+  values: Record<string, string>,
+): Promise<Result> {
+  const res = await guard(() => saveProviderOptions(provider, values));
   revalidatePath("/", "layout");
   return res;
 }
