@@ -1,4 +1,5 @@
-import { getDb, getSetting, parseJson, weekKey } from "./db";
+import { getDb, getSetting, parseJson } from "./db";
+import { weekKey } from "./weeks";
 import { getSourceKind, SEED_SOURCES } from "./sources";
 import type { RawItem } from "./sources";
 import type { Source } from "./types";

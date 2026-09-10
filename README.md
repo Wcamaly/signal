@@ -138,9 +138,16 @@ Walkthroughs with working code: **[docs/extending.md](docs/extending.md)**.
 `GET /api/cron` runs the whole pipeline; `?stages=ingest,curate` runs part of it.
 Protect it with `CRON_SECRET` if it is reachable from anywhere but localhost.
 
+`?week=` picks what gets curated: `current` (the default), `previous`, or an ISO
+week such as `2026-W37`. A Monday schedule wants `previous` — the week that just
+closed holds seven days of news, the one starting holds a few hours.
+
 ```bash
-0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron
+0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron?week=previous"
 ```
+
+Every execution is recorded. **Runs** in the sidebar lists them with their week,
+their log and what each stage produced, and runs any of them again.
 
 ---
 

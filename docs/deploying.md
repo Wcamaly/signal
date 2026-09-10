@@ -30,8 +30,12 @@ reach the port can trigger a run. An external scheduler — a host crontab, a
 systemd timer, an n8n node — works just as well:
 
 ```bash
-0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron
+0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron?week=previous"
 ```
+
+`week=previous` matters on a Monday schedule: the ISO week starts that morning,
+so curating the *current* one finds nothing to select. See
+[configuring.md](configuring.md#which-week-gets-curated).
 
 State lives in the `signal-data` volume: the SQLite database and, unless you set
 `SIGNAL_SECRET_KEY`, the generated key that encrypts the credentials you saved

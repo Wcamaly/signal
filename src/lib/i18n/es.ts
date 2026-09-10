@@ -26,6 +26,7 @@ export const es: Dictionary = {
     digest: "Resumen semanal",
     posts: "Publicaciones",
     sources: "Fuentes",
+    runs: "Ejecuciones",
     voice: "Voz y ajustes",
     channels: "Canales",
     prompts: "Prompts",
@@ -61,6 +62,11 @@ export const es: Dictionary = {
     notRun: "No se ejecutó.",
     start: "Ejecutar",
     starting: "Arrancando",
+    week: "Semana",
+    weekCurrent: "Actual",
+    weekPrevious: "Anterior",
+    weekHint:
+      "Leer fuentes siempre recorre todas. La curación, el resumen y los posts trabajan sobre la semana elegida acá.",
     progressRunning: (done: number, total: number, stage: string, seconds: number) =>
       `${done}/${total} · ${stage} · ${seconds}s`,
     progressDone: (done: number, total: number, seconds: number) =>
@@ -77,6 +83,36 @@ export const es: Dictionary = {
       },
       posts: { label: "Escribir posts", hint: "Redacta borradores para cada canal activo." },
     },
+  },
+
+  runs: {
+    kicker: "Ejecuciones",
+    title: "Ejecuciones del pipeline",
+    sub: (total: number) =>
+      `${total} registradas. Cada corrida del pipeline, sobre qué semana trabajó y quién la pidió.`,
+    empty: "Todavía no se ejecutó nada.",
+    emptyFiltered: "Ninguna ejecución coincide con este filtro.",
+    statuses: {
+      running: "en curso",
+      ok: "terminada",
+      error: "falló",
+      interrupted: "interrumpida",
+    },
+    triggers: { ui: "manual", cron: "programada", api: "API" },
+    filterStage: "Etapa",
+    filterWeek: "Semana",
+    duration: (seconds: number) =>
+      seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`,
+    stillRunning: "sin resultado todavía",
+    detailTitle: (id: number) => `Ejecución #${id}`,
+    back: "← Todas las ejecuciones",
+    stages: "Etapas",
+    log: "Registro",
+    noLog: "Esta ejecución no dejó registro.",
+    result: "Resultado",
+    relaunch: "Ejecutar de nuevo",
+    relaunchHint: (week: string) => `Vuelve a correr las mismas etapas sobre ${week}.`,
+    unknownWeek: "sin semana",
   },
 
   dashboard: {

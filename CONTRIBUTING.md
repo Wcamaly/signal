@@ -36,7 +36,8 @@ npm run dev                 # http://localhost:3000
 
 git switch -c feat/reddit-source
 # …work…
-npm run check               # lint + typecheck
+npm run check               # lint + typecheck + tests
+npm test                    # vitest, on the pure logic under src/lib
 npm run build
 
 git push -u origin feat/reddit-source
@@ -110,7 +111,9 @@ src/
     prompts.ts             shipped prompts + the overrides written from the UI
     template.ts            the {{variable}} renderer used by prompts and templates
     agents/                curator, digest, writer — the stages that call the model
-    pipeline.ts            orchestration and run log
+    pipeline.ts            orchestration: resolves the week, opens a run, chains the stages
+    runs.ts                the run record — concurrency guard, reconciliation, read model
+    weeks.ts               the ISO week: the unit every stage after ingest works on
     actions.ts             every server action the UI calls
 ```
 

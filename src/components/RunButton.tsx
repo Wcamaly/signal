@@ -36,6 +36,7 @@ function Indicator({ state }: { state: StageState }) {
 export default function RunButton() {
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<Stage[]>(["ingest", "curate", "digest", "posts"]);
+  const [week, setWeek] = useState<"current" | "previous">("current");
   const [progress, setProgress] = useState<Progress>({});
   const [elapsed, setElapsed] = useState(0);
   const [pending, start] = useTransition();
@@ -68,7 +69,7 @@ export default function RunButton() {
     start(async () => {
       for (const [i, stage] of plan.entries()) {
         setProgress((p) => ({ ...p, [stage]: { state: "running", log: [] } }));
-        const res = await actionRunPipeline([stage]);
+        const res = await actionRunPipeline([stage], { week });
         setProgress((p) => ({
           ...p,
           [stage]: { state: res.ok ? "ok" : "error", log: res.log },
@@ -99,6 +100,24 @@ export default function RunButton() {
           <div className="card w-full max-w-lg p-6" style={{ background: "var(--surface)" }}>
             <h2 className="text-[15px] font-semibold mb-1">{t.run.title}</h2>
             <p className="text-[12.5px] text-muted mb-5">{t.run.intro}</p>
+
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="kicker">{t.run.week}</span>
+                {(["current", "previous"] as const).map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => setWeek(w)}
+                    className={`chip ${week === w ? "!text-ink !border-line-strong" : ""}`}
+                  >
+                    {w === "current" ? t.run.weekCurrent : t.run.weekPrevious}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11.5px] text-faint leading-snug">{t.run.weekHint}</p>
+            </div>
 
             <div className="flex flex-col gap-1.5 mb-5 max-h-[55vh] overflow-auto">
               {STAGES.map((s) => {

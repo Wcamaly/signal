@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { channelLabel, getChannels } from "@/lib/channels";
-import { getDb, weekKey } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { weekKey } from "@/lib/weeks";
 import { getDictionary } from "@/lib/i18n";
 import { seedSources } from "@/lib/ingest";
 import { llmStatus } from "@/lib/llm";
+import { listRuns } from "@/lib/runs";
 import PageHeader from "@/components/PageHeader";
+import RunStatusDot from "@/components/RunStatusDot";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +56,7 @@ export default function Dashboard() {
     .all() as { id: number; platform: string; hook: string; body: string; status: string }[];
 
   // One row per stage, so the last run of the pipeline is the last few rows.
-  const recentRuns = db
-    .prepare("SELECT id, kind, status, log, started_at FROM runs ORDER BY id DESC LIMIT 4")
-    .all() as { id: number; kind: string; status: string; log: string | null; started_at: string }[];
+  const recentRuns = listRuns({}, 4);
 
   return (
     <div>
@@ -162,24 +163,23 @@ export default function Dashboard() {
 
             {recentRuns.length > 0 && (
               <>
-                <h2 className="kicker mt-7 mb-3">{t.dashboard.recentRuns}</h2>
+                <div className="flex items-baseline justify-between mt-7 mb-3">
+                  <h2 className="kicker">{t.dashboard.recentRuns}</h2>
+                  <Link href="/runs" className="text-[12px] text-muted hover:text-ink">
+                    {t.dashboard.seeAll}
+                  </Link>
+                </div>
                 <div className="card p-4 flex flex-col gap-3">
                   {recentRuns.map((r, i) => (
-                    <div key={r.id} className={i ? "border-t border-line pt-3" : ""}>
+                    <Link
+                      href={`/runs/${r.id}`}
+                      key={r.id}
+                      className={`block hover:opacity-80 transition-opacity ${i ? "border-t border-line pt-3" : ""}`}
+                    >
                       <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{
-                            background:
-                              r.status === "ok"
-                                ? "var(--good)"
-                                : r.status === "error"
-                                  ? "var(--bad)"
-                                  : "var(--warn)",
-                          }}
-                        />
+                        <RunStatusDot status={r.status} />
                         <span className="text-[12px] font-mono text-muted">
-                          {r.kind} · {r.started_at}
+                          {r.kind} · {r.week_key ?? ""} · {r.started_at}
                         </span>
                       </div>
                       {r.log && (
@@ -187,7 +187,7 @@ export default function Dashboard() {
                           {r.log}
                         </pre>
                       )}
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </>

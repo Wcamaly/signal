@@ -3,7 +3,8 @@ kind: CronJob
 metadata:
   name: signal-pipeline
 spec:
-  # Mondays at 08:00, in the timezone below.
+  # Mondays at 08:00, in the timezone below: the digest of the week that closed
+  # the night before lands before the working week starts.
   schedule: "0 8 * * 1"
   timeZone: UTC
   concurrencyPolicy: Forbid
@@ -29,7 +30,10 @@ spec:
                 - "900"
                 - -H
                 - "Authorization: Bearer $(CRON_SECRET)"
-                - http://signal:3000/api/cron
+                # `previous`, not the running week: on Monday morning the
+                # current ISO week is hours old and holds almost no items, so
+                # curation would find nothing to select.
+                - "http://signal:3000/api/cron?week=previous"
               env:
                 - name: CRON_SECRET
                   valueFrom:

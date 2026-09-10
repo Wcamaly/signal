@@ -17,6 +17,7 @@ export default function Nav() {
         { href: "/digest", label: t.nav.digest },
         { href: "/posts", label: t.nav.posts },
         { href: "/sources", label: t.nav.sources },
+        { href: "/runs", label: t.nav.runs },
       ],
     },
     {

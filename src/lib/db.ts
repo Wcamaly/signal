@@ -129,13 +129,16 @@ function init(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS runs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      kind TEXT NOT NULL,              -- ingest | curate | digest | posts | full
-      status TEXT NOT NULL,            -- running | ok | error
+      kind TEXT NOT NULL,              -- the stages that were asked for, joined by +
+      status TEXT NOT NULL,            -- running | ok | error | interrupted
+      week_key TEXT,                   -- the week the run worked on
+      trigger TEXT,                    -- ui | cron | api
       stats TEXT,
       log TEXT,
       started_at TEXT DEFAULT (datetime('now')),
       finished_at TEXT
     );
+    CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
   `);
 
   // Migrations for databases created by earlier versions.
@@ -151,6 +154,15 @@ function init(db: Database.Database) {
   ensureColumn(db, "posts", "link_image", "TEXT");
   ensureColumn(db, "posts", "image_url", "TEXT");
   ensureColumn(db, "posts", "image_alt", "TEXT");
+  // The run manager: which week a run worked on and who asked for it. Runs
+  // recorded before the column existed already carry the week inside `stats`,
+  // so the history does not start out blank.
+  ensureColumn(db, "runs", "week_key", "TEXT");
+  ensureColumn(db, "runs", "trigger", "TEXT");
+  db.exec(
+    `UPDATE runs SET week_key = json_extract(stats, '$.week')
+      WHERE week_key IS NULL AND json_valid(stats) AND json_extract(stats, '$.week') IS NOT NULL`,
+  );
 }
 
 function ensureColumn(db: Database.Database, table: string, column: string, ddl: string) {
@@ -196,15 +208,6 @@ export function deleteSetting(key: string) {
 }
 
 /* ---------- misc ---------- */
-
-export function weekKey(d: Date = new Date()): string {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
-}
 
 export function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   if (!raw) return fallback;
