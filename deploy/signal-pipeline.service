@@ -7,7 +7,9 @@ Requires=signal.service
 Type=oneshot
 EnvironmentFile=/etc/signal.env
 # Ingest + curate + digest + write. It can take several minutes.
+# `week=previous`: the timer fires on Monday morning, when the running ISO week
+# is a few hours old and curation would find nothing to select.
 ExecStart=/usr/bin/curl -fsS --max-time 900 \
   -H "authorization: Bearer ${CRON_SECRET}" \
-  "http://127.0.0.1:${PORT}/api/cron"
+  "http://127.0.0.1:${PORT}/api/cron?week=previous"
 SyslogIdentifier=signal-pipeline

@@ -31,6 +31,7 @@ export const en = {
     digest: "Weekly digest",
     posts: "Publications",
     sources: "Sources",
+    runs: "Runs",
     voice: "Voice & settings",
     channels: "Channels",
     prompts: "Prompts",
@@ -66,6 +67,11 @@ export const en = {
     notRun: "Not run.",
     start: "Run",
     starting: "Starting",
+    week: "Week",
+    weekCurrent: "Current",
+    weekPrevious: "Previous",
+    weekHint:
+      "Ingest always reads every source. Curation, the digest and the posts work on the week picked here.",
     /** e.g. "2/4 · Curate · 31s" while running. */
     progressRunning: (done: number, total: number, stage: string, seconds: number) =>
       `${done}/${total} · ${stage} · ${seconds}s`,
@@ -83,6 +89,36 @@ export const en = {
       },
       posts: { label: "Write posts", hint: "Drafts posts for every enabled channel." },
     },
+  },
+
+  runs: {
+    kicker: "Runs",
+    title: "Pipeline runs",
+    sub: (total: number) =>
+      `${total} recorded. Every execution of the pipeline, whichever week it worked on and whoever asked for it.`,
+    empty: "Nothing has run yet.",
+    emptyFiltered: "No run matches this filter.",
+    statuses: {
+      running: "in flight",
+      ok: "finished",
+      error: "failed",
+      interrupted: "interrupted",
+    },
+    triggers: { ui: "manual", cron: "scheduled", api: "API" },
+    filterStage: "Stage",
+    filterWeek: "Week",
+    duration: (seconds: number) =>
+      seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`,
+    stillRunning: "no result yet",
+    detailTitle: (id: number) => `Run #${id}`,
+    back: "← All runs",
+    stages: "Stages",
+    log: "Log",
+    noLog: "This run recorded no log.",
+    result: "Result",
+    relaunch: "Run again",
+    relaunchHint: (week: string) => `Runs the same stages again on ${week}.`,
+    unknownWeek: "no week",
   },
 
   dashboard: {

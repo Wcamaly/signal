@@ -164,8 +164,32 @@ Protect it with `CRON_SECRET` if the app is reachable from anywhere but
 localhost:
 
 ```bash
-0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron
+0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron?week=previous"
 ```
 
 The Kubernetes overlay in `deploy/` already wires this as a `CronJob`, and the
 systemd deployment as a timer.
+
+### Which week gets curated
+
+Ingest is week-agnostic: an item is filed under the week it was *published* in.
+Curation, the digest and the posts work on one week, and `?week=` names it —
+`current` (the default), `previous`, or an ISO week such as `2026-W37`.
+
+A schedule that fires on Monday morning has to ask for `previous`. The ISO week
+starts that same Monday, so the current one is hours old and holds almost
+nothing: curation selects zero signals and the digest stage fails with *"No
+selected items"*. The week worth publishing about is the one that closed the
+night before.
+
+### Runs
+
+**Runs** in the sidebar is the history: every execution with its stages, its
+week, whether it was manual or scheduled, how long it took, its full log and the
+numbers each stage produced. Any run can be launched again from its page, with
+the same stages on the same week.
+
+Two pipelines never run at once — the second one is refused while the first is
+in flight, because they write to the same week of the same SQLite file. A run
+whose process disappeared (a pod evicted, a deploy mid-run) is marked
+`interrupted` after 30 minutes instead of blocking everything after it.

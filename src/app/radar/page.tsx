@@ -1,4 +1,5 @@
-import { getDb, weekKey } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { weekKey } from "@/lib/weeks";
 import { getDictionary } from "@/lib/i18n";
 import PageHeader from "@/components/PageHeader";
 import ItemRow from "@/components/ItemRow";

@@ -19,7 +19,8 @@ import { getPublisher } from "./publishers";
 import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { fetchText } from "./sources/util";
-import { getVoice, runPipeline, type Stage } from "./pipeline";
+import { getVoice, runPipeline, type RunOptions, type Stage } from "./pipeline";
+import { getRun, runStages } from "./runs";
 import { refinePost } from "./agents/writer";
 import { translateDigest, translatePost } from "./agents/translate";
 import type { Post, Source, VoiceProfile } from "./types";
@@ -53,8 +54,20 @@ async function absoluteUrl(pathOrUrl: string | null): Promise<string | null> {
 
 /* ---------- pipeline ---------- */
 
-export async function actionRunPipeline(stages: Stage[]) {
-  const res = await runPipeline(stages);
+export async function actionRunPipeline(stages: Stage[], options: RunOptions = {}) {
+  const res = await runPipeline(stages, { ...options, trigger: "ui" });
+  revalidatePath("/", "layout");
+  return res;
+}
+
+/** Runs a past run again: same stages, same week. */
+export async function actionRelaunchRun(id: number) {
+  const run = getRun(id);
+  if (!run) return { ok: false, runId: null, week: null, log: [], stats: {}, error: "Run not found" };
+  const res = await runPipeline(runStages(run), {
+    week: run.week_key ?? undefined,
+    trigger: "ui",
+  });
   revalidatePath("/", "layout");
   return res;
 }
