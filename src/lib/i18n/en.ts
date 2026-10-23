@@ -349,6 +349,10 @@ export const en = {
     inherit: "Inherit from the voice profile",
     languageHint:
       "The posts of this channel are written in this language. Any single post can still be changed from the queue.",
+    sourceDigest: "Source digest",
+    generalDigest: "General digest",
+    sourceDigestHint:
+      "Which weekly digest this channel writes from. A category channel is skipped in a week where that category has no digest.",
     handle: "Handle (preview only)",
     handleHint: "Shown under your name in the preview. Not sent anywhere.",
     template: "Publication template",

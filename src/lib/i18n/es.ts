@@ -344,6 +344,10 @@ export const es: Dictionary = {
     inherit: "Heredar del perfil de voz",
     languageHint:
       "Los posts de este canal se escriben en este idioma. Cualquier post individual se puede cambiar desde la cola.",
+    sourceDigest: "Resumen de origen",
+    generalDigest: "Resumen general",
+    sourceDigestHint:
+      "De qué resumen semanal salen los posts de este canal. Un canal de categoría se salta la semana en que esa categoría no tiene resumen.",
     handle: "Usuario (solo para la vista previa)",
     handleHint: "Se muestra debajo de tu nombre en la vista previa. No se envía a ningún lado.",
     template: "Plantilla de publicación",

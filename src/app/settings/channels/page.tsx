@@ -1,3 +1,4 @@
+import { getCategories } from "@/lib/categories";
 import { getChannels, TEMPLATE_VARIABLES } from "@/lib/channels";
 import { listCredentials } from "@/lib/credentials";
 import { getDictionary } from "@/lib/i18n";
@@ -24,6 +25,7 @@ export default function ChannelsPage() {
           publishers={publisherCatalog()}
           credentials={listCredentials("channel")}
           templateVariables={TEMPLATE_VARIABLES}
+          categories={getCategories()}
         />
       </div>
     </div>

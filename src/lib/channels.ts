@@ -10,6 +10,8 @@ export type ChannelInput = {
   hint: string;
   /** Output language. Empty inherits the working language of the voice profile. */
   language: string;
+  /** Category whose digest this channel writes from. Empty = the general digest. */
+  category: string;
   template: string;
   publisher: string;
   config: Record<string, unknown>;
@@ -19,7 +21,7 @@ export type ChannelInput = {
   sort_order?: number;
 };
 
-type Seed = Omit<ChannelInput, "credential_id" | "config" | "language"> & {
+type Seed = Omit<ChannelInput, "credential_id" | "config" | "language" | "category"> & {
   config?: Record<string, unknown>;
 };
 
@@ -191,6 +193,7 @@ export function saveChannel(input: ChannelInput & { id?: number }) {
     color: input.color || "#8b93a1",
     hint: input.hint ?? "",
     language: input.language?.trim() || null,
+    category: input.category?.trim() || null,
     template: input.template ?? "{{body}}",
     publisher: input.publisher || "manual",
     config: JSON.stringify(input.config ?? {}),
@@ -202,11 +205,11 @@ export function saveChannel(input: ChannelInput & { id?: number }) {
 
   getDb()
     .prepare(
-      `INSERT INTO channels (key, label, char_limit, color, hint, language, template, publisher, config, credential_id, posts_per_run, enabled, sort_order)
-       VALUES (@key, @label, @char_limit, @color, @hint, @language, @template, @publisher, @config, @credential_id, @posts_per_run, @enabled, @sort_order)
+      `INSERT INTO channels (key, label, char_limit, color, hint, language, category, template, publisher, config, credential_id, posts_per_run, enabled, sort_order)
+       VALUES (@key, @label, @char_limit, @color, @hint, @language, @category, @template, @publisher, @config, @credential_id, @posts_per_run, @enabled, @sort_order)
        ON CONFLICT(key) DO UPDATE SET
          label = excluded.label, char_limit = excluded.char_limit, color = excluded.color,
-         hint = excluded.hint, language = excluded.language, template = excluded.template,
+         hint = excluded.hint, language = excluded.language, category = excluded.category, template = excluded.template,
          publisher = excluded.publisher, config = excluded.config,
          credential_id = excluded.credential_id,
          posts_per_run = excluded.posts_per_run, enabled = excluded.enabled,
