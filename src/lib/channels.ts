@@ -167,6 +167,7 @@ export function channelLabel(channels: Channel[], key: string): Channel {
       color: "#8b93a1",
       hint: null,
       language: null,
+      category: null,
       template: "{{body}}\n\n{{hashtags}}",
       publisher: "manual",
       config: "{}",

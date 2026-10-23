@@ -7,6 +7,28 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const globalForDb = globalThis as unknown as { __signalDb?: Database.Database };
 
+/**
+ * The digests table. Shared by the fresh-database path and the rebuild below,
+ * so the two can never drift apart.
+ */
+function digestsDdl(name: string) {
+  return `
+    CREATE TABLE IF NOT EXISTS ${name} (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      week_key TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT '', -- '' = the general digest, otherwise a categories.key
+      title TEXT,
+      subtitle TEXT,
+      markdown TEXT,
+      item_ids TEXT,                   -- JSON array
+      status TEXT DEFAULT 'draft',     -- draft | approved
+      model TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      language TEXT,
+      UNIQUE (week_key, category)
+    );`;
+}
+
 function init(db: Database.Database) {
   db.pragma("journal_mode = WAL");
   db.exec(`
@@ -45,15 +67,15 @@ function init(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_items_week ON items(week_key);
     CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
 
-    CREATE TABLE IF NOT EXISTS digests (
+    -- Groups of sources. sources.category and channels.category store the key.
+    CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      week_key TEXT NOT NULL UNIQUE,
-      title TEXT,
-      subtitle TEXT,
-      markdown TEXT,
-      item_ids TEXT,                   -- JSON array
-      status TEXT DEFAULT 'draft',     -- draft | approved
-      model TEXT,
+      key TEXT NOT NULL UNIQUE,          -- stable slug, never renamed
+      label TEXT NOT NULL,
+      color TEXT DEFAULT '#8b93a1',
+      digest_enabled INTEGER DEFAULT 0,  -- build a weekly digest for this category
+      digest_items INTEGER DEFAULT 8,    -- top N scored items that feed it
+      sort_order INTEGER DEFAULT 100,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -141,6 +163,8 @@ function init(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
   `);
 
+  db.exec(digestsDdl("digests"));
+
   // Migrations for databases created by earlier versions.
   ensureColumn(db, "sources", "config", "TEXT DEFAULT '{}'");
   ensureColumn(db, "posts", "published_url", "TEXT");
@@ -154,6 +178,10 @@ function init(db: Database.Database) {
   ensureColumn(db, "posts", "link_image", "TEXT");
   ensureColumn(db, "posts", "image_url", "TEXT");
   ensureColumn(db, "posts", "image_alt", "TEXT");
+  // Categories: a channel can write from a category's digest instead of the
+  // general one, and digests are now one per week *and* category.
+  ensureColumn(db, "channels", "category", "TEXT"); // NULL = the general digest
+  migrateDigestCategory(db);
   // The run manager: which week a run worked on and who asked for it. Runs
   // recorded before the column existed already carry the week inside `stats`,
   // so the history does not start out blank.
@@ -169,6 +197,39 @@ function ensureColumn(db: Database.Database, table: string, column: string, ddl:
   const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
   if (!cols.some((c) => c.name === column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+}
+
+/**
+ * Moves the digests' unique key from (week_key) to (week_key, category).
+ * SQLite cannot alter a constraint, so the table is rebuilt — with foreign keys
+ * off, because posts.digest_id is ON DELETE CASCADE and dropping the old table
+ * with them on deletes every post. Ids are copied, so posts keep pointing at
+ * the same digests. Exported for the test that runs it on a legacy file.
+ */
+export function migrateDigestCategory(db: Database.Database) {
+  const cols = db.prepare("PRAGMA table_info(digests)").all() as { name: string }[];
+  if (cols.some((c) => c.name === "category")) return;
+  // Must be set outside the transaction: inside one, SQLite ignores it.
+  db.pragma("foreign_keys = OFF");
+  try {
+    db.transaction(() => {
+      const count = (table: string) => (db.prepare(`SELECT COUNT(*) c FROM ${table}`).get() as { c: number }).c;
+      db.exec(digestsDdl("digests_new"));
+      db.exec(`
+        INSERT INTO digests_new (id, week_key, category, title, subtitle, markdown, item_ids, status, model, created_at, language)
+          SELECT id, week_key, '', title, subtitle, markdown, item_ids, status, model, created_at, language FROM digests;
+      `);
+      // Not PRAGMA foreign_key_check: it would also flag unrelated old dangling
+      // references elsewhere and stop the app from booting.
+      if (count("digests_new") !== count("digests")) throw new Error("digests rebuild lost rows");
+      db.exec(`
+        DROP TABLE digests;
+        ALTER TABLE digests_new RENAME TO digests;
+      `);
+    })();
+  } finally {
+    db.pragma("foreign_keys = ON");
   }
 }
 
