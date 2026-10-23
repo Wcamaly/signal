@@ -338,6 +338,7 @@ describe("seeding", () => {
 
   it("adds a category a source already uses", () => {
     addSource("bots", "robotics");
+    getCategories();
     expect(getCategory("robotics")?.label).toBe("Robotics");
   });
 
