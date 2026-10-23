@@ -15,8 +15,8 @@ type Params = Promise<{ id: string }>;
 
 export default async function EditSourcePage({ params }: { params: Params }) {
   const { id } = await params;
-  const n = Number(id);
-  const source = Number.isInteger(n) ? getSource(n) : undefined;
+  // Digits only: "1.0", "01" or " 1" would reach the same source under another URL.
+  const source = /^[1-9]\d*$/.test(id) ? getSource(Number(id)) : undefined;
   if (!source) notFound();
 
   const t = getDictionary();
