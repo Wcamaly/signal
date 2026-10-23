@@ -32,6 +32,7 @@ export const es: Dictionary = {
     digestDefs: "Resúmenes",
     prompts: "Prompts",
     model: "Modelo y claves",
+    settings: "Ajustes",
   },
 
   common: {
@@ -60,6 +61,10 @@ export const es: Dictionary = {
     tabs: {
       sources: "Fuentes",
       categories: "Categorías",
+      voice: "Voz",
+      prompts: "Prompts",
+      pipeline: "Pipeline",
+      interface: "Interfaz",
     },
   },
 
@@ -310,11 +315,13 @@ export const es: Dictionary = {
   },
 
   settings: {
-    title: "Voz y ajustes",
+    title: "Voz",
     sub: "Esto es lo que separa un post que suena a vos de uno que suena a un LLM. Cuanto más específico, mejor — sobre todo la lista de prohibidos y las muestras de tu escritura.",
     interfaceLanguage: "Idioma de la interfaz",
     interfaceLanguageHint:
-      "El idioma de Signal en sí: este menú, los botones y las etiquetas. Lo que escribe el modelo es el idioma de trabajo, más abajo.",
+      "El idioma de Signal en sí: el menú, los botones y las etiquetas. Lo que escribe el modelo es el idioma de trabajo, en Escritura → Voz.",
+    interfaceTitle: "Interfaz",
+    interfaceSub: "El idioma en el que te habla Signal. No cambia lo que escribe el modelo.",
     voiceProfile: "Perfil de voz",
     loadExample: "Cargar ejemplo",
     name: "Nombre",
@@ -344,6 +351,7 @@ export const es: Dictionary = {
     samplesHint:
       "Pegá 2 o 3 posts tuyos que hayan funcionado. Sin esto el agente escribe correcto pero neutro; con esto empieza a sonar a vos.",
     pipeline: "Pipeline",
+    pipelineSub: "Cuántas señales se queda el curador por semana y qué tan atrás se leen las fuentes.",
     signalsPerWeek: "Señales seleccionadas por semana",
     signalsPerWeekHint: "Cuántos items sobreviven a la curación y alimentan el resumen General. Es el mismo número que sus items en Resúmenes: si cambiás uno, cambia el otro.",
     maxAge: "Ignorar items más viejos que (días)",

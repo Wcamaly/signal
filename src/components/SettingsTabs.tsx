@@ -9,10 +9,10 @@ export default function SettingsTabs() {
   const t = useT();
 
   const TABS = [
-    { href: "/settings", label: t.nav.voice },
+    { href: "/manage/voice", label: t.nav.voice },
     { href: "/manage/channels", label: t.nav.channels },
     { href: "/manage/digests", label: t.nav.digestDefs },
-    { href: "/settings/prompts", label: t.nav.prompts },
+    { href: "/manage/prompts", label: t.nav.prompts },
     { href: "/settings/model", label: t.nav.model },
   ];
 

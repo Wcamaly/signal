@@ -493,14 +493,16 @@ export async function actionSavePrompt(
   value: { system: string; template: string },
 ): Promise<Result> {
   const res = await guard(() => savePrompt(key, value));
-  revalidatePath("/settings/prompts");
+  revalidatePath("/manage/prompts");
+  revalidatePath("/manage/prompts/[key]", "page");
   return res;
 }
 
 export async function actionResetPrompt(key: PromptKey): Promise<Result & { prompt?: { system: string; template: string } }> {
   try {
     resetPrompt(key);
-    revalidatePath("/settings/prompts");
+    revalidatePath("/manage/prompts");
+    revalidatePath("/manage/prompts/[key]", "page");
     const prompt = getPrompt(key);
     return { ok: true, prompt: { system: prompt.system, template: prompt.template } };
   } catch (e) {

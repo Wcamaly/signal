@@ -37,6 +37,7 @@ export const en = {
     digestDefs: "Digests",
     prompts: "Prompts",
     model: "Model & keys",
+    settings: "Settings",
   },
 
   common: {
@@ -65,6 +66,10 @@ export const en = {
     tabs: {
       sources: "Sources",
       categories: "Categories",
+      voice: "Voice",
+      prompts: "Prompts",
+      pipeline: "Pipeline",
+      interface: "Interface",
     },
   },
 
@@ -315,11 +320,13 @@ export const en = {
   },
 
   settings: {
-    title: "Voice & settings",
+    title: "Voice",
     sub: "This is what separates a post that sounds like you from one that sounds like an LLM. The more specific, the better — above all the banned list and the writing samples.",
     interfaceLanguage: "Interface language",
     interfaceLanguageHint:
-      "The language of Signal itself: this menu, the buttons and the labels. What the model writes is the working language below.",
+      "The language of Signal itself: the menu, the buttons and the labels. What the model writes is the working language, under Writing → Voice.",
+    interfaceTitle: "Interface",
+    interfaceSub: "The language Signal itself speaks. It does not change what the model writes.",
     voiceProfile: "Voice profile",
     loadExample: "Load example",
     name: "Name",
@@ -349,6 +356,7 @@ export const en = {
     samplesHint:
       "Paste 2 or 3 of your own posts that worked. Without this the agent writes correct but neutral text; with it, it starts to sound like you.",
     pipeline: "Pipeline",
+    pipelineSub: "How many signals the curator keeps a week, and how far back ingest reads.",
     signalsPerWeek: "Signals selected per week",
     signalsPerWeekHint: "How many items survive curation and feed the General digest. It is the same number as General's item count under Digests: changing one changes the other.",
     maxAge: "Ignore items older than (days)",
