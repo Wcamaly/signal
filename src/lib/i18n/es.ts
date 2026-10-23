@@ -382,6 +382,8 @@ export const es: Dictionary = {
     keepStored: "Dejalo vacío para conservar el guardado",
     pasteToken: "Pegá el token",
     credentialError: "No se pudo guardar la credencial",
+    confirmDelete: (label: string) =>
+      `¿Eliminar el canal «${label}»? Sus posts quedan en la cola bajo su clave.`,
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} caracteres · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} por ejecución${language ? ` · ${language}` : ""}`,
   },

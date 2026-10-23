@@ -1,89 +1,36 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { actionDeleteChannel, actionSaveChannel, actionSaveCredential } from "@/lib/actions";
-import { useT } from "./I18nProvider";
-import LanguageSelect from "./LanguageSelect";
+import type { ChannelDraft } from "@/lib/channel-draft";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { PublisherInfo } from "@/lib/publishers";
-import type { Channel, DigestDef } from "@/lib/types";
+import type { DigestDef } from "@/lib/types";
+import { useT } from "./I18nProvider";
+import LanguageSelect from "./LanguageSelect";
 
-type Draft = {
-  key: string;
-  label: string;
-  char_limit: number;
-  color: string;
-  hint: string;
-  language: string;
-  digest_def: string;
-  template: string;
-  publisher: string;
-  config: Record<string, string>;
-  credential_id: number | null;
-  posts_per_run: number;
-  enabled: boolean;
-  sort_order: number;
-};
+const LIST = "/manage/channels";
 
-const BLANK: Draft = {
-  key: "",
-  label: "",
-  char_limit: 1000,
-  color: "#8b93a1",
-  hint: "",
-  language: "",
-  digest_def: "",
-  template: "{{body}}\n\n{{hashtags}}",
-  publisher: "manual",
-  config: {},
-  credential_id: null,
-  posts_per_run: 1,
-  enabled: true,
-  sort_order: 100,
-};
-
-function toDraft(c: Channel): Draft {
-  let config: Record<string, string> = {};
-  try {
-    config = JSON.parse(c.config ?? "{}") as Record<string, string>;
-  } catch {
-    config = {};
-  }
-  return {
-    key: c.key,
-    label: c.label,
-    char_limit: c.char_limit,
-    color: c.color,
-    hint: c.hint ?? "",
-    language: c.language ?? "",
-    digest_def: c.digest_def ?? "",
-    template: c.template ?? "{{body}}",
-    publisher: c.publisher,
-    config,
-    credential_id: c.credential_id,
-    posts_per_run: c.posts_per_run,
-    enabled: !!c.enabled,
-    sort_order: c.sort_order,
-  };
-}
-
-function Editor({
+/**
+ * One channel: create (`isNew`, the key is typed once) or edit. A pasted
+ * secret is stored as a credential first and linked on save.
+ */
+export default function ChannelForm({
   initial,
   isNew,
   publishers,
   credentials,
   templateVariables,
   defs,
-  onDone,
 }: {
-  initial: Draft;
+  initial: ChannelDraft;
   isNew: boolean;
   publishers: PublisherInfo[];
   credentials: CredentialInfo[];
   templateVariables: { name: string; description: string }[];
   defs: DigestDef[];
-  onDone: () => void;
 }) {
   const [d, setD] = useState(initial);
   const [secret, setSecret] = useState("");
@@ -94,6 +41,11 @@ function Editor({
 
   const publisher = publishers.find((p) => p.id === d.publisher) ?? publishers[0];
   const linked = credentials.find((c) => c.id === d.credential_id);
+
+  function done() {
+    router.push(LIST);
+    router.refresh();
+  }
 
   function save() {
     setError(null);
@@ -116,16 +68,22 @@ function Editor({
 
       const res = await actionSaveChannel({ ...d, credential_id: credentialId });
       if (!res.ok) setError(res.error ?? t.common.error);
-      else {
-        setSecret("");
-        onDone();
-        router.refresh();
-      }
+      else done();
+    });
+  }
+
+  function remove() {
+    if (!confirm(t.channels.confirmDelete(initial.label))) return;
+    setError(null);
+    start(async () => {
+      const res = await actionDeleteChannel(initial.key);
+      if (!res.ok) setError(res.error ?? t.common.error);
+      else done();
     });
   }
 
   return (
-    <div className="px-5 pb-5 border-t border-line pt-4 flex flex-col gap-4">
+    <section className="card p-6 flex flex-col gap-4">
       <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3">
         <div>
           <span className="label">{t.channels.name}</span>
@@ -323,117 +281,19 @@ function Editor({
         </p>
       )}
 
-      <div className="flex gap-2">
-        <button className="btn btn-primary btn-sm" onClick={save} disabled={pending}>
+      <div className="flex items-center gap-2">
+        <button className="btn btn-primary" onClick={save} disabled={pending}>
           {pending ? t.common.saving : isNew ? t.channels.createChannel : t.common.save}
         </button>
-        <button className="btn btn-ghost btn-sm" onClick={onDone} disabled={pending}>
+        <Link href={LIST} className="btn btn-ghost">
           {t.common.cancel}
-        </button>
+        </Link>
+        {!isNew && (
+          <button className="btn btn-ghost ml-auto" onClick={remove} disabled={pending}>
+            {t.common.delete}
+          </button>
+        )}
       </div>
-    </div>
-  );
-}
-
-export default function ChannelManager({
-  channels,
-  publishers,
-  credentials,
-  templateVariables,
-  defs,
-}: {
-  channels: Channel[];
-  publishers: PublisherInfo[];
-  credentials: CredentialInfo[];
-  templateVariables: { name: string; description: string }[];
-  defs: DigestDef[];
-}) {
-  const [editing, setEditing] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [pending, start] = useTransition();
-  const router = useRouter();
-  const t = useT();
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <button className="btn btn-primary btn-sm" onClick={() => setCreating(true)} disabled={creating}>
-          {t.channels.newChannel}
-        </button>
-      </div>
-
-      {creating && (
-        <section className="card overflow-hidden">
-          <div className="px-5 pt-4 text-[14px] font-semibold tracking-tight">
-            {t.channels.newChannel}
-          </div>
-          <Editor
-            initial={BLANK}
-            isNew
-            publishers={publishers}
-            credentials={credentials}
-            templateVariables={templateVariables}
-            defs={defs}
-            onDone={() => setCreating(false)}
-          />
-        </section>
-      )}
-
-      {channels.map((c) => (
-        <section key={c.key} className="card overflow-hidden">
-          <div className="px-5 py-4 flex items-center gap-4">
-            <span
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ background: c.enabled ? c.color : "var(--faint)" }}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2.5">
-                <span className="text-[14px] font-semibold tracking-tight">{c.label}</span>
-                <span className="chip !text-[10px] !py-0">{c.publisher}</span>
-                {c.digest_def && (
-                  <span className="chip !text-[10px] !py-0">
-                    {defs.find((x) => x.key === c.digest_def)?.label ?? t.channels.deletedDigest(c.digest_def)}
-                  </span>
-                )}
-                {!c.enabled && <span className="chip !text-[10px] !py-0">{t.common.disabled}</span>}
-              </div>
-              <p className="text-[11.5px] text-faint mt-1">
-                {t.channels.summary(c.char_limit, c.posts_per_run, c.language)}
-              </p>
-            </div>
-            <button
-              className="btn btn-sm"
-              onClick={() => setEditing((k) => (k === c.key ? null : c.key))}
-            >
-              {editing === c.key ? t.common.close : t.common.edit}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm"
-              disabled={pending}
-              onClick={() =>
-                start(async () => {
-                  await actionDeleteChannel(c.key);
-                  router.refresh();
-                })
-              }
-            >
-              {t.common.delete}
-            </button>
-          </div>
-
-          {editing === c.key && (
-            <Editor
-              initial={toDraft(c)}
-              isNew={false}
-              publishers={publishers}
-              credentials={credentials}
-              templateVariables={templateVariables}
-              defs={defs}
-              onDone={() => setEditing(null)}
-            />
-          )}
-        </section>
-      ))}
-    </div>
+    </section>
   );
 }

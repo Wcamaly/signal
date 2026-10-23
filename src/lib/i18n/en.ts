@@ -387,6 +387,8 @@ export const en = {
     keepStored: "Leave empty to keep the stored one",
     pasteToken: "Paste the token",
     credentialError: "Could not store the credential",
+    confirmDelete: (label: string) =>
+      `Delete the channel "${label}"? Its posts stay in the queue under its key.`,
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} chars · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} per run${language ? ` · ${language}` : ""}`,
   },

@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/sources", destination: "/manage/sources", permanent: true },
       { source: "/settings/digests", destination: "/manage/digests", permanent: true },
+      { source: "/settings/channels", destination: "/manage/channels", permanent: true },
     ];
   },
 };

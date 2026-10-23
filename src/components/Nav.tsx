@@ -24,7 +24,7 @@ export default function Nav() {
       title: t.nav.configure,
       links: [
         { href: "/settings", label: t.nav.voice, exact: true },
-        { href: "/settings/channels", label: t.nav.channels },
+        { href: "/manage/channels", label: t.nav.channels },
         { href: "/manage/digests", label: t.nav.digestDefs },
         { href: "/settings/prompts", label: t.nav.prompts },
         { href: "/settings/model", label: t.nav.model },

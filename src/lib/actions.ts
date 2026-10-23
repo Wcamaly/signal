@@ -368,7 +368,7 @@ export async function actionSetItemStatus(id: number, status: string) {
 /* ---------- categories ---------- */
 
 function revalidateCategories() {
-  for (const p of ["/manage/sources", "/manage/categories", "/radar", "/digest", "/settings/channels", "/manage/digests"]) {
+  for (const p of ["/manage/sources", "/manage/categories", "/radar", "/digest", "/manage/channels", "/manage/digests"]) {
     revalidatePath(p);
   }
   revalidatePath("/manage/categories/[key]", "page");
@@ -393,7 +393,7 @@ export async function actionDeleteCategory(key: string): Promise<Result> {
 /* ---------- digest definitions ---------- */
 
 function revalidateDigestDefs() {
-  for (const p of ["/manage/digests", "/settings/channels", "/digest"]) revalidatePath(p);
+  for (const p of ["/manage/digests", "/manage/channels", "/digest"]) revalidatePath(p);
   revalidatePath("/manage/digests/[key]", "page");
   // The run dialog in the sidebar lists the definitions.
   revalidatePath("/", "layout");
@@ -415,9 +415,15 @@ export async function actionDeleteDigestDef(key: string): Promise<Result> {
 
 /* ---------- channels ---------- */
 
+/** The list and each channel's page, which shows its stored credential. */
+function revalidateChannels() {
+  revalidatePath("/manage/channels");
+  revalidatePath("/manage/channels/[key]", "page");
+}
+
 export async function actionSaveChannel(input: ChannelInput): Promise<Result> {
   const res = await guard(() => saveChannel(input));
-  revalidatePath("/settings/channels");
+  revalidateChannels();
   revalidatePath("/posts");
   revalidatePath("/", "layout");
   return res;
@@ -425,7 +431,7 @@ export async function actionSaveChannel(input: ChannelInput): Promise<Result> {
 
 export async function actionDeleteChannel(key: string): Promise<Result> {
   const res = await guard(() => deleteChannel(key));
-  revalidatePath("/settings/channels");
+  revalidateChannels();
   revalidatePath("/posts");
   return res;
 }
@@ -442,7 +448,7 @@ export async function actionSaveCredential(input: {
   try {
     const cred = saveCredential(input);
     revalidatePath("/settings/model");
-    revalidatePath("/settings/channels");
+    revalidateChannels();
     revalidatePath("/", "layout");
     return { ok: true, id: cred.id };
   } catch (e) {
@@ -453,7 +459,7 @@ export async function actionSaveCredential(input: {
 export async function actionDeleteCredential(id: number): Promise<Result> {
   const res = await guard(() => deleteCredential(id));
   revalidatePath("/settings/model");
-  revalidatePath("/settings/channels");
+  revalidateChannels();
   revalidatePath("/", "layout");
   return res;
 }
