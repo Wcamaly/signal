@@ -21,6 +21,7 @@ import { getPublisher } from "./publishers";
 import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { fetchText } from "./sources/util";
+import { addSource, updateSource, type SourceInput } from "./source-store";
 import {
   clientRunOptions,
   getVoice,
@@ -315,25 +316,17 @@ export async function actionToggleSource(id: number, enabled: boolean) {
   revalidatePath("/sources");
 }
 
-export async function actionAddSource(input: {
-  name: string;
-  url: string;
-  kind: string;
-  category: string;
-  config: Record<string, string>;
-}): Promise<Result> {
+export async function actionAddSource(input: SourceInput): Promise<Result> {
   const res = await guard(() => {
-    if (!input.name.trim() || !input.url.trim()) throw new Error("Name and URL are required");
-    if (!getCategory(input.category)) throw new Error(`Unknown category "${input.category}"`);
-    const config = Object.fromEntries(
-      Object.entries(input.config ?? {}).filter(([, v]) => String(v).trim() !== ""),
-    );
-    getDb()
-      .prepare(
-        "INSERT INTO sources (name, url, kind, category, weight, config) VALUES (?, ?, ?, ?, 1.0, ?)",
-      )
-      .run(input.name.trim(), input.url.trim(), input.kind, input.category, JSON.stringify(config));
+    addSource(input);
   });
+  revalidatePath("/sources");
+  return res;
+}
+
+/** Edits a source. Same checks as adding one; the kind cannot change. */
+export async function actionUpdateSource(id: number, input: Omit<SourceInput, "kind">): Promise<Result> {
+  const res = await guard(() => updateSource(id, input));
   revalidatePath("/sources");
   return res;
 }
