@@ -84,7 +84,10 @@ SQLite cannot alter a table constraint, so the table is rebuilt once, guarded by
    `digests` cascades into `posts` and deletes every post.
 2. In a transaction: create `digests_new` with the new shape, copy every row
    **keeping `id`**, drop `digests`, rename `digests_new` → `digests`.
-3. `PRAGMA foreign_key_check` must return nothing; then `PRAGMA foreign_keys = ON`.
+3. Before the drop, the new table must hold as many rows as the old one, or the
+   transaction aborts. (Not `PRAGMA foreign_key_check`: it also flags unrelated
+   old dangling references and would stop the app from booting.) Then
+   `PRAGMA foreign_keys = ON`.
 
 `posts.digest_id` keeps pointing at the same ids, so nothing else changes.
 
