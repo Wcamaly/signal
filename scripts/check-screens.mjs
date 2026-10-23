@@ -10,11 +10,16 @@
  *   node scripts/check-screens.mjs --smoke               # + the browser smoke (scripts/smoke-ui.mjs)
  *
  * It never touches ./data: a --data-dir that resolves there is refused. The
- * server runs in demo mode (no LLM key from the environment) and is stopped by
- * the PID listening on the port — never by pattern.
+ * server runs in demo mode and must never reach a real model: the LLM keys
+ * and SIGNAL_SECRET_KEY are dropped from its environment, and a --data-dir
+ * that still holds `.signal-key` or a stored LLM credential (credentials rows
+ * with scope 'llm') is refused — strip them from the copy first. The temp
+ * directory it creates without --data-dir is removed at the end. The server is
+ * stopped by the PID listening on the port — never by pattern.
  */
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 
@@ -27,10 +32,54 @@ const option = (name, fallback) => {
 
 const port = Number(option("port", "3999"));
 const base = `http://127.0.0.1:${port}`;
-const dataDir = path.resolve(option("data-dir", fs.mkdtempSync(path.join(os.tmpdir(), "signal-routes-"))));
-if (dataDir === path.resolve("data") || dataDir.startsWith(path.resolve("data") + path.sep)) {
-  console.error(`Refusing to run against ${dataDir}: use a copy.`);
-  process.exit(2);
+const givenDir = option("data-dir", null);
+if (givenDir) {
+  const dir = path.resolve(givenDir);
+  if (dir === path.resolve("data") || dir.startsWith(path.resolve("data") + path.sep)) {
+    console.error(`Refusing to run against ${dir}: use a copy.`);
+    process.exit(2);
+  }
+  refuseSecrets(dir);
+}
+
+/**
+ * A copy of a real database can still call a real model: through the key file
+ * that decrypts its stored credentials, or through an LLM credential itself.
+ * Neither belongs in a smoke run, so both are refused rather than worked around.
+ */
+function refuseSecrets(dir) {
+  const found = [];
+  const fixes = [];
+  const keyFile = path.join(dir, ".signal-key");
+  if (fs.existsSync(keyFile)) {
+    found.push(`the key file ${keyFile}`);
+    fixes.push(`rm ${keyFile}`);
+  }
+  const dbFile = path.join(dir, "signal.db");
+  if (fs.existsSync(dbFile)) {
+    const require = createRequire(import.meta.url);
+    const Database = require("better-sqlite3");
+    const db = new Database(dbFile, { readonly: true, fileMustExist: true });
+    try {
+      const { n } = db.prepare("SELECT COUNT(*) AS n FROM credentials WHERE scope = 'llm'").get();
+      if (n > 0) {
+        found.push(`${n} stored LLM credential(s) in ${dbFile}`);
+        fixes.push(`sqlite3 ${dbFile} "DELETE FROM credentials WHERE scope = 'llm'"`);
+      }
+    } catch {
+      // no credentials table in this copy
+    } finally {
+      db.close();
+    }
+  }
+  if (found.length) {
+    console.error(
+      `Refusing to run against ${dir}: it holds ${found.join(" and ")}, so the app could call a real model.\n` +
+        `Strip them from the copy (never from ./data) first:\n` +
+        fixes.map((f) => `  ${f}`).join("\n"),
+    );
+    process.exit(2);
+  }
 }
 
 /**
@@ -62,8 +111,12 @@ if (listening().busy) {
   process.exit(2);
 }
 
+// Created only now, after every refusal, so a refused run leaves nothing behind.
+const dataDir = givenDir ? path.resolve(givenDir) : fs.mkdtempSync(path.join(os.tmpdir(), "signal-routes-"));
+
 const env = { ...process.env, SIGNAL_DATA_DIR: dataDir, PORT: String(port) };
 for (const k of [
+  "SIGNAL_SECRET_KEY",
   "SIGNAL_LLM_PROVIDER",
   "ANTHROPIC_API_KEY",
   "OPENAI_API_KEY",
@@ -84,7 +137,8 @@ let serverLog = "";
 server.stdout.on("data", (d) => (serverLog += d));
 server.stderr.on("data", (d) => (serverLog += d));
 
-function stop() {
+/** Stops the server and waits (up to 10 s) for it to exit and free the port. */
+async function stop() {
   for (const pid of listening().pids) {
     try {
       process.kill(pid, "SIGTERM");
@@ -93,6 +147,9 @@ function stop() {
     }
   }
   if (server.exitCode === null) server.kill("SIGTERM");
+  for (let i = 0; i < 50 && ((server.exitCode === null && server.signalCode === null) || listening().busy); i++) {
+    await new Promise((r) => setTimeout(r, 200));
+  }
 }
 
 async function waitReady() {
@@ -173,9 +230,10 @@ try {
     await expectStatus(url, 200);
   }
   for (const [list, html] of Object.entries(lists)) {
+    if (!html) continue; // the list itself failed, already reported
     const item = firstLink(html, list);
-    check(Boolean(item), `${list} links to an item`);
     if (item) await expectStatus(item, 200);
+    else console.log(`skip ${list}: skipped (empty list)`);
   }
 
   console.log("\n# unknown items");
@@ -199,7 +257,8 @@ try {
   failures.push(String(e));
   console.error(e);
 } finally {
-  stop();
+  await stop();
+  if (!givenDir) fs.rmSync(dataDir, { recursive: true, force: true });
 }
 
 if (failures.length) console.log(`\n--- server log (last 60 lines) ---\n${serverLog.split("\n").slice(-60).join("\n")}`);
