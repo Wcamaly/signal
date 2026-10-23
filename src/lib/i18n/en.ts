@@ -67,11 +67,19 @@ export const en = {
     notRun: "Not run.",
     start: "Run",
     starting: "Starting",
-    week: "Week",
-    weekCurrent: "Current",
-    weekPrevious: "Previous",
-    weekHint:
-      "Ingest always reads every source. Curation, the digest and the posts work on the week picked here.",
+    digests: "Digests",
+    due: "What is due now",
+    dueNow: (labels: string) =>
+      `Due now: ${labels}. Daily digests are due every day, weekly ones on Monday, monthly ones on the 1st — each for the period that just closed.`,
+    nothingDue:
+      "Nothing is due now. Daily digests are due every day, weekly ones on Monday, monthly ones on the 1st.",
+    period: "Period",
+    periodCurrent: "Current",
+    periodPrevious: "Previous",
+    periodKey: "Period key",
+    periodInvalid: (example: string) => `Not a period of this digest. Example: ${example}`,
+    scopeHint:
+      "Ingest always reads every source. Curation scores the current week, and on Monday the one that closed too. The digests and the posts work on what is picked here.",
     /** e.g. "2/4 · Curate · 31s" while running. */
     progressRunning: (done: number, total: number, stage: string, seconds: number) =>
       `${done}/${total} · ${stage} · ${seconds}s`,
@@ -84,10 +92,10 @@ export const en = {
       },
       curate: { label: "Curate", hint: "Scores, clusters and selects the signals of the week." },
       digest: {
-        label: "Weekly digest",
-        hint: "Writes the working document from the selected signals.",
+        label: "Digests",
+        hint: "Writes the digests picked above from the best signals of their period.",
       },
-      posts: { label: "Write posts", hint: "Drafts posts for every enabled channel." },
+      posts: { label: "Write posts", hint: "Drafts posts for the channels of those digests." },
     },
   },
 

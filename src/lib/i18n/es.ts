@@ -62,11 +62,19 @@ export const es: Dictionary = {
     notRun: "No se ejecutó.",
     start: "Ejecutar",
     starting: "Arrancando",
-    week: "Semana",
-    weekCurrent: "Actual",
-    weekPrevious: "Anterior",
-    weekHint:
-      "Leer fuentes siempre recorre todas. La curación, el resumen y los posts trabajan sobre la semana elegida acá.",
+    digests: "Resúmenes",
+    due: "Lo que toca ahora",
+    dueNow: (labels: string) =>
+      `Tocan ahora: ${labels}. Los resúmenes diarios tocan todos los días, los semanales los lunes, los mensuales el día 1 — cada uno sobre el período que acaba de cerrar.`,
+    nothingDue:
+      "Ahora no toca ninguno. Los resúmenes diarios tocan todos los días, los semanales los lunes, los mensuales el día 1.",
+    period: "Período",
+    periodCurrent: "Actual",
+    periodPrevious: "Anterior",
+    periodKey: "Clave del período",
+    periodInvalid: (example: string) => `No es un período de este resumen. Ejemplo: ${example}`,
+    scopeHint:
+      "Leer fuentes siempre recorre todas. La curación puntúa la semana actual, y los lunes también la que cerró. Los resúmenes y los posts trabajan sobre lo que elijas acá.",
     progressRunning: (done: number, total: number, stage: string, seconds: number) =>
       `${done}/${total} · ${stage} · ${seconds}s`,
     progressDone: (done: number, total: number, seconds: number) =>
@@ -78,10 +86,10 @@ export const es: Dictionary = {
       },
       curate: { label: "Curar", hint: "Puntúa, agrupa y selecciona las señales de la semana." },
       digest: {
-        label: "Resumen semanal",
-        hint: "Escribe el documento de trabajo a partir de las señales seleccionadas.",
+        label: "Resúmenes",
+        hint: "Escribe los resúmenes elegidos arriba con las mejores señales de su período.",
       },
-      posts: { label: "Escribir posts", hint: "Redacta borradores para cada canal activo." },
+      posts: { label: "Escribir posts", hint: "Redacta borradores para los canales de esos resúmenes." },
     },
   },
 

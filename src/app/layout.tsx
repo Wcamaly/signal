@@ -4,6 +4,7 @@ import "./globals.css";
 import I18nProvider from "@/components/I18nProvider";
 import Nav from "@/components/Nav";
 import RunButton from "@/components/RunButton";
+import { getDigestDefs } from "@/lib/digest-defs";
 import { getDictionary, getUiLocale } from "@/lib/i18n";
 import { llmStatus } from "@/lib/llm";
 
@@ -46,7 +47,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {status.ready ? `${status.provider}/${status.model}` : t.app.noModel}
                 </span>
               </Link>
-              <RunButton />
+              <RunButton
+                defs={getDigestDefs(true)
+                  .filter((d) => d.kind === "items")
+                  .map(({ key, label, cadence }) => ({ key, label, cadence }))}
+              />
             </div>
           </aside>
           <main className="flex-1 min-w-0">{children}</main>
