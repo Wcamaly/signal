@@ -1,4 +1,6 @@
 import { getDb } from "./db";
+import { removeCategoryFromDefs } from "./digest-defs";
+import { slugify } from "./slug";
 import { SOURCE_CATEGORIES } from "./sources";
 import type { Category } from "./types";
 
@@ -27,15 +29,7 @@ const SEED_COLORS: Record<string, string> = {
   general: "#8b93a1",
 };
 
-export function slugify(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+export { slugify };
 
 /**
  * Runs on every read, like seedChannels(). The shipped list goes in only while
@@ -124,14 +118,18 @@ export function saveCategory(input: CategoryInput): string {
 
 /**
  * Its sources move to `general` and its channels back to the general digest.
- * Digests already written for it are kept; they show the bare key afterwards.
+ * It is also taken out of every digest definition; a definition left with no
+ * category is disabled rather than silently widened to every category. Returns
+ * the labels of the definitions disabled that way. Digests already written
+ * for it are kept.
  */
-export function deleteCategory(key: string) {
+export function deleteCategory(key: string): string[] {
   if (key === GENERAL) throw new Error("The general category cannot be deleted: it is where orphaned sources go");
   const db = getDb();
-  db.transaction(() => {
+  return db.transaction(() => {
     db.prepare("UPDATE sources SET category = ? WHERE category = ?").run(GENERAL, key);
     db.prepare("UPDATE channels SET category = NULL WHERE category = ?").run(key);
     db.prepare("DELETE FROM categories WHERE key = ?").run(key);
+    return removeCategoryFromDefs(key);
   })();
 }

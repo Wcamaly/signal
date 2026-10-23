@@ -353,7 +353,9 @@ export async function actionSaveCategory(input: CategoryInput): Promise<Result> 
 }
 
 export async function actionDeleteCategory(key: string): Promise<Result> {
-  const res = await guard(() => deleteCategory(key));
+  const res = await guard(() => {
+    deleteCategory(key);
+  });
   revalidateCategories();
   return res;
 }

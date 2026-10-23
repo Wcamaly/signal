@@ -1,3 +1,5 @@
+import type { Cadence } from "./periods";
+
 export type Source = {
   id: number;
   name: string;
@@ -18,6 +20,27 @@ export type Category = {
   color: string;
   digest_enabled: number;
   digest_items: number;
+  sort_order: number;
+};
+
+export type DigestKind = "items" | "rollup";
+
+/** What a digest is made of and how often it is written. Settings → Digests. */
+export type DigestDef = {
+  id: number;
+  /** Stable slug: digests.def_key and channels.digest_def store it. */
+  key: string;
+  label: string;
+  /** Phase 1 builds `items` only; `rollup` exists in the schema for phase 2. */
+  kind: DigestKind;
+  cadence: Cadence;
+  /** items: category keys whose sources feed it. Empty = every category. */
+  categories: string[];
+  /** rollup: keys of the item definitions it combines. */
+  sources: string[];
+  /** items: how many items feed it, 1..30. */
+  item_count: number;
+  enabled: number;
   sort_order: number;
 };
 
