@@ -372,6 +372,9 @@ function revalidateCategories() {
     revalidatePath(p);
   }
   revalidatePath("/manage/categories/[key]", "page");
+  // A source's page and a digest's page both offer the categories.
+  revalidatePath("/manage/sources/[id]", "page");
+  revalidatePath("/manage/digests/[key]", "page");
 }
 
 export async function actionSaveCategory(input: CategoryInput): Promise<Result> {
@@ -395,6 +398,8 @@ export async function actionDeleteCategory(key: string): Promise<Result> {
 function revalidateDigestDefs() {
   for (const p of ["/manage/digests", "/manage/channels", "/digest"]) revalidatePath(p);
   revalidatePath("/manage/digests/[key]", "page");
+  // A channel's page offers the definitions as its source digest.
+  revalidatePath("/manage/channels/[key]", "page");
   // The run page lists the definitions and what is due.
   revalidatePath("/runs/new");
 }
