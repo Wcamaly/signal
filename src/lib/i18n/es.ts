@@ -466,6 +466,11 @@ export const es: Dictionary = {
         description:
           "Escribe el documento de trabajo de la semana a partir de las señales seleccionadas. Es la materia prima de la que sale cada post.",
       },
+      category_digest: {
+        label: "Resumen por categoría",
+        description:
+          "Escribe el resumen semanal de una categoría a partir de sus items mejor puntuados. Se ejecuta una vez por cada categoría con el resumen activado; los canales asociados a esa categoría escriben a partir de él.",
+      },
       writer: {
         label: "Escritor",
         description:
