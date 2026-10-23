@@ -33,7 +33,7 @@ describe("seeding", () => {
 
   it("never overwrites an edited label", () => {
     getCategories();
-    saveCategory({ key: "press", label: "Prensa", color: "#000000", digest_enabled: false, digest_items: 8 });
+    saveCategory({ key: "press", label: "Prensa", color: "#000000" });
     expect(getCategories().find((c) => c.key === "press")?.label).toBe("Prensa");
   });
 
@@ -47,26 +47,26 @@ describe("seeding", () => {
 describe("saveCategory", () => {
   it("derives the key from the name", () => {
     getCategories();
-    const key = saveCategory({ label: "Política & IA", color: "#123456", digest_enabled: true, digest_items: 5 });
+    const key = saveCategory({ label: "Política & IA", color: "#123456" });
     expect(key).toBe("politica-ia");
-    expect(getCategory("politica-ia")).toMatchObject({ label: "Política & IA", digest_enabled: 1, digest_items: 5 });
+    expect(getCategory("politica-ia")).toMatchObject({ label: "Política & IA", color: "#123456" });
   });
 
   it("refuses a second category with the same key", () => {
     getCategories();
-    expect(() => saveCategory({ label: "Labs", color: "#000000", digest_enabled: false, digest_items: 8 })).toThrow(
+    expect(() => saveCategory({ label: "Labs", color: "#000000" })).toThrow(
       /already exists/,
     );
   });
 
-  it("keeps the key when renaming and clamps the item count", () => {
+  it("keeps the key when renaming", () => {
     getCategories();
-    saveCategory({ key: "labs", label: "Frontier labs", color: "#000000", digest_enabled: true, digest_items: 99 });
-    expect(getCategory("labs")).toMatchObject({ label: "Frontier labs", digest_items: 30 });
+    saveCategory({ key: "labs", label: "Frontier labs", color: "#000000" });
+    expect(getCategory("labs")).toMatchObject({ key: "labs", label: "Frontier labs" });
   });
 
   it("refuses an empty name", () => {
-    expect(() => saveCategory({ label: "  ", color: "#000000", digest_enabled: false, digest_items: 8 })).toThrow();
+    expect(() => saveCategory({ label: "  ", color: "#000000" })).toThrow();
   });
 });
 

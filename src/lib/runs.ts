@@ -68,7 +68,16 @@ export function activeRun(): Run | undefined {
  * same week of the same SQLite file, so two pipelines at once — the schedule
  * firing while someone presses the button — corrupt each other's work.
  */
-export function startRun(input: { stages: Stage[]; week: WeekKey; trigger: RunTrigger }): number {
+export function startRun(input: {
+  stages: Stage[];
+  week: WeekKey;
+  trigger: RunTrigger;
+  /**
+   * What is known before any stage runs — the targets, above all — so a run
+   * whose process dies can still be replayed. finishRun() replaces it.
+   */
+  stats?: unknown;
+}): number {
   const active = activeRun();
   if (active) {
     throw new Error(
@@ -77,9 +86,14 @@ export function startRun(input: { stages: Stage[]; week: WeekKey; trigger: RunTr
   }
   const res = getDb()
     .prepare(
-      "INSERT INTO runs (kind, status, week_key, trigger) VALUES (?, 'running', ?, ?)",
+      "INSERT INTO runs (kind, status, week_key, trigger, stats) VALUES (?, 'running', ?, ?, ?)",
     )
-    .run(input.stages.join("+"), input.week, input.trigger);
+    .run(
+      input.stages.join("+"),
+      input.week,
+      input.trigger,
+      input.stats === undefined ? null : JSON.stringify(input.stats),
+    );
   return Number(res.lastInsertRowid);
 }
 

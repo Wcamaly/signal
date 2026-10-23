@@ -2,13 +2,14 @@ import { getChannels } from "./channels";
 import { getDb, getSetting } from "./db";
 import { ingestAll } from "./ingest";
 import { curateWeek } from "./agents/curator";
-import { buildCategoryDigest, buildDigest } from "./agents/digest";
-import { getCategories } from "./categories";
+import { buildDigestFor } from "./agents/digest";
+import { getDigestDefs } from "./digest-defs";
 import { writePosts } from "./agents/writer";
 import { llmStatus } from "./llm";
-import { finishRun, startRun, type RunTrigger } from "./runs";
-import { DEFAULT_VOICE, type Channel, type VoiceProfile } from "./types";
-import { resolveWeek, type WeekKey } from "./weeks";
+import { isDue, periodWeeks, previousPeriod, resolvePeriod, type PeriodKey } from "./periods";
+import { finishRun, runStats, startRun, type Run, type RunTrigger } from "./runs";
+import { DEFAULT_VOICE, type Channel, type DigestDef, type VoiceProfile } from "./types";
+import { previousWeekKey, resolveWeek, weekKey, type WeekKey } from "./weeks";
 
 export function getVoice(): VoiceProfile {
   return { ...DEFAULT_VOICE, ...getSetting<Partial<VoiceProfile>>("voice", {}) };
@@ -19,7 +20,7 @@ export type Stage = "ingest" | "curate" | "digest" | "posts";
 export const STAGES: { key: Stage; label: string }[] = [
   { key: "ingest", label: "Ingest sources" },
   { key: "curate", label: "Curate" },
-  { key: "digest", label: "Weekly digest" },
+  { key: "digest", label: "Digests" },
   { key: "posts", label: "Write posts" },
 ];
 
@@ -38,11 +39,19 @@ export function parseStages(raw: string | null | undefined): Stage[] {
 
 export type RunOptions = {
   /**
-   * `current`, `previous` or an ISO week. Ingest ignores it — an item is filed
-   * under the week it was published in — but curation, the digest and the posts
-   * all work on this one week.
+   * Legacy, from before digest definitions: `current`, `previous` or an ISO
+   * week. Curates that week only and writes every enabled weekly definition
+   * for it — the general digest included, as the old weekly schedule expects.
    */
   week?: string;
+  /** Write these definitions instead of what is due. */
+  defs?: string[];
+  /** `current`, `previous` (the default) or a period key, for `defs`. */
+  period?: string;
+  /** Exact definition + period pairs. What "Run again" replays. */
+  targets?: { def: string; period: string }[];
+  /** The clock the due rules read. Tests and manual checks set it. */
+  now?: Date;
   trigger?: RunTrigger;
 };
 
@@ -53,35 +62,166 @@ export type PipelineResult = {
   log: string[];
   stats: Record<string, unknown>;
   error?: string;
+  /**
+   * Why no run was opened (`runId` is null): the request itself was wrong
+   * (`invalid`), or another run is in flight (`busy`). Absent once a run
+   * opened — a run that then fails is a failure, not a refusal.
+   */
+  refused?: "invalid" | "busy";
 };
 
-export type PostGroup = { digestId: number; category: string; channels: Channel[] };
+/** One digest a run works on: a definition and the period it covers. */
+export type DigestTarget = { def: DigestDef; period: PeriodKey };
 
 /**
- * The posts stage, planned: one group per digest the channels write from.
- * A channel bound to a category with no digest this week is skipped with a
- * warning; the general digest missing is still an error, as it always was.
+ * What a run at `now` writes when nobody names anything: every enabled item
+ * definition whose cadence is due — daily every day, weekly on Monday, monthly
+ * on the 1st — each for the period that just closed.
  */
-export function groupChannelsByDigest(
-  week: string,
+export function dueTargets(defs: DigestDef[], now: Date): DigestTarget[] {
+  return defs
+    .filter((d) => d.enabled && d.kind === "items" && isDue(d.cadence, now))
+    .map((def) => ({ def, period: previousPeriod(def.cadence, now) }));
+}
+
+/** The digests a run works on, from its options. Throws on a bad request. */
+export function resolveTargets(options: RunOptions, defs: DigestDef[], now: Date): DigestTarget[] {
+  const find = (key: string) => {
+    const def = defs.find((d) => d.key === key);
+    if (!def) throw new Error(`Unknown digest "${key}". Available: ${defs.map((d) => d.key).join(", ")}.`);
+    if (def.kind !== "items") throw new Error(`"${def.label}" is a roll-up: roll-ups are not available yet.`);
+    return def;
+  };
+  if (options.targets) {
+    return options.targets.map((t) => {
+      const def = find(t.def);
+      return { def, period: resolvePeriod(def.cadence, t.period, now) };
+    });
+  }
+  if (options.defs?.length) {
+    return [...new Set(options.defs)].map((key) => {
+      const def = find(key);
+      return { def, period: resolvePeriod(def.cadence, options.period, now) };
+    });
+  }
+  if (options.period) throw new Error('"period" needs "defs": it says which period of which digests.');
+  if (options.week) {
+    const week = resolveWeek(options.week, now);
+    return defs
+      .filter((d) => d.enabled && d.kind === "items" && d.cadence === "weekly")
+      .map((def) => ({ def, period: week }));
+  }
+  return dueTargets(defs, now);
+}
+
+/**
+ * The weeks the curate stage scores. The current week every day, and on
+ * Monday the one that just closed too, so its last day is scored before the
+ * weekly digest is written. A legacy `week` replaces both. Digests asked for
+ * by name add the weeks they cover.
+ */
+export function curateWeeks(options: RunOptions, targets: DigestTarget[], now: Date): WeekKey[] {
+  const weeks = options.week
+    ? [resolveWeek(options.week, now)]
+    : [weekKey(now), ...(now.getDay() === 1 ? [previousWeekKey(now)] : [])];
+  if (options.targets || options.defs?.length) {
+    for (const t of targets) weeks.push(...periodWeeks(t.period));
+  }
+  return [...new Set(weeks)];
+}
+
+/**
+ * The week a run is filed under (runs.week_key, the filter on /runs): the
+ * legacy `week` when given, else the week of its weekly digest when it writes
+ * exactly one, else the week it runs in.
+ */
+export function runWeek(options: RunOptions, targets: DigestTarget[], now: Date): WeekKey {
+  if (options.week) return resolveWeek(options.week, now);
+  const weekly = [...new Set(targets.filter((t) => t.def.cadence === "weekly").map((t) => t.period))];
+  return weekly.length === 1 ? weekly[0] : weekKey(now);
+}
+
+export type PostGroup = { digestId: number; defKey: string; period: PeriodKey; channels: Channel[] };
+
+/**
+ * The posts stage, planned: one group per digest of this run that a channel
+ * writes from. A channel follows its definition (`digest_def`, NULL = general)
+ * and writes only when that definition is one of the run's targets — on any
+ * other day it writes nothing, and that is not a warning.
+ *
+ * `written` holds the digests the digest stage wrote in this same run; a
+ * target missing from it was skipped or failed, and its channels are skipped
+ * with a warning. When the digest stage did not run (the run dialog runs one
+ * stage per call), `written` is null and the stored digest of each target is
+ * used instead.
+ */
+export function groupChannelsByTarget(
+  targets: DigestTarget[],
+  written: Map<string, number> | null,
   channels: Channel[],
 ): { groups: PostGroup[]; skipped: string[] } {
-  const byCategory = new Map<string, Channel[]>();
-  for (const c of channels) {
-    const key = c.category ?? "";
-    byCategory.set(key, [...(byCategory.get(key) ?? []), c]);
-  }
-
-  const find = getDb().prepare("SELECT id FROM digests WHERE week_key = ? AND category = ?");
+  const find = getDb().prepare("SELECT id FROM digests WHERE def_key = ? AND period_key = ?");
   const groups: PostGroup[] = [];
   const skipped: string[] = [];
-  for (const [category, list] of byCategory) {
-    const row = find.get(week, category) as { id: number } | undefined;
-    if (row) groups.push({ digestId: row.id, category, channels: list });
-    else if (!category) throw new Error(`There is no digest for ${week} yet.`);
-    else skipped.push(`Channels ${list.map((c) => c.label).join(", ")} skipped: no "${category}" digest for ${week}.`);
+  for (const { def, period } of targets) {
+    const list = channels.filter((c) => (c.digest_def ?? "general") === def.key);
+    if (!list.length) continue;
+    const id = written
+      ? written.get(def.key)
+      : (find.get(def.key, period) as { id: number } | undefined)?.id;
+    if (id !== undefined) groups.push({ digestId: id, defKey: def.key, period, channels: list });
+    else skipped.push(`Channels ${list.map((c) => c.label).join(", ")} skipped: no "${def.label}" digest for ${period}.`);
   }
   return { groups, skipped };
+}
+
+/** What a browser may ask for: everything in RunOptions but the clock and the trigger. */
+export type ClientRunOptions = Pick<RunOptions, "week" | "defs" | "period" | "targets">;
+
+/**
+ * The run options a server action accepts from the browser. `now` and
+ * `trigger` are dropped — the due rules follow the server's clock, never the
+ * visitor's — and the rest is checked for shape only: which definitions and
+ * periods exist is resolveTargets()'s job, as for /api/cron.
+ */
+export function clientRunOptions(raw: ClientRunOptions | null | undefined): ClientRunOptions {
+  if (!raw || typeof raw !== "object") return {};
+  const out: ClientRunOptions = {};
+  const isStr = (v: unknown): v is string => typeof v === "string";
+  if (raw.week !== undefined) {
+    if (!isStr(raw.week)) throw new Error('"week" must be a string.');
+    out.week = raw.week;
+  }
+  if (raw.period !== undefined) {
+    if (!isStr(raw.period)) throw new Error('"period" must be a string.');
+    out.period = raw.period;
+  }
+  if (raw.defs !== undefined) {
+    if (!Array.isArray(raw.defs) || !raw.defs.every(isStr)) throw new Error('"defs" must be a list of digest keys.');
+    out.defs = [...raw.defs];
+  }
+  if (raw.targets !== undefined) {
+    if (
+      !Array.isArray(raw.targets) ||
+      !raw.targets.every((t) => t && typeof t === "object" && isStr(t.def) && isStr(t.period))
+    ) {
+      throw new Error('"targets" must be a list of { def, period } pairs.');
+    }
+    out.targets = raw.targets.map(({ def, period }) => ({ def, period }));
+  }
+  return out;
+}
+
+/**
+ * "Run again": the stages and digests of a past run, interrupted ones
+ * included. Every run opened since targets existed records them when it
+ * starts; a run without them predates digest definitions and replays as the
+ * old weekly run of its week.
+ */
+export function relaunchOptions(run: Pick<Run, "stats" | "week_key">): RunOptions {
+  const targets = runStats(run).targets;
+  if (Array.isArray(targets)) return { targets: targets as { def: string; period: string }[] };
+  return run.week_key ? { week: run.week_key } : {};
 }
 
 export async function runPipeline(
@@ -90,21 +230,36 @@ export async function runPipeline(
 ): Promise<PipelineResult> {
   const voice = getVoice();
   const log: string[] = [];
+  const now = options.now ?? new Date();
 
-  // Resolving the week and claiming the slot both happen before there is a run
-  // to record the failure in, so they report back the same shape as any other
-  // failure rather than throwing at the caller.
+  // Resolving what to work on and claiming the slot both happen before there
+  // is a run to record the failure in, so they report back the same shape as
+  // any other failure rather than throwing at the caller.
   let week: WeekKey;
-  let runId: number;
+  let targets: DigestTarget[];
+  let weeks: WeekKey[];
   try {
-    week = resolveWeek(options.week);
-    runId = startRun({ stages, week, trigger: options.trigger ?? "ui" });
+    targets = resolveTargets(options, getDigestDefs(), now);
+    week = runWeek(options, targets, now);
+    weeks = curateWeeks(options, targets, now);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg };
+    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg, refused: "invalid" };
   }
 
-  const stats: Record<string, unknown> = { week };
+  // `targets` is what "Run again" replays. Written when the run opens, so a
+  // run whose process dies half-way still knows what it was working on.
+  const stats: Record<string, unknown> = {
+    week,
+    targets: targets.map((t) => ({ def: t.def.key, period: t.period })),
+  };
+  let runId: number;
+  try {
+    runId = startRun({ stages, week, trigger: options.trigger ?? "ui", stats });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg, refused: "busy" };
+  }
 
   const status = llmStatus();
   if (!status.ready && stages.some((s) => s !== "ingest")) {
@@ -119,49 +274,66 @@ export async function runPipeline(
       r.errors.forEach((e) => log.push(`⚠ ${e}`));
     }
     if (stages.includes("curate")) {
-      const r = await curateWeek(week, voice);
-      stats.curate = r;
-      log.push(`Curation: ${r.scored} scored, ${r.selected} selected, ${r.images} images found.`);
+      const curated: Record<string, unknown>[] = [];
+      for (const w of weeks) {
+        const r = await curateWeek(w, voice);
+        curated.push({ week: w, ...r });
+        log.push(`Curation ${w}: ${r.scored} scored, ${r.selected} selected, ${r.images} images found.`);
+      }
+      stats.curate = curated;
     }
+    // Keyed by definition: a run has at most one period per definition.
+    const written = new Map<string, number>();
     if (stages.includes("digest")) {
-      const r = await buildDigest(week, voice);
-      stats.digest = r;
-      log.push(`Weekly digest written from ${r.items} signals.`);
-
-      // One failing category digest is a warning; the general one failing above
-      // still fails the run.
-      const categoryDigests: Record<string, unknown>[] = [];
-      for (const category of getCategories().filter((c) => c.digest_enabled)) {
+      const digests: Record<string, unknown>[] = [];
+      if (!targets.length) log.push("No digest is due in this run.");
+      for (const { def, period } of targets) {
         try {
-          const c = await buildCategoryDigest(week, category, voice);
-          categoryDigests.push({ key: category.key, ...c });
-          log.push(
-            "skipped" in c
-              ? `⚠ Digest "${category.label}" skipped: no scored items this week.`
-              : `Digest "${category.label}": ${c.items} signals.`,
-          );
+          const r = await buildDigestFor(def, period, voice);
+          digests.push({ def: def.key, period, ...r });
+          if ("skipped" in r) {
+            log.push(`⚠ Digest "${def.label}" ${period} skipped: no scored items.`);
+          } else {
+            written.set(def.key, r.digestId);
+            log.push(`Digest "${def.label}" ${period}: ${r.items} signals.`);
+          }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          categoryDigests.push({ key: category.key, error: msg });
-          log.push(`⚠ Digest "${category.label}" failed: ${msg}`);
+          digests.push({ def: def.key, period, error: msg });
+          log.push(`⚠ Digest "${def.label}" ${period} failed: ${msg}`);
         }
       }
-      if (categoryDigests.length) stats.categoryDigests = categoryDigests;
+      stats.digests = digests;
+      // One failing definition is a warning; all of them failing is a failed run.
+      if (digests.length && digests.every((d) => "error" in d)) {
+        throw new Error(`Every digest failed. The first one: ${String(digests[0].error)}`);
+      }
     }
     if (stages.includes("posts")) {
-      const channels = getChannels(true).filter((c) => c.posts_per_run > 0);
-      if (!channels.length) throw new Error("No channel is enabled. Enable one under Channels.");
-      const plan = groupChannelsByDigest(week, channels);
+      // Only the channels bound to this run's digests matter: on a day when
+      // no bound definition is due, every channel being off is not an error.
+      const bound = getChannels().filter((c) => targets.some((t) => (c.digest_def ?? "general") === t.def.key));
+      const channels = bound.filter((c) => c.enabled && c.posts_per_run > 0);
+      if (bound.length && !channels.length) {
+        throw new Error(
+          `No channel of the digests in this run is enabled (${bound.map((c) => c.label).join(", ")}). Enable one under Channels.`,
+        );
+      }
+      const plan = groupChannelsByTarget(targets, stages.includes("digest") ? written : null, channels);
       plan.skipped.forEach((s) => log.push(`⚠ ${s}`));
       let created = 0;
-      let written = 0;
+      let channelCount = 0;
       for (const g of plan.groups) {
         const r = await writePosts(g.digestId, voice, g.channels);
         created += r.created;
-        written += r.channels;
+        channelCount += r.channels;
       }
-      stats.posts = { created, channels: written };
-      log.push(`Writing: ${created} drafts across ${written} channels.`);
+      stats.posts = { created, channels: channelCount };
+      log.push(
+        plan.groups.length || plan.skipped.length
+          ? `Writing: ${created} drafts across ${channelCount} channels.`
+          : "Writing: no channel writes from the digests of this run.",
+      );
     }
 
     finishRun(runId, { status: "ok", stats, log });

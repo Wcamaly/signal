@@ -4,8 +4,10 @@ import "./globals.css";
 import I18nProvider from "@/components/I18nProvider";
 import Nav from "@/components/Nav";
 import RunButton from "@/components/RunButton";
+import { getDigestDefs } from "@/lib/digest-defs";
 import { getDictionary, getUiLocale } from "@/lib/i18n";
 import { llmStatus } from "@/lib/llm";
+import { dueTargets } from "@/lib/pipeline";
 
 export function generateMetadata(): Metadata {
   const t = getDictionary();
@@ -16,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const status = llmStatus();
   const locale = getUiLocale();
   const t = getDictionary();
+  const defs = getDigestDefs(true);
 
   return (
     <html lang={locale}>
@@ -46,7 +49,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {status.ready ? `${status.provider}/${status.model}` : t.app.noModel}
                 </span>
               </Link>
-              <RunButton />
+              <RunButton
+                defs={defs
+                  .filter((d) => d.kind === "items")
+                  .map(({ key, label, cadence }) => ({ key, label, cadence }))}
+                due={dueTargets(defs, new Date()).map((d) => `${d.def.label} (${d.period})`)}
+              />
             </div>
           </aside>
           <main className="flex-1 min-w-0">{children}</main>

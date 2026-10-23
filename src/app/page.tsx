@@ -41,7 +41,7 @@ export default function Dashboard() {
   const published = count("SELECT COUNT(*) c FROM posts WHERE status = 'published'");
   const sources = count("SELECT COUNT(*) c FROM sources WHERE enabled = 1");
 
-  const digest = db.prepare("SELECT * FROM digests WHERE week_key = ? AND category = ''").get(week) as
+  const digest = db.prepare("SELECT * FROM digests WHERE def_key = 'general' AND period_key = ?").get(week) as
     | { id: number; title: string; subtitle: string; created_at: string }
     | undefined;
 

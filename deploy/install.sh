@@ -38,7 +38,7 @@ fi
 say "Node $(node -v)"
 
 # ---- timezone ---------------------------------------------------------------
-# The weekly timer uses the container local time, which defaults to UTC.
+# The daily timer uses the container local time, which defaults to UTC.
 if [ -n "${TZ:-}" ]; then
   say "Timezone: $TZ"
   timedatectl set-timezone "$TZ" 2>/dev/null || ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime

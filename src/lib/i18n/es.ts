@@ -23,12 +23,13 @@ export const es: Dictionary = {
     configure: "Configuración",
     dashboard: "Panel",
     radar: "Radar",
-    digest: "Resumen semanal",
+    digest: "Archivo",
     posts: "Publicaciones",
     sources: "Fuentes",
     runs: "Ejecuciones",
     voice: "Voz y ajustes",
     channels: "Canales",
+    digestDefs: "Resúmenes",
     prompts: "Prompts",
     model: "Modelo y claves",
   },
@@ -62,11 +63,19 @@ export const es: Dictionary = {
     notRun: "No se ejecutó.",
     start: "Ejecutar",
     starting: "Arrancando",
-    week: "Semana",
-    weekCurrent: "Actual",
-    weekPrevious: "Anterior",
-    weekHint:
-      "Leer fuentes siempre recorre todas. La curación, el resumen y los posts trabajan sobre la semana elegida acá.",
+    digests: "Resúmenes",
+    due: "Lo que toca ahora",
+    dueNow: (labels: string) =>
+      `Tocan ahora: ${labels}. Los resúmenes diarios tocan todos los días, los semanales los lunes, los mensuales el día 1 — cada uno sobre el período que acaba de cerrar.`,
+    nothingDue:
+      "Ahora no toca ninguno. Los resúmenes diarios tocan todos los días, los semanales los lunes, los mensuales el día 1.",
+    period: "Período",
+    periodCurrent: "Actual",
+    periodPrevious: "Anterior",
+    periodKey: "Clave del período",
+    periodInvalid: (example: string) => `No es un período de este resumen. Ejemplo: ${example}`,
+    scopeHint:
+      "Leer fuentes siempre recorre todas. La curación puntúa la semana actual, y los lunes también la que cerró. Los resúmenes y los posts trabajan sobre lo que elijas acá.",
     progressRunning: (done: number, total: number, stage: string, seconds: number) =>
       `${done}/${total} · ${stage} · ${seconds}s`,
     progressDone: (done: number, total: number, seconds: number) =>
@@ -78,10 +87,10 @@ export const es: Dictionary = {
       },
       curate: { label: "Curar", hint: "Puntúa, agrupa y selecciona las señales de la semana." },
       digest: {
-        label: "Resumen semanal",
-        hint: "Escribe el documento de trabajo a partir de las señales seleccionadas.",
+        label: "Resúmenes",
+        hint: "Escribe los resúmenes elegidos arriba con las mejores señales de su período.",
       },
-      posts: { label: "Escribir posts", hint: "Redacta borradores para cada canal activo." },
+      posts: { label: "Escribir posts", hint: "Redacta borradores para los canales de esos resúmenes." },
     },
   },
 
@@ -111,7 +120,9 @@ export const es: Dictionary = {
     noLog: "Esta ejecución no dejó registro.",
     result: "Resultado",
     relaunch: "Ejecutar de nuevo",
-    relaunchHint: (week: string) => `Vuelve a correr las mismas etapas sobre ${week}.`,
+    relaunchTargets: (digests: string) => `Vuelve a correr las mismas etapas, para los mismos resúmenes: ${digests}.`,
+    relaunchNoTargets: "Vuelve a correr las mismas etapas. En esta corrida no tocaba ningún resumen.",
+    relaunchLegacy: (week: string) => `Vuelve a correr las mismas etapas, como la corrida semanal de ${week}.`,
     unknownWeek: "sin semana",
   },
 
@@ -165,10 +176,9 @@ export const es: Dictionary = {
 
   digestList: {
     kicker: "Archivo",
-    title: "Resúmenes semanales",
+    title: "Resúmenes",
     sub: "El documento de trabajo del que sale cada publicación. Tiene opinión; no es un newsletter.",
     empty: "Todavía no hay ningún resumen. Ejecutá el pipeline desde la barra lateral.",
-    general: "General",
   },
 
   digestPage: {
@@ -274,16 +284,15 @@ export const es: Dictionary = {
   },
   categories: {
     title: "Categorías",
-    hint: "Agrupá tus fuentes. Una categoría con el resumen activado tiene su propio resumen semanal, hecho con sus items mejor puntuados, y los canales pueden escribir a partir de él.",
+    hint: "Agrupá tus fuentes. Un resumen propio para algunas categorías — diario, semanal o mensual — se arma en",
+    digestsPointer: "Configuración → Resúmenes.",
     name: "Nombre",
     namePlaceholder: "Nueva categoría",
     colour: "Color",
-    digest: "Resumen semanal",
-    digestItems: "Items",
     order: "Orden",
     create: "Crear",
     confirmDelete: (label: string) =>
-      `¿Eliminar «${label}»? Sus fuentes pasan a General y sus canales vuelven al resumen general.`,
+      `¿Eliminar «${label}»? Sus fuentes pasan a General y sale de todos los resúmenes — un resumen que se queda sin categorías se desactiva.`,
   },
 
   settings: {
@@ -322,7 +331,7 @@ export const es: Dictionary = {
       "Pegá 2 o 3 posts tuyos que hayan funcionado. Sin esto el agente escribe correcto pero neutro; con esto empieza a sonar a vos.",
     pipeline: "Pipeline",
     signalsPerWeek: "Señales seleccionadas por semana",
-    signalsPerWeekHint: "Cuántos items sobreviven a la curación y alimentan el resumen.",
+    signalsPerWeekHint: "Cuántos items sobreviven a la curación y alimentan el resumen General. Es el mismo número que sus items en Resúmenes: si cambiás uno, cambia el otro.",
     maxAge: "Ignorar items más viejos que (días)",
     maxAgeHint: "Todo lo publicado antes de esta ventana se descarta al leer las fuentes.",
     perChannelNote: "Cuántos posts recibe cada canal se define por canal, en",
@@ -345,10 +354,10 @@ export const es: Dictionary = {
     inherit: "Heredar del perfil de voz",
     languageHint:
       "Los posts de este canal se escriben en este idioma. Cualquier post individual se puede cambiar desde la cola.",
+    deletedDigest: (key: string) => `${key} (borrado)`,
     sourceDigest: "Resumen de origen",
-    generalDigest: "Resumen general",
     sourceDigestHint:
-      "De qué resumen semanal salen los posts de este canal. Un canal de categoría se salta la semana en que esa categoría no tiene resumen.",
+      "El resumen del que salen los posts de este canal. Escribe cuando ese resumen se escribe: todos los días si es diario, los lunes si es semanal, el día 1 si es mensual.",
     handle: "Usuario (solo para la vista previa)",
     handleHint: "Se muestra debajo de tu nombre en la vista previa. No se envía a ningún lado.",
     template: "Plantilla de publicación",
@@ -361,6 +370,27 @@ export const es: Dictionary = {
     credentialError: "No se pudo guardar la credencial",
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} caracteres · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} por ejecución${language ? ` · ${language}` : ""}`,
+  },
+
+  digestDefs: {
+    title: "Resúmenes",
+    sub: "De qué está hecho cada resumen y cada cuánto se escribe. El general alimenta el panel y todo canal que no esté asociado a otro resumen.",
+    hint: "Cada ejecución escribe los resúmenes activos que tocan: los diarios todos los días, los semanales los lunes, los mensuales el día 1 — cada uno sobre el período que acaba de cerrar.",
+    newDef: "Nuevo resumen",
+    create: "Crear resumen",
+    name: "Nombre",
+    namePlaceholder: "IA diaria",
+    cadence: "Frecuencia",
+    cadences: { daily: "diario", weekly: "semanal", monthly: "mensual" },
+    itemCount: "Items",
+    order: "Orden",
+    categories: "Categorías",
+    categoriesHint:
+      "Lo alimentan las fuentes de estas categorías. Ninguna marcada = todas. Primero van los items que eligió el curador, después los mejor puntuados; los rechazados nunca.",
+    allCategories: "Todas las categorías",
+    summary: (scope: string, items: number) => `${scope} · hasta ${items} items`,
+    confirmDelete: (label: string) =>
+      `¿Eliminar «${label}»? Sus canales vuelven al resumen general. Los resúmenes que ya escribió quedan en el archivo.`,
   },
 
   promptsPage: {
@@ -467,14 +497,14 @@ export const es: Dictionary = {
           "Puntúa cada item de la semana de 0 a 100, agrupa los duplicados en una sola historia y propone un ángulo. Cambiar esto cambia lo que llega al radar.",
       },
       digest: {
-        label: "Resumen semanal",
+        label: "Resumen (todas las categorías)",
         description:
-          "Escribe el documento de trabajo de la semana a partir de las señales seleccionadas. Es la materia prima de la que sale cada post.",
+          "Escribe el documento de trabajo a partir de las señales seleccionadas. Lo usa todo resumen que cubre todas las categorías, el general incluido. Es la materia prima de la que sale cada post.",
       },
       category_digest: {
         label: "Resumen por categoría",
         description:
-          "Escribe el resumen semanal de una categoría a partir de sus items mejor puntuados. Se ejecuta una vez por cada categoría con el resumen activado; los canales asociados a esa categoría escriben a partir de él.",
+          "Escribe un resumen acotado a algunas categorías a partir de sus items mejor puntuados. Lo usa toda definición de resumen que elige categorías; los canales asociados a ella escriben a partir de él.",
       },
       writer: {
         label: "Escritor",

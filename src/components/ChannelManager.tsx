@@ -7,7 +7,7 @@ import { useT } from "./I18nProvider";
 import LanguageSelect from "./LanguageSelect";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { PublisherInfo } from "@/lib/publishers";
-import type { Category, Channel } from "@/lib/types";
+import type { Channel, DigestDef } from "@/lib/types";
 
 type Draft = {
   key: string;
@@ -16,7 +16,7 @@ type Draft = {
   color: string;
   hint: string;
   language: string;
-  category: string;
+  digest_def: string;
   template: string;
   publisher: string;
   config: Record<string, string>;
@@ -33,7 +33,7 @@ const BLANK: Draft = {
   color: "#8b93a1",
   hint: "",
   language: "",
-  category: "",
+  digest_def: "",
   template: "{{body}}\n\n{{hashtags}}",
   publisher: "manual",
   config: {},
@@ -57,7 +57,7 @@ function toDraft(c: Channel): Draft {
     color: c.color,
     hint: c.hint ?? "",
     language: c.language ?? "",
-    category: c.category ?? "",
+    digest_def: c.digest_def ?? "",
     template: c.template ?? "{{body}}",
     publisher: c.publisher,
     config,
@@ -74,7 +74,7 @@ function Editor({
   publishers,
   credentials,
   templateVariables,
-  categories,
+  defs,
   onDone,
 }: {
   initial: Draft;
@@ -82,7 +82,7 @@ function Editor({
   publishers: PublisherInfo[];
   credentials: CredentialInfo[];
   templateVariables: { name: string; description: string }[];
-  categories: Category[];
+  defs: DigestDef[];
   onDone: () => void;
 }) {
   const [d, setD] = useState(initial);
@@ -183,16 +183,23 @@ function Editor({
           <span className="label">{t.channels.sourceDigest}</span>
           <select
             className="select"
-            value={d.category}
-            onChange={(e) => setD({ ...d, category: e.target.value })}
+            value={d.digest_def}
+            onChange={(e) => setD({ ...d, digest_def: e.target.value })}
           >
-            <option value="">{t.channels.generalDigest}</option>
-            {/* Only categories that get a digest, plus the one already bound. */}
-            {categories.filter((c) => c.digest_enabled || c.key === d.category).map((c) => (
-              <option key={c.key} value={c.key}>
-                {c.label}
-              </option>
-            ))}
+            {/* General is the empty value: an unbound channel follows it. Then
+                every enabled definition, plus the one already bound. */}
+            {defs
+              .filter((x) => x.key === "general" || x.enabled || x.key === d.digest_def)
+              .map((x) => (
+                <option key={x.key} value={x.key === "general" ? "" : x.key}>
+                  {x.label} · {t.digestDefs.cadences[x.cadence]}
+                </option>
+              ))}
+            {/* Bound to a definition that no longer exists: keep the saved
+                value visible instead of the select silently showing General. */}
+            {d.digest_def && !defs.some((x) => x.key === d.digest_def) && (
+              <option value={d.digest_def}>{t.channels.deletedDigest(d.digest_def)}</option>
+            )}
           </select>
           <p className="text-[11px] text-faint mt-1">{t.channels.sourceDigestHint}</p>
         </div>
@@ -333,13 +340,13 @@ export default function ChannelManager({
   publishers,
   credentials,
   templateVariables,
-  categories,
+  defs,
 }: {
   channels: Channel[];
   publishers: PublisherInfo[];
   credentials: CredentialInfo[];
   templateVariables: { name: string; description: string }[];
-  categories: Category[];
+  defs: DigestDef[];
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -366,7 +373,7 @@ export default function ChannelManager({
             publishers={publishers}
             credentials={credentials}
             templateVariables={templateVariables}
-            categories={categories}
+            defs={defs}
             onDone={() => setCreating(false)}
           />
         </section>
@@ -383,9 +390,9 @@ export default function ChannelManager({
               <div className="flex items-center gap-2.5">
                 <span className="text-[14px] font-semibold tracking-tight">{c.label}</span>
                 <span className="chip !text-[10px] !py-0">{c.publisher}</span>
-                {c.category && (
+                {c.digest_def && (
                   <span className="chip !text-[10px] !py-0">
-                    {categories.find((x) => x.key === c.category)?.label ?? c.category}
+                    {defs.find((x) => x.key === c.digest_def)?.label ?? t.channels.deletedDigest(c.digest_def)}
                   </span>
                 )}
                 {!c.enabled && <span className="chip !text-[10px] !py-0">{t.common.disabled}</span>}
@@ -421,7 +428,7 @@ export default function ChannelManager({
               publishers={publishers}
               credentials={credentials}
               templateVariables={templateVariables}
-              categories={categories}
+              defs={defs}
               onDone={() => setEditing(null)}
             />
           )}

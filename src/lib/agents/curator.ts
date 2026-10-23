@@ -1,4 +1,5 @@
-import { getDb, getSetting } from "../db";
+import { getDb } from "../db";
+import { generalItemCount } from "../digest-defs";
 import { fillSelectedImages } from "../images";
 import { chatJson, llmReady, modelLabel } from "../llm";
 import { getPrompt, renderPrompt } from "../prompts";
@@ -33,10 +34,16 @@ function heuristicScore(item: Item, voice: VoiceProfile): Verdict {
   };
 }
 
+/**
+ * Scores the week's items that have no score yet — never re-scores, so a daily
+ * run costs one pass over that day's new items — then re-marks the week's
+ * top N as selected, N being the general definition's item count (the same
+ * number as the `signals_per_week` setting).
+ */
 export async function curateWeek(week: string, voice: VoiceProfile) {
   const db = getDb();
   const items = db
-    .prepare("SELECT * FROM items WHERE week_key = ? AND status IN ('new','scored') ORDER BY published_at DESC LIMIT 120")
+    .prepare("SELECT * FROM items WHERE week_key = ? AND status = 'new' ORDER BY published_at DESC LIMIT 120")
     .all(week) as Item[];
 
   if (!items.length) return { scored: 0, selected: 0, images: 0, model: modelLabel() };
@@ -84,17 +91,19 @@ export async function curateWeek(week: string, voice: VoiceProfile) {
   });
   tx(verdicts);
 
-  // Selection: best item per cluster, top N of the week.
-  const limit = getSetting<number>("signals_per_week", 8);
+  // Selection: best item per cluster, top N of the week (N = general.item_count). It runs every day now,
+  // so it must not undo the radar: a rejected item is never picked, and one
+  // already written about stays `used` (it still counts towards the N).
+  const limit = generalItemCount();
   db.prepare("UPDATE items SET status = 'scored' WHERE week_key = ? AND status = 'selected'").run(week);
   const top = db
     .prepare(
-      `SELECT id FROM items WHERE week_key = ? AND score IS NOT NULL
+      `SELECT id FROM items WHERE week_key = ? AND score IS NOT NULL AND status != 'rejected'
        GROUP BY COALESCE(cluster, title) HAVING score = MAX(score)
        ORDER BY score DESC LIMIT ?`,
     )
     .all(week, limit) as { id: number }[];
-  const sel = db.prepare("UPDATE items SET status = 'selected' WHERE id = ?");
+  const sel = db.prepare("UPDATE items SET status = 'selected' WHERE id = ? AND status = 'scored'");
   db.transaction(() => top.forEach((t) => sel.run(t.id)))();
 
   // Last, over the ten or so items that were actually selected.
