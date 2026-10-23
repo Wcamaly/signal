@@ -225,6 +225,23 @@ describe("definitions from the category digests", () => {
     ]);
   });
 
+  it("boots on a signals_per_week that is not JSON and on odd digest_items", () => {
+    const db = legacy();
+    db.exec(`
+      UPDATE settings SET value = 'eight' WHERE key = 'signals_per_week';
+      UPDATE categories SET digest_items = NULL WHERE key = 'regulation';
+      UPDATE categories SET digest_enabled = 1, digest_items = 99 WHERE key = 'labs';
+      UPDATE categories SET digest_enabled = 1, digest_items = 0 WHERE key = 'press';
+    `);
+    expect(() => seedLegacyDigestDefs(db)).not.toThrow();
+    const counts = Object.fromEntries(
+      (db.prepare("SELECT key, item_count FROM digest_defs").all() as { key: string; item_count: number }[]).map(
+        (r) => [r.key, r.item_count],
+      ),
+    );
+    expect(counts).toEqual({ general: 8, regulation: 8, labs: 30, press: 1 });
+  });
+
   it("runs only once: a definition deleted later does not come back", () => {
     const db = legacy();
     seedLegacyDigestDefs(db);

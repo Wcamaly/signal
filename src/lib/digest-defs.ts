@@ -1,4 +1,4 @@
-import { getDb, getSetting, parseJson } from "./db";
+import { clampItemCount, getDb, getSetting, parseJson } from "./db";
 import { isCadence, type Cadence } from "./periods";
 import { slugify } from "./slug";
 import type { DigestDef, DigestKind } from "./types";
@@ -30,7 +30,6 @@ function toDef(row: Row): DigestDef {
   };
 }
 
-const clampItems = (n: number) => Math.min(30, Math.max(1, Math.round(n) || 8));
 
 /**
  * Runs on every read, like seedCategories(). Only makes sure `general` exists;
@@ -44,7 +43,7 @@ export function seedDigestDefs() {
        VALUES (?, 'General', 'items', 'weekly', '[]', ?, 1, 0)
        ON CONFLICT(key) DO NOTHING`,
     )
-    .run(GENERAL_DEF, clampItems(getSetting<number>("signals_per_week", 8)));
+    .run(GENERAL_DEF, clampItemCount(getSetting<number>("signals_per_week", 8)));
 }
 
 export function getDigestDefs(onlyEnabled = false): DigestDef[] {
@@ -99,9 +98,9 @@ export function saveDigestDef(input: DigestDefInput): string {
     label,
     cadence: input.cadence,
     categories: JSON.stringify(categories),
-    item_count: clampItems(input.item_count),
+    item_count: clampItemCount(input.item_count),
     enabled: input.enabled ? 1 : 0,
-    sort_order: Math.round(input.sort_order ?? 100),
+    sort_order: Number.isFinite(input.sort_order) ? Math.round(input.sort_order as number) : 100,
   };
 
   if (input.key) {

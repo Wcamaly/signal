@@ -64,6 +64,15 @@ describe("saveDigestDef", () => {
     saveDigestDef(input({ key, label: "Renamed", item_count: 99, enabled: false }));
     expect(getDigestDef(key)).toMatchObject({ label: "Renamed", item_count: 30, enabled: 0 });
   });
+
+  it("clamps 0 to 1, and falls back to the defaults on NaN", () => {
+    const key = saveDigestDef(input({ item_count: 0, sort_order: 7.4 }));
+    expect(getDigestDef(key)).toMatchObject({ item_count: 1, sort_order: 7 });
+    saveDigestDef(input({ key, item_count: NaN, sort_order: NaN }));
+    expect(getDigestDef(key)).toMatchObject({ item_count: 8, sort_order: 100 });
+    saveDigestDef(input({ key, item_count: -5, sort_order: Infinity }));
+    expect(getDigestDef(key)).toMatchObject({ item_count: 1, sort_order: 100 });
+  });
 });
 
 describe("deleteDigestDef", () => {

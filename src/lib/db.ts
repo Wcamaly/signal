@@ -286,7 +286,7 @@ export function seedLegacyDigestDefs(db: Database.Database) {
   const raw = db.prepare("SELECT value FROM settings WHERE key = 'signals_per_week'").get() as
     | { value: string }
     | undefined;
-  const perWeek = Math.min(30, Math.max(1, Math.round(Number(raw ? JSON.parse(raw.value) : 8)) || 8));
+  const perWeek = clampItemCount(parseJson<unknown>(raw?.value, 8));
   db.transaction(() => {
     db.prepare(
       `INSERT INTO digest_defs (key, label, kind, cadence, categories, item_count, enabled, sort_order)
@@ -298,14 +298,21 @@ export function seedLegacyDigestDefs(db: Database.Database) {
          WHERE digest_enabled = 1 OR key IN (SELECT category FROM channels WHERE category IS NOT NULL)
          ORDER BY sort_order, label`,
       )
-      .all() as { key: string; label: string; digest_enabled: number; digest_items: number; sort_order: number }[];
+      .all() as { key: string; label: string; digest_enabled: number; digest_items: number | null; sort_order: number }[];
     const insert = db.prepare(
       `INSERT INTO digest_defs (key, label, kind, cadence, categories, item_count, enabled, sort_order)
        VALUES (?, ?, 'items', 'weekly', ?, ?, ?, ?) ON CONFLICT(key) DO NOTHING`,
     );
     for (const c of categories) {
       const label = c.key === "general" ? `${c.label} (category)` : c.label;
-      insert.run(legacyDefKey(c.key), label, JSON.stringify([c.key]), c.digest_items, c.digest_enabled ? 1 : 0, c.sort_order);
+      insert.run(
+        legacyDefKey(c.key),
+        label,
+        JSON.stringify([c.key]),
+        clampItemCount(c.digest_items),
+        c.digest_enabled ? 1 : 0,
+        c.sort_order,
+      );
     }
     db.exec(
       `UPDATE channels SET digest_def = ${LEGACY_DEF_KEY_SQL("category")}
@@ -350,6 +357,16 @@ export function deleteSetting(key: string) {
 }
 
 /* ---------- misc ---------- */
+
+/**
+ * A digest's item count, 1..30. Anything that is not a number (NULL, a word,
+ * NaN) falls back to 8; a number out of range is clamped, so 0 becomes 1.
+ * Lives here, not in digest-defs.ts, because the boot-time seed needs it.
+ */
+export function clampItemCount(value: unknown): number {
+  const n = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
+  return Number.isFinite(n) ? Math.min(30, Math.max(1, Math.round(n))) : 8;
+}
 
 export function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   if (!raw) return fallback;
