@@ -115,14 +115,16 @@ same chips filter the radar and the digest archive.
 - **Weekly digest** turns on a digest of its own for that category. The digest
   stage writes the general digest first, then one per category with this on,
   built from the category's **Items** best-scored items of the week — selected
-  for the general digest or not. A category with nothing scored that week is
+  for the general digest or not, but never one you rejected on the radar. A
+  category with nothing scored that week is
   skipped with a warning in the run log. Its prompt is **Category digest**
   under Prompts.
 - Deleting a category moves its sources to **General** and its channels back to
   the general digest. General itself cannot be deleted. Digests already written
   for a deleted category stay in the archive under its key.
-- **Restore default sources** brings back the shipped sources, and with them any
-  shipped category you had deleted.
+- A deleted shipped category comes back only if one of its default sources is
+  restored: its sources keep their URLs when they move to General, so
+  **Restore default sources** has nothing to add for them.
 
 ---
 

@@ -11,14 +11,14 @@ import type { Source } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type Search = Promise<{ cat?: string }>;
+type Search = Promise<{ cat?: string | string[] }>;
 
 export default async function SourcesPage({ searchParams }: { searchParams: Search }) {
   const { cat } = await searchParams;
   const t = getDictionary();
   seedSources();
   const categories = getCategories();
-  const filter = cat || null;
+  const filter = typeof cat === "string" && cat ? cat : null;
   const rows = getDb()
     .prepare(
       `SELECT s.*, (SELECT COUNT(*) FROM items i WHERE i.source_id = s.id) AS item_count

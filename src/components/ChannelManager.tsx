@@ -187,7 +187,8 @@ function Editor({
             onChange={(e) => setD({ ...d, category: e.target.value })}
           >
             <option value="">{t.channels.generalDigest}</option>
-            {categories.map((c) => (
+            {/* Only categories that get a digest, plus the one already bound. */}
+            {categories.filter((c) => c.digest_enabled || c.key === d.category).map((c) => (
               <option key={c.key} value={c.key}>
                 {c.label}
               </option>
@@ -420,7 +421,7 @@ export default function ChannelManager({
               publishers={publishers}
               credentials={credentials}
               templateVariables={templateVariables}
-            categories={categories}
+              categories={categories}
               onDone={() => setEditing(null)}
             />
           )}

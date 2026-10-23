@@ -31,7 +31,8 @@ describe("categoryDigestItems", () => {
   it("takes the top N scored items of the category in that week, selected or not", () => {
     const reg = source("regulation");
     const labs = source("labs");
-    item(reg, "2026-W43", 40, "rejected");
+    item(reg, "2026-W43", 40, "used");
+    item(reg, "2026-W43", 80, "rejected"); // rejected on the radar: out
     item(reg, "2026-W43", 90, "selected");
     item(reg, "2026-W43", 70);
     item(reg, "2026-W43", null, "new"); // not scored: out

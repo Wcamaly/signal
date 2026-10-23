@@ -89,12 +89,15 @@ export async function buildDigest(week: string, voice: VoiceProfile) {
   return { digestId: saveDigest(week, "", result, items, voice.language), items: items.length };
 }
 
-/** The best-scored items of one category in a week, selected for the general digest or not. */
+/**
+ * The best-scored items of one category in a week, selected for the general
+ * digest or not — but never one the user rejected on the radar.
+ */
 export function categoryDigestItems(week: string, category: string, limit: number): Item[] {
   return getDb()
     .prepare(
       `SELECT i.* FROM items i JOIN sources s ON s.id = i.source_id
-       WHERE i.week_key = ? AND s.category = ? AND i.score IS NOT NULL
+       WHERE i.week_key = ? AND s.category = ? AND i.score IS NOT NULL AND i.status != 'rejected'
        ORDER BY i.score DESC, i.id LIMIT ?`,
     )
     .all(week, category, limit) as Item[];
