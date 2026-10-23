@@ -170,6 +170,7 @@ export function channelLabel(channels: Channel[], key: string): Channel {
       hint: null,
       language: null,
       category: null,
+      digest_def: null,
       template: "{{body}}\n\n{{hashtags}}",
       publisher: "manual",
       config: "{}",

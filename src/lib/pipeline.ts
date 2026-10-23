@@ -1,5 +1,5 @@
 import { getChannels } from "./channels";
-import { getDb, getSetting } from "./db";
+import { getDb, getSetting, legacyDefKey } from "./db";
 import { ingestAll } from "./ingest";
 import { curateWeek } from "./agents/curator";
 import { buildCategoryDigest, buildDigest } from "./agents/digest";
@@ -55,7 +55,7 @@ export type PipelineResult = {
   error?: string;
 };
 
-export type PostGroup = { digestId: number; category: string; channels: Channel[] };
+export type PostGroup = { digestId: number; defKey: string; channels: Channel[] };
 
 /**
  * The posts stage, planned: one group per digest the channels write from.
@@ -66,20 +66,20 @@ export function groupChannelsByDigest(
   week: string,
   channels: Channel[],
 ): { groups: PostGroup[]; skipped: string[] } {
-  const byCategory = new Map<string, Channel[]>();
+  const byDef = new Map<string, Channel[]>();
   for (const c of channels) {
-    const key = c.category ?? "";
-    byCategory.set(key, [...(byCategory.get(key) ?? []), c]);
+    const key = legacyDefKey(c.category);
+    byDef.set(key, [...(byDef.get(key) ?? []), c]);
   }
 
-  const find = getDb().prepare("SELECT id FROM digests WHERE week_key = ? AND category = ?");
+  const find = getDb().prepare("SELECT id FROM digests WHERE def_key = ? AND period_key = ?");
   const groups: PostGroup[] = [];
   const skipped: string[] = [];
-  for (const [category, list] of byCategory) {
-    const row = find.get(week, category) as { id: number } | undefined;
-    if (row) groups.push({ digestId: row.id, category, channels: list });
-    else if (!category) throw new Error(`There is no digest for ${week} yet.`);
-    else skipped.push(`Channels ${list.map((c) => c.label).join(", ")} skipped: no "${category}" digest for ${week}.`);
+  for (const [defKey, list] of byDef) {
+    const row = find.get(defKey, week) as { id: number } | undefined;
+    if (row) groups.push({ digestId: row.id, defKey, channels: list });
+    else if (defKey === "general") throw new Error(`There is no digest for ${week} yet.`);
+    else skipped.push(`Channels ${list.map((c) => c.label).join(", ")} skipped: no "${defKey}" digest for ${week}.`);
   }
   return { groups, skipped };
 }

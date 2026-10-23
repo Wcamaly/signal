@@ -51,16 +51,29 @@ describe("categoryDigestItems", () => {
 describe("saveDigest", () => {
   const result = (title: string) => ({ title, subtitle: "s", markdown: "m" });
 
-  it("keeps the general and a category digest of the same week apart", () => {
-    const general = saveDigest("2026-W43", "", result("G"), [], "English");
-    const reg = saveDigest("2026-W43", "regulation", result("R"), [], "English");
+  it("keeps two definitions of the same period apart", () => {
+    const general = saveDigest("general", "2026-W43", result("G"), [], "English");
+    const reg = saveDigest("regulation", "2026-W43", result("R"), [], "English");
     expect(general).not.toBe(reg);
   });
 
-  it("rewrites the same row when run again for the same week and category", () => {
-    const first = saveDigest("2026-W43", "regulation", result("R1"), [], "English");
-    const second = saveDigest("2026-W43", "regulation", result("R2"), [], "English");
+  it("rewrites the same row when run again for the same definition and period", () => {
+    const first = saveDigest("regulation", "2026-W43", result("R1"), [], "English");
+    const second = saveDigest("regulation", "2026-W43", result("R2"), [], "English");
     expect(second).toBe(first);
     expect(db().prepare("SELECT title FROM digests WHERE id = ?").get(first)).toEqual({ title: "R2" });
+  });
+
+  it("fills week_key for a weekly period only, and the legacy category", () => {
+    const weekly = saveDigest("general", "2026-W43", result("W"), [], "English");
+    const daily = saveDigest("ai-daily", "2026-10-22", result("D"), [], "English");
+    expect(db().prepare("SELECT week_key, category FROM digests WHERE id = ?").get(weekly)).toEqual({
+      week_key: "2026-W43",
+      category: "",
+    });
+    expect(db().prepare("SELECT week_key, category FROM digests WHERE id = ?").get(daily)).toEqual({
+      week_key: null,
+      category: "ai-daily",
+    });
   });
 });

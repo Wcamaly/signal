@@ -13,8 +13,8 @@ const channel = (key: string, category: string | null) => ({ key, label: key.toU
 const digest = (week: string, category: string) =>
   Number(
     getDb()
-      .prepare("INSERT INTO digests (week_key, category, title) VALUES (?, ?, 't')")
-      .run(week, category).lastInsertRowid,
+      .prepare("INSERT INTO digests (def_key, period_key, week_key, category, title) VALUES (?, ?, ?, ?, 't')")
+      .run(category || "general", week, week, category).lastInsertRowid,
   );
 
 beforeEach(() => {

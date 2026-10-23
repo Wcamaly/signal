@@ -1,7 +1,8 @@
-import { getDb } from "../db";
+import { getDb, legacyDefKey } from "../db";
 import { chatJson, llmReady, modelLabel } from "../llm";
 import { getPrompt, renderPrompt } from "../prompts";
 import type { Category, Item, VoiceProfile } from "../types";
+import { isWeekKey } from "../weeks";
 import { voiceVars } from "./shared";
 
 type DigestText = { title: string; subtitle: string; markdown: string };
@@ -28,21 +29,31 @@ function demoLines(items: Item[]) {
 }
 
 /**
- * One row per week and category ('' = the general digest). Running a stage
- * again rewrites the row in place, so posts keep their digest_id. Returns the id.
+ * One row per definition and period. Running a stage again rewrites the row in
+ * place, so posts keep their digest_id. `week_key` is filled for weekly
+ * periods and `category` keeps its legacy meaning ('' = general) for old
+ * readers. Returns the id.
  */
-export function saveDigest(week: string, category: string, result: DigestText, items: Pick<Item, "id">[], language: string): number {
+export function saveDigest(
+  defKey: string,
+  periodKey: string,
+  result: DigestText,
+  items: Pick<Item, "id">[],
+  language: string,
+): number {
   const db = getDb();
   db.prepare(
-    `INSERT INTO digests (week_key, category, title, subtitle, markdown, item_ids, model, status, language)
-     VALUES (@week, @category, @title, @subtitle, @markdown, @item_ids, @model, 'draft', @language)
-     ON CONFLICT(week_key, category) DO UPDATE SET
+    `INSERT INTO digests (def_key, period_key, week_key, category, title, subtitle, markdown, item_ids, model, status, language)
+     VALUES (@def_key, @period_key, @week_key, @category, @title, @subtitle, @markdown, @item_ids, @model, 'draft', @language)
+     ON CONFLICT(def_key, period_key) DO UPDATE SET
        title = excluded.title, subtitle = excluded.subtitle, markdown = excluded.markdown,
        item_ids = excluded.item_ids, model = excluded.model, language = excluded.language,
        created_at = datetime('now')`,
   ).run({
-    week,
-    category,
+    def_key: defKey,
+    period_key: periodKey,
+    week_key: isWeekKey(periodKey) ? periodKey : null,
+    category: defKey === "general" ? "" : defKey,
     title: result.title,
     subtitle: result.subtitle,
     markdown: result.markdown,
@@ -50,7 +61,7 @@ export function saveDigest(week: string, category: string, result: DigestText, i
     model: modelLabel(),
     language,
   });
-  const row = db.prepare("SELECT id FROM digests WHERE week_key = ? AND category = ?").get(week, category) as {
+  const row = db.prepare("SELECT id FROM digests WHERE def_key = ? AND period_key = ?").get(defKey, periodKey) as {
     id: number;
   };
   return row.id;
@@ -86,7 +97,7 @@ export async function buildDigest(week: string, voice: VoiceProfile) {
     });
   }
 
-  return { digestId: saveDigest(week, "", result, items, voice.language), items: items.length };
+  return { digestId: saveDigest("general", week, result, items, voice.language), items: items.length };
 }
 
 /**
@@ -134,5 +145,5 @@ export async function buildCategoryDigest(
     });
   }
 
-  return { digestId: saveDigest(week, category.key, result, items, voice.language), items: items.length };
+  return { digestId: saveDigest(legacyDefKey(category.key), week, result, items, voice.language), items: items.length };
 }

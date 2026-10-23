@@ -15,8 +15,10 @@ function digestsDdl(name: string) {
   return `
     CREATE TABLE IF NOT EXISTS ${name} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      week_key TEXT NOT NULL,
-      category TEXT NOT NULL DEFAULT '', -- '' = the general digest, otherwise a categories.key
+      def_key TEXT NOT NULL,           -- digest_defs.key that produced it
+      period_key TEXT NOT NULL,        -- 2026-10-23 | 2026-W43 | 2026-10
+      week_key TEXT,                   -- filled for weekly digests only
+      category TEXT NOT NULL DEFAULT '', -- legacy: '' = general, otherwise the def key
       title TEXT,
       subtitle TEXT,
       markdown TEXT,
@@ -25,9 +27,24 @@ function digestsDdl(name: string) {
       model TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       language TEXT,
-      UNIQUE (week_key, category)
+      UNIQUE (def_key, period_key)
     );`;
 }
+
+/**
+ * The definition key a pre-definitions digest or channel maps to: '' (and a
+ * NULL channel binding) was the general digest; a category key becomes the
+ * definition of the same key — except a category called `general`, which
+ * would collide with the general definition.
+ */
+export function legacyDefKey(category: string | null | undefined): string {
+  if (!category) return "general";
+  return category === "general" ? "general-category" : category;
+}
+
+/** The same mapping, in SQL, for the backfills. */
+const LEGACY_DEF_KEY_SQL = (column: string) =>
+  `CASE WHEN ${column} IS NULL OR ${column} = '' THEN 'general' WHEN ${column} = 'general' THEN 'general-category' ELSE ${column} END`;
 
 function init(db: Database.Database) {
   db.pragma("journal_mode = WAL");
@@ -75,6 +92,22 @@ function init(db: Database.Database) {
       color TEXT DEFAULT '#8b93a1',
       digest_enabled INTEGER DEFAULT 0,  -- build a weekly digest for this category
       digest_items INTEGER DEFAULT 8,    -- top N scored items that feed it
+      sort_order INTEGER DEFAULT 100,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    -- What a digest is made of and how often: the general digest, a category's,
+    -- a daily one... digests.def_key and channels.digest_def store the key.
+    CREATE TABLE IF NOT EXISTS digest_defs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,          -- stable slug, never renamed
+      label TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'items',     -- items | rollup (rollup: phase 2)
+      cadence TEXT NOT NULL DEFAULT 'weekly', -- daily | weekly | monthly
+      categories TEXT DEFAULT '[]',      -- items: JSON array of category keys; [] = every category
+      sources TEXT DEFAULT '[]',         -- rollup: JSON array of digest_defs keys
+      item_count INTEGER DEFAULT 8,      -- items: top N (1..30)
+      enabled INTEGER DEFAULT 1,
       sort_order INTEGER DEFAULT 100,
       created_at TEXT DEFAULT (datetime('now'))
     );
@@ -180,8 +213,12 @@ function init(db: Database.Database) {
   ensureColumn(db, "posts", "image_alt", "TEXT");
   // Categories: a channel can write from a category's digest instead of the
   // general one, and digests are now one per week *and* category.
-  ensureColumn(db, "channels", "category", "TEXT"); // NULL = the general digest
-  migrateDigestCategory(db);
+  ensureColumn(db, "channels", "category", "TEXT"); // unused since digest definitions
+  // Digest definitions: one digest per definition and period, and a channel
+  // writes from a definition.
+  ensureColumn(db, "channels", "digest_def", "TEXT"); // NULL = the general definition
+  migrateDigests(db);
+  seedLegacyDigestDefs(db);
   // The run manager: which week a run worked on and who asked for it. Runs
   // recorded before the column existed already carry the week inside `stats`,
   // so the history does not start out blank.
@@ -201,15 +238,17 @@ function ensureColumn(db: Database.Database, table: string, column: string, ddl:
 }
 
 /**
- * Moves the digests' unique key from (week_key) to (week_key, category).
+ * Moves the digests' unique key to (def_key, period_key), from either older
+ * shape: (week_key) before categories, or (week_key, category) after them.
  * SQLite cannot alter a constraint, so the table is rebuilt — with foreign keys
  * off, because posts.digest_id is ON DELETE CASCADE and dropping the old table
  * with them on deletes every post. Ids are copied, so posts keep pointing at
- * the same digests. Exported for the test that runs it on a legacy file.
+ * the same digests. Exported for the test that runs it on legacy files.
  */
-export function migrateDigestCategory(db: Database.Database) {
-  const cols = db.prepare("PRAGMA table_info(digests)").all() as { name: string }[];
-  if (cols.some((c) => c.name === "category")) return;
+export function migrateDigests(db: Database.Database) {
+  const cols = (db.prepare("PRAGMA table_info(digests)").all() as { name: string }[]).map((c) => c.name);
+  if (cols.includes("def_key")) return;
+  const category = cols.includes("category") ? "category" : "''";
   // Must be set outside the transaction: inside one, SQLite ignores it.
   db.pragma("foreign_keys = OFF");
   try {
@@ -217,8 +256,9 @@ export function migrateDigestCategory(db: Database.Database) {
       const count = (table: string) => (db.prepare(`SELECT COUNT(*) c FROM ${table}`).get() as { c: number }).c;
       db.exec(digestsDdl("digests_new"));
       db.exec(`
-        INSERT INTO digests_new (id, week_key, category, title, subtitle, markdown, item_ids, status, model, created_at, language)
-          SELECT id, week_key, '', title, subtitle, markdown, item_ids, status, model, created_at, language FROM digests;
+        INSERT INTO digests_new (id, def_key, period_key, week_key, category, title, subtitle, markdown, item_ids, status, model, created_at, language)
+          SELECT id, ${LEGACY_DEF_KEY_SQL(category)}, week_key, week_key, ${category}, title, subtitle, markdown, item_ids, status, model, created_at, language
+          FROM digests;
       `);
       // Not PRAGMA foreign_key_check: it would also flag unrelated old dangling
       // references elsewhere and stop the app from booting.
@@ -231,6 +271,47 @@ export function migrateDigestCategory(db: Database.Database) {
   } finally {
     db.pragma("foreign_keys = ON");
   }
+}
+
+/**
+ * First boot with digest definitions — the table is still empty. Creates the
+ * general definition, one weekly definition per category that had its digest
+ * turned on (or that a channel was bound to, disabled when its digest was off,
+ * so the channel keeps writing nothing rather than switching to the general
+ * digest), and points each channel at its definition. Runs once: `general`
+ * can never be deleted, so the table is never empty again. Exported for tests.
+ */
+export function seedLegacyDigestDefs(db: Database.Database) {
+  if ((db.prepare("SELECT COUNT(*) c FROM digest_defs").get() as { c: number }).c) return;
+  const raw = db.prepare("SELECT value FROM settings WHERE key = 'signals_per_week'").get() as
+    | { value: string }
+    | undefined;
+  const perWeek = Math.min(30, Math.max(1, Math.round(Number(raw ? JSON.parse(raw.value) : 8)) || 8));
+  db.transaction(() => {
+    db.prepare(
+      `INSERT INTO digest_defs (key, label, kind, cadence, categories, item_count, enabled, sort_order)
+       VALUES ('general', 'General', 'items', 'weekly', '[]', ?, 1, 0)`,
+    ).run(perWeek);
+    const categories = db
+      .prepare(
+        `SELECT key, label, digest_enabled, digest_items, sort_order FROM categories
+         WHERE digest_enabled = 1 OR key IN (SELECT category FROM channels WHERE category IS NOT NULL)
+         ORDER BY sort_order, label`,
+      )
+      .all() as { key: string; label: string; digest_enabled: number; digest_items: number; sort_order: number }[];
+    const insert = db.prepare(
+      `INSERT INTO digest_defs (key, label, kind, cadence, categories, item_count, enabled, sort_order)
+       VALUES (?, ?, 'items', 'weekly', ?, ?, ?, ?) ON CONFLICT(key) DO NOTHING`,
+    );
+    for (const c of categories) {
+      const label = c.key === "general" ? `${c.label} (category)` : c.label;
+      insert.run(legacyDefKey(c.key), label, JSON.stringify([c.key]), c.digest_items, c.digest_enabled ? 1 : 0, c.sort_order);
+    }
+    db.exec(
+      `UPDATE channels SET digest_def = ${LEGACY_DEF_KEY_SQL("category")}
+       WHERE category IS NOT NULL AND category != '' AND digest_def IS NULL`,
+    );
+  })();
 }
 
 export function getDb(): Database.Database {
