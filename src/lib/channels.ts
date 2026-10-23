@@ -1,3 +1,4 @@
+import { saveCredential } from "./credentials";
 import { getDb, parseJson } from "./db";
 import { assertFreeKey } from "./slug";
 import { renderTemplate } from "./template";
@@ -186,8 +187,12 @@ export function channelLabel(channels: Channel[], key: string): Channel {
  * Creates (`isNew`) or edits a channel. Creating refuses a key already in use
  * instead of overwriting that channel; editing refuses a key that does not
  * exist instead of recreating it.
+ *
+ * A pasted `secret` is stored as a channel credential (labelled with the key)
+ * and linked, in the same transaction: a channel that is refused leaves no
+ * credential behind.
  */
-export function saveChannel(input: ChannelInput & { isNew?: boolean }) {
+export function saveChannel(input: ChannelInput & { isNew?: boolean; secret?: string }) {
   const key = input.key.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "");
   if (!key) throw new Error("The channel needs a key (letters, digits and dashes)");
   if (input.isNew) assertFreeKey(key);
@@ -212,26 +217,41 @@ export function saveChannel(input: ChannelInput & { isNew?: boolean }) {
   };
 
   const db = getDb();
+  const linkSecret = () => {
+    if (input.secret?.trim()) {
+      row.credential_id = saveCredential({
+        scope: "channel",
+        provider: row.publisher,
+        label: key,
+        secret: input.secret,
+      }).id;
+    }
+  };
+
   if (input.isNew) {
     if (getChannel(key)) throw new Error(`A channel with the key "${key}" already exists`);
-    db.prepare(
+    db.transaction(() => {
+      linkSecret();
+      db.prepare(
       `INSERT INTO channels (key, label, char_limit, color, hint, language, digest_def, template, publisher, config, credential_id, posts_per_run, enabled, sort_order)
        VALUES (@key, @label, @char_limit, @color, @hint, @language, @digest_def, @template, @publisher, @config, @credential_id, @posts_per_run, @enabled, @sort_order)`,
-    ).run(row);
+      ).run(row);
+    })();
     return key;
   }
 
-  const res = db
-    .prepare(
+  if (!getChannel(key)) throw new Error(`Unknown channel "${key}"`);
+  db.transaction(() => {
+    linkSecret();
+    db.prepare(
       `UPDATE channels SET
          label = @label, char_limit = @char_limit, color = @color, hint = @hint, language = @language,
          digest_def = @digest_def, template = @template, publisher = @publisher, config = @config,
          credential_id = @credential_id, posts_per_run = @posts_per_run, enabled = @enabled,
          sort_order = @sort_order
        WHERE key = @key`,
-    )
-    .run(row);
-  if (!res.changes) throw new Error(`Unknown channel "${key}"`);
+    ).run(row);
+  })();
   return key;
 }
 

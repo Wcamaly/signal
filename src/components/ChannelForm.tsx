@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { actionDeleteChannel, actionSaveChannel, actionSaveCredential } from "@/lib/actions";
+import { actionDeleteChannel, actionSaveChannel } from "@/lib/actions";
 import type { ChannelDraft } from "@/lib/channel-draft";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { PublisherInfo } from "@/lib/publishers";
@@ -15,7 +15,8 @@ const LIST = "/manage/channels";
 
 /**
  * One channel: create (`isNew`, the key is typed once) or edit. A pasted
- * secret is stored as a credential first and linked on save.
+ * secret goes to the server with the channel, which stores it as a
+ * credential only once the channel itself is valid.
  */
 export default function ChannelForm({
   initial,
@@ -50,23 +51,11 @@ export default function ChannelForm({
   function save() {
     setError(null);
     start(async () => {
-      let credentialId = d.credential_id;
-
-      if (secret.trim() && publisher.needsCredential) {
-        const cred = await actionSaveCredential({
-          scope: "channel",
-          provider: publisher.id,
-          label: d.key || d.label,
-          secret,
-        });
-        if (!cred.ok) {
-          setError(cred.error ?? t.channels.credentialError);
-          return;
-        }
-        credentialId = cred.id ?? null;
-      }
-
-      const res = await actionSaveChannel({ ...d, isNew, credential_id: credentialId });
+      const res = await actionSaveChannel({
+        ...d,
+        isNew,
+        secret: publisher.needsCredential ? secret : undefined,
+      });
       if (!res.ok) setError(res.error ?? t.common.error);
       else done();
     });

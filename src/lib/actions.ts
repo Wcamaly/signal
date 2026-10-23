@@ -421,9 +421,17 @@ function revalidateChannels() {
   revalidatePath("/manage/channels/[key]", "page");
 }
 
-export async function actionSaveChannel(input: ChannelInput & { isNew?: boolean }): Promise<Result> {
+/**
+ * Creates or edits a channel. A pasted `secret` is stored, in the same
+ * transaction, only for a publisher that takes one and only if the channel
+ * itself is valid.
+ */
+export async function actionSaveChannel(
+  input: ChannelInput & { isNew?: boolean; secret?: string },
+): Promise<Result> {
   const res = await guard(() => {
-    saveChannel(input);
+    const secret = getPublisher(input.publisher)?.needsCredential ? input.secret : undefined;
+    saveChannel({ ...input, secret });
   });
   revalidateChannels();
   revalidatePath("/posts");

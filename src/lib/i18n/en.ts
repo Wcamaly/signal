@@ -393,7 +393,6 @@ export const en = {
     storedHint: (hint: string) => ` · stored ${hint}`,
     keepStored: "Leave empty to keep the stored one",
     pasteToken: "Paste the token",
-    credentialError: "Could not store the credential",
     confirmDelete: (label: string) =>
       `Delete the channel "${label}"? Its posts stay in the queue under its key.`,
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>

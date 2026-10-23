@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-channels-"));
 
 const { getChannel, saveChannel } = await import("./channels");
+const { listCredentials } = await import("./credentials");
 
 const input = (digest_def: string, isNew = false) => ({
   isNew,
@@ -60,5 +61,26 @@ describe("saveChannel: create vs edit", () => {
   it("refuses to edit a channel that does not exist", () => {
     expect(() => saveChannel({ ...input(""), key: "ghost" })).toThrow(/Unknown channel "ghost"/);
     expect(getChannel("ghost")).toBeUndefined();
+  });
+});
+
+describe("saveChannel with a pasted secret", () => {
+  it("stores the secret as a credential and links it", () => {
+    saveChannel({ ...input("", true), key: "with-secret", publisher: "bluesky", secret: "app-password-1" });
+    const cred = listCredentials("channel").find((c) => c.label === "with-secret");
+    expect(cred?.provider).toBe("bluesky");
+    expect(getChannel("with-secret")?.credential_id).toBe(cred?.id);
+  });
+
+  it("stores nothing when the channel is refused", () => {
+    saveChannel({ ...input("", true), key: "taken" });
+    const before = listCredentials().length;
+    expect(() =>
+      saveChannel({ ...input("", true), key: "taken", publisher: "bluesky", secret: "orphan" }),
+    ).toThrow(/already exists/);
+    expect(() =>
+      saveChannel({ ...input("", true), key: "nameless", label: " ", publisher: "bluesky", secret: "orphan" }),
+    ).toThrow(/needs a name/);
+    expect(listCredentials().length).toBe(before);
   });
 });
