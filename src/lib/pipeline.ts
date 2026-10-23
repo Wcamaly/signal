@@ -7,7 +7,7 @@ import { getDigestDefs } from "./digest-defs";
 import { writePosts } from "./agents/writer";
 import { llmStatus } from "./llm";
 import { isDue, periodWeeks, previousPeriod, resolvePeriod, type PeriodKey } from "./periods";
-import { finishRun, startRun, type RunTrigger } from "./runs";
+import { finishRun, runStats, startRun, type Run, type RunTrigger } from "./runs";
 import { DEFAULT_VOICE, type Channel, type DigestDef, type VoiceProfile } from "./types";
 import { previousWeekKey, resolveWeek, weekKey, type WeekKey } from "./weeks";
 
@@ -158,6 +158,18 @@ export function groupChannelsByTarget(
   return { groups, skipped };
 }
 
+/**
+ * "Run again": the stages and digests of a past run, interrupted ones
+ * included. Every run opened since targets existed records them when it
+ * starts; a run without them predates digest definitions and replays as the
+ * old weekly run of its week.
+ */
+export function relaunchOptions(run: Pick<Run, "stats" | "week_key">): RunOptions {
+  const targets = runStats(run).targets;
+  if (Array.isArray(targets)) return { targets: targets as { def: string; period: string }[] };
+  return run.week_key ? { week: run.week_key } : {};
+}
+
 export async function runPipeline(
   stages: Stage[] = ALL_STAGES,
   options: RunOptions = {},
@@ -172,22 +184,28 @@ export async function runPipeline(
   let week: WeekKey;
   let targets: DigestTarget[];
   let weeks: WeekKey[];
-  let runId: number;
   try {
     week = options.week ? resolveWeek(options.week, now) : weekKey(now);
     targets = resolveTargets(options, getDigestDefs(), now);
     weeks = curateWeeks(options, targets, now);
-    runId = startRun({ stages, week, trigger: options.trigger ?? "ui" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg };
   }
 
-  // `targets` is what "Run again" replays.
+  // `targets` is what "Run again" replays. Written when the run opens, so a
+  // run whose process dies half-way still knows what it was working on.
   const stats: Record<string, unknown> = {
     week,
     targets: targets.map((t) => ({ def: t.def.key, period: t.period })),
   };
+  let runId: number;
+  try {
+    runId = startRun({ stages, week, trigger: options.trigger ?? "ui", stats });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg };
+  }
 
   const status = llmStatus();
   if (!status.ready && stages.some((s) => s !== "ingest")) {

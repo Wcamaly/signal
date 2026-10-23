@@ -14,7 +14,9 @@ process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-pipe
 
 const { getDb } = await import("./db");
 const { getChannels } = await import("./channels");
-const { curateWeeks, dueTargets, groupChannelsByTarget, resolveTargets, runPipeline } = await import("./pipeline");
+const { curateWeeks, dueTargets, groupChannelsByTarget, relaunchOptions, resolveTargets, runPipeline } =
+  await import("./pipeline");
+const { getRun, reconcileStaleRuns } = await import("./runs");
 
 const THURSDAY = new Date(2026, 9, 22, 8, 0); // an ordinary day
 const MONDAY = new Date(2026, 9, 26, 8, 0);
@@ -211,6 +213,32 @@ describe("runPipeline", () => {
     expect(db().prepare("SELECT def_key, period_key, week_key FROM digests").all()).toEqual([
       { def_key: "general", period_key: "2026-W43", week_key: "2026-W43" },
     ]);
+  });
+
+  it("records its targets as soon as the run opens, so an interrupted run can be replayed", async () => {
+    const pending = runPipeline(["curate"], { defs: ["pulse"], period: "2026-10-20", now: THURSDAY });
+    // Still in flight: nothing has finished, the process could die here.
+    const open = db().prepare("SELECT id, status, stats FROM runs").get() as { id: number; status: string; stats: string };
+    expect(open.status).toBe("running");
+    expect(JSON.parse(open.stats)).toEqual({ week: "2026-W43", targets: [{ def: "pulse", period: "2026-10-20" }] });
+    await pending;
+
+    // The process died: the row stays with only what was written at the start.
+    db().prepare("UPDATE runs SET status = 'running', started_at = datetime('now', '-2 hours'), stats = ? WHERE id = ?")
+      .run(open.stats, open.id);
+    reconcileStaleRuns();
+    const run = getRun(open.id)!;
+    expect(run.status).toBe("interrupted");
+    expect(relaunchOptions(run)).toEqual({ targets: [{ def: "pulse", period: "2026-10-20" }] });
+  });
+
+  it("replays a run recorded before targets existed as the legacy week", () => {
+    const id = Number(
+      db()
+        .prepare("INSERT INTO runs (kind, status, week_key, stats) VALUES ('digest', 'ok', '2026-W40', ?)")
+        .run(JSON.stringify({ week: "2026-W40", digest: { digestId: 1 } })).lastInsertRowid,
+    );
+    expect(relaunchOptions(getRun(id)!)).toEqual({ week: "2026-W40" });
   });
 
   it("reports a bad request before opening a run", async () => {
