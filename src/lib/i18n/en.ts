@@ -173,6 +173,7 @@ export const en = {
     title: "Weekly digests",
     sub: "The working document every publication is derived from. It has an opinion; it is not a newsletter.",
     empty: "No digest yet. Run the pipeline from the sidebar.",
+    general: "General",
   },
 
   digestPage: {

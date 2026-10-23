@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { categoryLabel, getCategories } from "@/lib/categories";
 import { channelLabel, getChannels } from "@/lib/channels";
 import { getDb } from "@/lib/db";
 import { getDictionary } from "@/lib/i18n";
@@ -19,6 +20,7 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
     | {
         id: number;
         week_key: string;
+        category: string;
         title: string;
         subtitle: string;
         markdown: string;
@@ -33,6 +35,7 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
   const channels = getChannels();
   const language = resolveLanguage(digest.language, getVoice().language);
   const t = getDictionary();
+  const category = digest.category ? categoryLabel(getCategories(), digest.category) : null;
   const ids = JSON.parse(digest.item_ids || "[]") as number[];
   const items = ids.length
     ? (db
@@ -49,11 +52,16 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
   return (
     <div>
       <PageHeader
-        kicker={digest.week_key}
+        kicker={category ? `${digest.week_key} · ${category.label}` : digest.week_key}
         title={digest.title}
         sub={digest.subtitle}
         right={
           <>
+            {category && (
+              <Link href={`/digest?cat=${encodeURIComponent(category.key)}`} className="btn btn-ghost">
+                {category.label}
+              </Link>
+            )}
             <CopyButton text={digest.markdown} label={t.digestPage.copyMarkdown} />
             <Link href="/posts" className="btn btn-primary">
               {t.digestPage.seePublications}
