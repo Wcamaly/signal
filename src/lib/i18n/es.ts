@@ -271,6 +271,19 @@ export const es: Dictionary = {
     testResult: (found: number, sample: string) => `${found} items · ${sample}`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit y YouTube — ninguna necesita clave de API. Agregá las que leés de verdad: el radar vale lo que valen sus fuentes.",
   },
+  categories: {
+    title: "Categorías",
+    hint: "Agrupá tus fuentes. Una categoría con el resumen activado tiene su propio resumen semanal, hecho con sus items mejor puntuados, y los canales pueden escribir a partir de él.",
+    name: "Nombre",
+    namePlaceholder: "Nueva categoría",
+    colour: "Color",
+    digest: "Resumen semanal",
+    digestItems: "Items",
+    order: "Orden",
+    create: "Crear",
+    confirmDelete: (label: string) =>
+      `¿Eliminar «${label}»? Sus fuentes pasan a General y sus canales vuelven al resumen general.`,
+  },
 
   settings: {
     title: "Voz y ajustes",
