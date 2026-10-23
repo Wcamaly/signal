@@ -368,7 +368,7 @@ export async function actionSetItemStatus(id: number, status: string) {
 /* ---------- categories ---------- */
 
 function revalidateCategories() {
-  for (const p of ["/manage/sources", "/manage/categories", "/radar", "/digest", "/settings/channels", "/settings/digests"]) {
+  for (const p of ["/manage/sources", "/manage/categories", "/radar", "/digest", "/settings/channels", "/manage/digests"]) {
     revalidatePath(p);
   }
   revalidatePath("/manage/categories/[key]", "page");
@@ -393,7 +393,8 @@ export async function actionDeleteCategory(key: string): Promise<Result> {
 /* ---------- digest definitions ---------- */
 
 function revalidateDigestDefs() {
-  for (const p of ["/settings/digests", "/settings/channels", "/digest"]) revalidatePath(p);
+  for (const p of ["/manage/digests", "/settings/channels", "/digest"]) revalidatePath(p);
+  revalidatePath("/manage/digests/[key]", "page");
   // The run dialog in the sidebar lists the definitions.
   revalidatePath("/", "layout");
 }

@@ -7,7 +7,10 @@ const nextConfig: NextConfig = {
   // and old links land on the new page, query string included
   // (node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/redirects.md).
   async redirects() {
-    return [{ source: "/sources", destination: "/manage/sources", permanent: true }];
+    return [
+      { source: "/sources", destination: "/manage/sources", permanent: true },
+      { source: "/settings/digests", destination: "/manage/digests", permanent: true },
+    ];
   },
 };
 

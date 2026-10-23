@@ -302,7 +302,7 @@ export const en = {
   categories: {
     title: "Categories",
     hint: "Group your sources. A digest of its own for some categories — daily, weekly or monthly — is set up under",
-    digestsPointer: "Settings → Digests.",
+    digestsPointer: "Management → Digests.",
     name: "Name",
     namePlaceholder: "New category",
     colour: "Colour",

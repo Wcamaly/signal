@@ -36,7 +36,7 @@ export default function CategoriesPage() {
       <div className="p-8 max-w-4xl flex flex-col gap-4">
         <p className="text-[12px] text-faint leading-snug">
           {t.categories.hint}{" "}
-          <Link href="/settings/digests" className="text-accent">
+          <Link href="/manage/digests" className="text-accent">
             {t.categories.digestsPointer}
           </Link>
         </p>

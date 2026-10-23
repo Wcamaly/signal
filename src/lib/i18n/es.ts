@@ -297,7 +297,7 @@ export const es: Dictionary = {
   categories: {
     title: "Categorías",
     hint: "Agrupá tus fuentes. Un resumen propio para algunas categorías — diario, semanal o mensual — se arma en",
-    digestsPointer: "Configuración → Resúmenes.",
+    digestsPointer: "Gestión → Resúmenes.",
     name: "Nombre",
     namePlaceholder: "Nueva categoría",
     colour: "Color",
