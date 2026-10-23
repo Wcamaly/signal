@@ -111,7 +111,7 @@ export const es: Dictionary = {
     noLog: "Esta ejecución no dejó registro.",
     result: "Resultado",
     relaunch: "Ejecutar de nuevo",
-    relaunchHint: (week: string) => `Vuelve a correr las mismas etapas sobre ${week}.`,
+    relaunchHint: (week: string) => `Vuelve a correr las mismas etapas, sobre ${week} y los mismos resúmenes.`,
     unknownWeek: "sin semana",
   },
 

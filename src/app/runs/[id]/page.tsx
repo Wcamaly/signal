@@ -10,20 +10,37 @@ export const dynamic = "force-dynamic";
 
 type Params = Promise<{ id: string }>;
 
-/** The per-stage numbers the pipeline recorded, flattened into readable rows. */
+/** One value on one line: a list by its length, an object as `key: value · …`. */
+function describeValue(value: unknown): string {
+  if (Array.isArray(value)) return String(value.length);
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([k, v]) => `${k}: ${describeValue(v)}`)
+      .join(" · ");
+  }
+  return String(value);
+}
+
+/**
+ * The per-stage numbers the pipeline recorded, flattened into readable rows.
+ * A stage that recorded a list (one entry per digest, per curated week) gets
+ * one row per entry.
+ */
 function statRows(stats: Record<string, unknown>): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
   for (const [stage, value] of Object.entries(stats)) {
     if (value === null || value === undefined) continue;
+    if (Array.isArray(value)) {
+      if (!value.length) rows.push({ label: stage, value: "—" });
+      value.forEach((entry, i) => rows.push({ label: `${stage}.${i + 1}`, value: describeValue(entry) }));
+      continue;
+    }
     if (typeof value !== "object") {
       rows.push({ label: stage, value: String(value) });
       continue;
     }
     for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
-      rows.push({
-        label: `${stage}.${key}`,
-        value: Array.isArray(inner) ? String(inner.length) : String(inner),
-      });
+      rows.push({ label: `${stage}.${key}`, value: describeValue(inner) });
     }
   }
   return rows;

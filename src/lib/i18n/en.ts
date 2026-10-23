@@ -117,7 +117,7 @@ export const en = {
     noLog: "This run recorded no log.",
     result: "Result",
     relaunch: "Run again",
-    relaunchHint: (week: string) => `Runs the same stages again on ${week}.`,
+    relaunchHint: (week: string) => `Runs the same stages again, on ${week} and the same digests.`,
     unknownWeek: "no week",
   },
 

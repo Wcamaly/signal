@@ -21,7 +21,7 @@ import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { fetchText } from "./sources/util";
 import { getVoice, runPipeline, type RunOptions, type Stage } from "./pipeline";
-import { getRun, runStages } from "./runs";
+import { getRun, runStages, runStats } from "./runs";
 import { refinePost } from "./agents/writer";
 import { translateDigest, translatePost } from "./agents/translate";
 import type { Post, Source, VoiceProfile } from "./types";
@@ -61,12 +61,18 @@ export async function actionRunPipeline(stages: Stage[], options: RunOptions = {
   return res;
 }
 
-/** Runs a past run again: same stages, same week. */
+/**
+ * Runs a past run again: same stages, same week, same digests. A run recorded
+ * before digest definitions has no `targets`, and replays as the old weekly
+ * run of its week.
+ */
 export async function actionRelaunchRun(id: number) {
   const run = getRun(id);
   if (!run) return { ok: false, runId: null, week: null, log: [], stats: {}, error: "Run not found" };
+  const targets = runStats(run).targets;
   const res = await runPipeline(runStages(run), {
     week: run.week_key ?? undefined,
+    targets: Array.isArray(targets) ? (targets as { def: string; period: string }[]) : undefined,
     trigger: "ui",
   });
   revalidatePath("/", "layout");
