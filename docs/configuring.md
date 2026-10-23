@@ -105,6 +105,25 @@ The defaults are a starting point, not a recommendation. Replace them with what
 you actually read — the radar is worth exactly what its sources are worth.
 Adding a new *kind* is a small file: [docs/extending.md](extending.md).
 
+### Categories
+
+Every source belongs to one category. The **Categories** box at the top of
+**Sources** creates, renames, recolours, reorders and deletes them; the select
+on each source row moves it. The chips above the list filter sources, and the
+same chips filter the radar and the digest archive.
+
+- **Weekly digest** turns on a digest of its own for that category. The digest
+  stage writes the general digest first, then one per category with this on,
+  built from the category's **Items** best-scored items of the week — selected
+  for the general digest or not. A category with nothing scored that week is
+  skipped with a warning in the run log. Its prompt is **Category digest**
+  under Prompts.
+- Deleting a category moves its sources to **General** and its channels back to
+  the general digest. General itself cannot be deleted. Digests already written
+  for a deleted category stay in the archive under its key.
+- **Restore default sources** brings back the shipped sources, and with them any
+  shipped category you had deleted.
+
 ---
 
 ## Channels
@@ -121,6 +140,9 @@ network, a newsletter, your blog.
   are dropped. The **Template preview** button on each post shows the result.
 - **Posts per run** is how many drafts the writer produces for this channel each
   week. Set it to 0 to keep the channel for manual use only.
+- **Source digest** is the digest the writer works from: the general one, or a
+  category's. A category channel is skipped — with a warning, not an error — in
+  a week where its category has no digest.
 
 LinkedIn, X and Instagram are enabled by default; Threads, Bluesky, Mastodon,
 newsletter and blog ship disabled. All of them are ordinary rows you can edit or
