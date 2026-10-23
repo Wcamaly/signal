@@ -79,7 +79,9 @@ survive.
 next to the database and sent nowhere.
 
 The **Pipeline** section holds two knobs: how many signals survive curation each
-week, and how old an item can be at ingest before it is dropped.
+week, and how old an item can be at ingest before it is dropped. The first one
+also sized the general digest when it was created; its item count lives under
+**Settings → Digests** now.
 
 ---
 
@@ -112,19 +114,48 @@ Every source belongs to one category. The **Categories** box at the top of
 on each source row moves it. The chips above the list filter sources, and the
 same chips filter the radar and the digest archive.
 
-- **Weekly digest** turns on a digest of its own for that category. The digest
-  stage writes the general digest first, then one per category with this on,
-  built from the category's **Items** best-scored items of the week — selected
-  for the general digest or not, but never one you rejected on the radar. A
-  category with nothing scored that week is
-  skipped with a warning in the run log. Its prompt is **Category digest**
-  under Prompts.
-- Deleting a category moves its sources to **General** and its channels back to
-  the general digest. General itself cannot be deleted. Digests already written
-  for a deleted category stay in the archive under its key.
+- A digest of its own for one or more categories is a **digest definition**,
+  under **Settings → Digests** — see [Digests](#digests) below.
+- Deleting a category moves its sources to **General** and takes it out of every
+  digest definition. A definition left with no category is **disabled** rather
+  than silently widened to every category. General itself cannot be deleted.
 - A deleted shipped category comes back only if one of its default sources is
   restored: its sources keep their URLs when they move to General, so
   **Restore default sources** has nothing to add for them.
+
+---
+
+## Digests
+
+**Settings → Digests.** A digest definition says what a digest is made of and
+how often it is written.
+
+- **Cadence** — daily, weekly or monthly. A run writes every enabled definition
+  that is due: daily ones every day, for yesterday; weekly ones on Monday, for
+  the ISO week that just closed; monthly ones on the 1st, for the month that
+  just closed. Days and months follow the server's time zone (`TZ`).
+- **Categories** — the sources that feed it. None ticked means every category.
+- **Items** — how many items feed it. The curator's picks (and the items
+  already written about) go first, then the best scored of the period. Items
+  you rejected on the radar never go in. A period with nothing scored is
+  skipped with a warning in the run log.
+- **General** always exists: weekly, every category. It feeds the dashboard and
+  every channel not bound to another digest. It can be edited and disabled, not
+  deleted.
+- Deleting a definition sends its channels back to General. The digests it
+  already wrote stay in the archive, under its key.
+- The prompt follows the shape: a definition with no categories uses **Digest
+  (all categories)**, one with categories uses **Category digest**, with
+  `{{category}}` set to their names. `{{week}}` holds the period key —
+  `2026-W43`, `2026-10-23` or `2026-10`. The shipped prompts talk about "the
+  week"; edit them if you run daily digests.
+
+Coming from category digests: on the first boot every category that had its
+weekly digest turned on became a weekly definition with the same key,
+categories and item count, and each channel bound to a category now points at
+that definition.
+
+The archive filters by definition, and each card shows its cadence and period.
 
 ---
 
@@ -140,11 +171,14 @@ network, a newsletter, your blog.
 - **Template** is what actually gets published: `{{body}}`, `{{hook}}`,
   `{{hashtags}}`, `{{angle}}`, `{{link}}`, `{{title}}`. Empty placeholder lines
   are dropped. The **Template preview** button on each post shows the result.
-- **Posts per run** is how many drafts the writer produces for this channel each
-  week. Set it to 0 to keep the channel for manual use only.
-- **Source digest** is the digest the writer works from: the general one, or a
-  category's. A category channel is skipped — with a warning, not an error — in
-  a week where its category has no digest.
+- **Posts per run** is how many drafts the writer produces for this channel
+  each time its digest is written. Set it to 0 to keep the channel for manual
+  use only.
+- **Source digest** is the digest definition the writer works from. The channel
+  writes only in the runs where that definition is due — every day for a daily
+  one, on Mondays for a weekly one, on the 1st for a monthly one — and quietly
+  writes nothing on the other days. If its digest was due but skipped, the run
+  log warns.
 
 LinkedIn, X and Instagram are enabled by default; Threads, Bluesky, Mastodon,
 newsletter and blog ship disabled. All of them are ordinary rows you can edit or
@@ -181,37 +215,57 @@ stage it was.
 
 ---
 
-## Automating the weekly run
+## Automating the runs
 
-`GET /api/cron` runs the whole pipeline; `?stages=ingest,curate` runs part of it.
-Protect it with `CRON_SECRET` if the app is reachable from anywhere but
-localhost:
+`GET /api/cron` runs the pipeline once. Schedule it **once a day**, and protect
+it with `CRON_SECRET` if the app is reachable from anywhere but localhost:
 
 ```bash
-0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron?week=previous"
+0 8 * * * curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron"
 ```
 
 The Kubernetes overlay in `deploy/` already wires this as a `CronJob`, and the
 systemd deployment as a timer.
 
-### Which week gets curated
+### What a run works on
 
-Ingest is week-agnostic: an item is filed under the week it was *published* in.
-Curation, the digest and the posts work on one week, and `?week=` names it —
-`current` (the default), `previous`, or an ISO week such as `2026-W37`.
+Ingest reads every source; an item is filed under the day and the ISO week it
+was *published* in.
 
-A schedule that fires on Monday morning has to ask for `previous`. The ISO week
-starts that same Monday, so the current one is hours old and holds almost
-nothing: curation selects zero signals and the digest stage fails with *"No
-selected items"*. The week worth publishing about is the one that closed the
-night before.
+- **Curation** scores the items of the current week that have no score yet — it
+  never scores an item twice — and on Monday the week that just closed too, so
+  its Sunday is scored before the weekly digests are written.
+- **Digests** — with no parameters, what is due:
+
+  | Cadence | Due | Period written |
+  |---|---|---|
+  | daily | every run | yesterday |
+  | weekly | Monday | the week that closed |
+  | monthly | the 1st | the month that closed |
+
+- **Posts** — the channels bound to the digests of this run.
+
+Parameters:
+
+- `stages=ingest,curate` runs part of the pipeline.
+- `defs=general,ai-daily` writes those definitions — enabled or not — instead of
+  what is due, for `period=`: `previous` (the default), `current`, or a key such
+  as `2026-10-23`, `2026-W43` or `2026-10`. That is how you write a past period
+  by hand. `period` without `defs` is refused.
+- `week=previous` (or `current`, or `2026-W43`) is the old weekly schedule and is
+  still accepted: it curates that week and writes every enabled weekly
+  definition for it. A Monday `?week=previous` schedule keeps working, but
+  daily and monthly definitions need the daily one.
+
+The run dialog in the sidebar offers the same choice: what is due now, or one
+definition and a period.
 
 ### Runs
 
 **Runs** in the sidebar is the history: every execution with its stages, its
 week, whether it was manual or scheduled, how long it took, its full log and the
 numbers each stage produced. Any run can be launched again from its page, with
-the same stages on the same week.
+the same stages, the same week and the same digests.
 
 Two pipelines never run at once — the second one is refused while the first is
 in flight, because they write to the same week of the same SQLite file. A run

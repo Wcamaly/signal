@@ -18,24 +18,24 @@ The compose file binds to `127.0.0.1` on purpose. To reach it from another
 machine, put a reverse proxy with authentication in front of it, or use a VPN,
 rather than changing the binding to `0.0.0.0`.
 
-Weekly runs, if you want them inside compose:
+Daily runs, if you want them inside compose:
 
 ```bash
 docker compose --profile cron up -d
 ```
 
-That starts a small companion container whose only job is one `curl` a week
+That starts a small companion container whose only job is one `curl` a day
 against `/api/cron`. Set `CRON_SECRET` in `.env` first, or anything that can
 reach the port can trigger a run. An external scheduler — a host crontab, a
 systemd timer, an n8n node — works just as well:
 
 ```bash
-0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron?week=previous"
+0 8 * * * curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron"
 ```
 
-`week=previous` matters on a Monday schedule: the ISO week starts that morning,
-so curating the *current* one finds nothing to select. See
-[configuring.md](configuring.md#which-week-gets-curated).
+Each run writes what is due that day — daily digests every day, weekly ones on
+Monday, monthly ones on the 1st. See
+[configuring.md](configuring.md#what-a-run-works-on).
 
 State lives in the `signal-data` volume: the SQLite database and, unless you set
 `SIGNAL_SECRET_KEY`, the generated key that encrypts the credentials you saved
@@ -46,7 +46,7 @@ in the UI. Back the volume up.
 ## Debian with systemd
 
 `deploy/install.sh` installs the app under `/opt/signal` as a system user, with
-a service and a weekly timer. Run it as root inside the target machine or
+a service and a daily timer. Run it as root inside the target machine or
 container:
 
 ```bash
