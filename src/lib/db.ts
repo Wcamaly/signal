@@ -84,7 +84,9 @@ function init(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_items_week ON items(week_key);
     CREATE INDEX IF NOT EXISTS idx_items_status ON items(status);
 
-    -- Groups of sources. sources.category and channels.category store the key.
+    -- Groups of sources. sources.category stores the key. channels.category is
+    -- legacy (a channel bound to a category's digest), superseded by
+    -- channels.digest_def.
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT NOT NULL UNIQUE,          -- stable slug, never renamed

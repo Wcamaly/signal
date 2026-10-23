@@ -336,7 +336,7 @@ export const en = {
       "Paste 2 or 3 of your own posts that worked. Without this the agent writes correct but neutral text; with it, it starts to sound like you.",
     pipeline: "Pipeline",
     signalsPerWeek: "Signals selected per week",
-    signalsPerWeekHint: "How many items survive curation and feed the digest.",
+    signalsPerWeekHint: "How many items survive curation and feed the General digest. It is the same number as General's item count under Digests: changing one changes the other.",
     maxAge: "Ignore items older than (days)",
     maxAgeHint: "Anything published before this window is dropped at ingest.",
     perChannelNote: "How many posts each channel gets is set per channel, under",

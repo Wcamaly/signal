@@ -331,7 +331,7 @@ export const es: Dictionary = {
       "Pegá 2 o 3 posts tuyos que hayan funcionado. Sin esto el agente escribe correcto pero neutro; con esto empieza a sonar a vos.",
     pipeline: "Pipeline",
     signalsPerWeek: "Señales seleccionadas por semana",
-    signalsPerWeekHint: "Cuántos items sobreviven a la curación y alimentan el resumen.",
+    signalsPerWeekHint: "Cuántos items sobreviven a la curación y alimentan el resumen General. Es el mismo número que sus items en Resúmenes: si cambiás uno, cambia el otro.",
     maxAge: "Ignorar items más viejos que (días)",
     maxAgeHint: "Todo lo publicado antes de esta ventana se descarta al leer las fuentes.",
     perChannelNote: "Cuántos posts recibe cada canal se define por canal, en",

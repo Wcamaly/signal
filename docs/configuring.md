@@ -139,9 +139,11 @@ how often it is written.
   already written about) go first, then the best scored of the period. Items
   you rejected on the radar never go in. A period with nothing scored is
   skipped with a warning in the run log.
-- **General** always exists: weekly, every category. It feeds the dashboard and
-  every channel not bound to another digest. It can be edited and disabled, not
-  deleted.
+- **General** always exists: created weekly, over every category. It feeds the
+  dashboard and every channel not bound to another digest. It can be edited and
+  disabled, not deleted. Its item count is the same number as **Signals selected
+  per week** in Settings → General (how many items the curator picks a week):
+  changing either changes both.
 - Deleting a definition sends its channels back to General. The digests it
   already wrote stay in the archive, under its key.
 - The prompt follows the shape: a definition with no categories uses **Digest
@@ -153,7 +155,10 @@ how often it is written.
 Coming from category digests: on the first boot every category that had its
 weekly digest turned on became a weekly definition with the same key,
 categories and item count, and each channel bound to a category now points at
-that definition.
+that definition. A category keyed `general` becomes the definition
+`general-category`, so it does not collide with General. A channel bound to a
+category whose digest was off now points at a **disabled** definition, so it
+writes nothing until you enable it.
 
 The archive filters by definition, and each card shows its cadence and period.
 
