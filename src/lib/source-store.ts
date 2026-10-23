@@ -1,5 +1,6 @@
 import { getCategory } from "./categories";
 import { getDb } from "./db";
+import { getSourceKind } from "./sources";
 import type { Source } from "./types";
 
 /** What the source form sends. `kind` is fixed once the source exists. */
@@ -30,10 +31,14 @@ export function getSource(id: number): Source | undefined {
 
 /**
  * The checks an add and an edit share: a name and a URL, a category that
- * exists, a URL no other source uses. Empty options are dropped, so a cleared
- * field falls back to the kind's default.
+ * exists, a URL no other source uses, and — when adding, since an edit keeps
+ * the stored kind — a kind the ingester knows. Empty options are dropped, so a
+ * cleared field falls back to the kind's default.
  */
-function clean(input: Omit<SourceInput, "kind">, id: number | null) {
+function clean(input: Omit<SourceInput, "kind"> & { kind?: string }, id: number | null) {
+  if (input.kind !== undefined && !getSourceKind(input.kind)) {
+    throw new Error(`Unknown source kind "${input.kind}"`);
+  }
   const name = input.name.trim();
   const url = input.url.trim();
   if (!name || !url) throw new Error("Name and URL are required");
@@ -66,7 +71,7 @@ export function addSource(input: SourceInput): number {
  */
 export function updateSource(id: number, input: Omit<SourceInput, "kind">) {
   if (!getSource(id)) throw new Error("Source not found");
-  const row = clean(input, id);
+  const row = clean({ ...input, kind: undefined }, id); // the stored kind stays
   getDb()
     .prepare(
       `UPDATE sources SET name = @name, url = @url, category = @category, config = @config,

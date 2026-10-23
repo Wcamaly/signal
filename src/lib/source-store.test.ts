@@ -34,10 +34,11 @@ describe("addSource", () => {
     });
   });
 
-  it("refuses an empty name or URL, an unknown category and a URL already read", () => {
+  it("refuses an empty name or URL, an unknown category or kind and a URL already read", () => {
     expect(() => addSource(input({ name: " " }))).toThrow(/required/);
     expect(() => addSource(input({ url: "" }))).toThrow(/required/);
     expect(() => addSource(input({ category: "nope" }))).toThrow(/Unknown category "nope"/);
+    expect(() => addSource(input({ kind: "gopher" }))).toThrow(/Unknown source kind "gopher"/);
     addSource(input());
     expect(() => addSource(input({ name: "Copy" }))).toThrow(/"Lab blog" already reads/);
   });
