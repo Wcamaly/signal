@@ -35,4 +35,8 @@ describe("saveChannel and the source digest", () => {
     saveChannel(input("general"));
     expect(getChannel("policy")?.digest_def).toBeNull();
   });
+
+  it("refuses the key of the create page", () => {
+    expect(() => saveChannel({ ...input(""), key: "New" })).toThrow(/"new" is reserved/);
+  });
 });

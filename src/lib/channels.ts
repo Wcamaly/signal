@@ -1,4 +1,5 @@
 import { getDb, parseJson } from "./db";
+import { assertFreeKey } from "./slug";
 import { renderTemplate } from "./template";
 import type { Channel, Post } from "./types";
 
@@ -184,6 +185,7 @@ export function channelLabel(channels: Channel[], key: string): Channel {
 export function saveChannel(input: ChannelInput & { id?: number }) {
   const key = input.key.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "");
   if (!key) throw new Error("The channel needs a key (letters, digits and dashes)");
+  assertFreeKey(key);
   if (!input.label.trim()) throw new Error("The channel needs a name");
 
   const row = {

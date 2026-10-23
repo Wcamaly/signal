@@ -1,6 +1,6 @@
 import { clampItemCount, getDb, getSetting, parseJson, setSetting } from "./db";
 import { isCadence, type Cadence } from "./periods";
-import { slugify } from "./slug";
+import { assertFreeKey, slugify } from "./slug";
 import type { DigestDef, DigestKind } from "./types";
 
 /** The definition behind the dashboard and every unbound channel. Never deleted. */
@@ -147,6 +147,7 @@ export function saveDigestDef(input: DigestDefInput): string {
 
   const key = slugify(label);
   if (!key) throw new Error("The digest name needs at least one letter or digit");
+  assertFreeKey(key);
   if (getDigestDef(key)) throw new Error(`A digest with the key "${key}" already exists`);
   // A deleted definition's digests stay in the archive under its key. A new
   // one with that key would upsert over them, period by period.

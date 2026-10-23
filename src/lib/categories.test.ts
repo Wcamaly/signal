@@ -68,6 +68,11 @@ describe("saveCategory", () => {
   it("refuses an empty name", () => {
     expect(() => saveCategory({ label: "  ", color: "#000000" })).toThrow();
   });
+
+  it("refuses the key of the create page", () => {
+    getCategories();
+    expect(() => saveCategory({ label: "New", color: "#000000" })).toThrow(/"new" is reserved/);
+  });
 });
 
 describe("deleteCategory", () => {

@@ -92,6 +92,10 @@ describe("saveDigestDef", () => {
     expect(() => saveDigestDef(input({ label: "Y", cadence: "hourly" as never }))).toThrow(/Unknown cadence/);
   });
 
+  it("refuses the key of the create page", () => {
+    expect(() => saveDigestDef(input({ label: "New" }))).toThrow(/"new" is reserved/);
+  });
+
   it("refuses roll-ups in phase 1", () => {
     expect(() => saveDigestDef(input({ label: "Monthly", kind: "rollup" }))).toThrow(/Roll-up/);
   });

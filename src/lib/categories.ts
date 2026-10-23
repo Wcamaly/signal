@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import { removeCategoryFromDefs } from "./digest-defs";
-import { slugify } from "./slug";
+import { assertFreeKey, slugify } from "./slug";
 import { SOURCE_CATEGORIES } from "./sources";
 import type { Category } from "./types";
 
@@ -100,6 +100,7 @@ export function saveCategory(input: CategoryInput): string {
 
   const key = slugify(label);
   if (!key) throw new Error("The category name needs at least one letter or digit");
+  assertFreeKey(key);
   if (getCategory(key)) throw new Error(`A category with the key "${key}" already exists`);
   db.prepare(
     `INSERT INTO categories (key, label, color, sort_order) VALUES (@key, @label, @color, @sort_order)`,
