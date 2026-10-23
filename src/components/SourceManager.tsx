@@ -77,6 +77,7 @@ export default function SourceManager({
   }
 
   function move(id: number, key: string) {
+    setError(null);
     start(async () => {
       const res = await actionSetSourceCategory(id, key);
       if (!res.ok) setError(res.error ?? t.common.error);
@@ -202,7 +203,7 @@ export default function SourceManager({
                 <select
                   className="select !w-auto !text-[11.5px] shrink-0"
                   value={s.category}
-                  aria-label={t.sources.category}
+                  aria-label={`${t.sources.category}: ${s.name}`}
                   disabled={pending}
                   onChange={(e) => move(s.id, e.target.value)}
                 >

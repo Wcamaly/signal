@@ -297,6 +297,7 @@ export async function actionAddSource(input: {
 }): Promise<Result> {
   const res = await guard(() => {
     if (!input.name.trim() || !input.url.trim()) throw new Error("Name and URL are required");
+    if (!getCategory(input.category)) throw new Error(`Unknown category "${input.category}"`);
     const config = Object.fromEntries(
       Object.entries(input.config ?? {}).filter(([, v]) => String(v).trim() !== ""),
     );
