@@ -454,6 +454,16 @@ export const en = {
     unknownProvider: (id: string) => `Unknown provider "${id}"`,
     noKey: (provider: string) => `No API key for ${provider}. Add one under Model → Credentials.`,
     chooseModel: "Choose a model for this provider.",
+    credentialsFor: (provider: string) => `Credentials for ${provider}`,
+    /** Followed by a link to the provider's key page. */
+    getKeyAt: "Get one at",
+    storedEncrypted: "Stored encrypted; only the last characters are ever shown again.",
+    /** Followed by the provider's environment variables. */
+    envFallback: "Without one stored here, Signal falls back to",
+    noKeyNeeded: "This provider does not need a key.",
+    /** Wrapped around the SIGNAL_SECRET_KEY variable name. */
+    encryptionKeyBefore: "Encryption key: auto-generated in the data directory. Set",
+    encryptionKeyAfter: "to pin it yourself — required if you restore this database on another machine.",
   },
 
   /**

@@ -450,6 +450,13 @@ export const es: Dictionary = {
     noKey: (provider: string) =>
       `No hay clave de API para ${provider}. Agregá una en Modelo → Credenciales.`,
     chooseModel: "Elegí un modelo para este proveedor.",
+    credentialsFor: (provider: string) => `Credenciales de ${provider}`,
+    getKeyAt: "Conseguí una en",
+    storedEncrypted: "Se guarda cifrada; después solo se muestran los últimos caracteres.",
+    envFallback: "Si no guardás una acá, Signal usa",
+    noKeyNeeded: "Este proveedor no necesita clave.",
+    encryptionKeyBefore: "Clave de cifrado: generada automáticamente en el directorio de datos. Definí",
+    encryptionKeyAfter: "para fijarla vos — hace falta si restaurás esta base de datos en otra máquina.",
   },
 
   registry: {

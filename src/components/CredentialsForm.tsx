@@ -73,26 +73,26 @@ export default function CredentialsForm({
       </div>
 
       <section className="card p-6">
-        <h2 className="kicker mb-2">Credentials for {provider.label}</h2>
+        <h2 className="kicker mb-2">{t.model.credentialsFor(provider.label)}</h2>
         <p className="text-[12px] text-muted mb-5 leading-relaxed">
           {provider.needsKey ? (
             <>
-              Get one at{" "}
+              {t.model.getKeyAt}{" "}
               <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">
                 {new URL(provider.docsUrl).host}
               </a>
-              . Stored encrypted; only the last characters are ever shown again.
+              . {t.model.storedEncrypted}
               {provider.envKeys.length > 0 && (
                 <>
                   {" "}
-                  Without one stored here, Signal falls back to{" "}
+                  {t.model.envFallback}{" "}
                   <code className="font-mono text-[11.5px]">{provider.envKeys.join(" / ")}</code>.
                 </>
               )}
             </>
           ) : (
             <>
-              This provider does not need a key.{" "}
+              {t.model.noKeyNeeded}{" "}
               <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">{t.model.setupInstructions}</a>
               .
             </>
@@ -143,9 +143,8 @@ export default function CredentialsForm({
 
         {!keyIsManaged && (
           <p className="text-[11.5px] text-faint mt-4 leading-snug">
-            Encryption key: auto-generated in the data directory. Set{" "}
-            <code className="font-mono">SIGNAL_SECRET_KEY</code> to pin it yourself — required if you restore
-            this database on another machine.
+            {t.model.encryptionKeyBefore} <code className="font-mono">SIGNAL_SECRET_KEY</code>{" "}
+            {t.model.encryptionKeyAfter}
           </p>
         )}
 
