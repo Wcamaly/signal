@@ -21,7 +21,16 @@ import { getPublisher } from "./publishers";
 import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { fetchText } from "./sources/util";
-import { getVoice, relaunchOptions, runPipeline, type RunOptions, type Stage } from "./pipeline";
+import {
+  clientRunOptions,
+  getVoice,
+  parseStages,
+  relaunchOptions,
+  runPipeline,
+  type ClientRunOptions,
+  type PipelineResult,
+  type Stage,
+} from "./pipeline";
 import { getRun, runStages } from "./runs";
 import { refinePost } from "./agents/writer";
 import { translateDigest, translatePost } from "./agents/translate";
@@ -56,8 +65,23 @@ async function absoluteUrl(pathOrUrl: string | null): Promise<string | null> {
 
 /* ---------- pipeline ---------- */
 
-export async function actionRunPipeline(stages: Stage[], options: RunOptions = {}) {
-  const res = await runPipeline(stages, { ...options, trigger: "ui" });
+/**
+ * One run from the run dialog. The options come from the browser, so they go
+ * through clientRunOptions(): no client clock, and the targets the dialog
+ * resolved on its first stage are checked by the same resolver as anything else.
+ */
+export async function actionRunPipeline(stages: Stage[], options: ClientRunOptions = {}): Promise<PipelineResult> {
+  let safe: ClientRunOptions;
+  let picked: Stage[];
+  try {
+    safe = clientRunOptions(options);
+    if (!Array.isArray(stages) || !stages.length) throw new Error("Pick at least one stage.");
+    picked = parseStages(stages.join(","));
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    return { ok: false, runId: null, week: null, log: [`✖ ${error}`], stats: {}, error, refused: "invalid" };
+  }
+  const res = await runPipeline(picked, { ...safe, trigger: "ui" });
   revalidatePath("/", "layout");
   return res;
 }

@@ -4,8 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionRunPipeline } from "@/lib/actions";
 import { useT } from "./I18nProvider";
-import { isDue, isPeriodKey, periodKey, type Cadence } from "@/lib/periods";
-import type { RunOptions, Stage } from "@/lib/pipeline";
+import { isPeriodKey, periodKey, type Cadence } from "@/lib/periods";
+import type { ClientRunOptions, Stage } from "@/lib/pipeline";
 
 /** What the dialog needs to know about a digest definition. */
 export type RunDef = { key: string; label: string; cadence: Cadence };
@@ -37,7 +37,12 @@ function Indicator({ state }: { state: StageState }) {
   );
 }
 
-export default function RunButton({ defs }: { defs: RunDef[] }) {
+/**
+ * `due` is what a run would write now, worked out on the server — by the
+ * server's clock and time zone, the ones the run itself uses — as
+ * "label (period)" entries.
+ */
+export default function RunButton({ defs, due }: { defs: RunDef[]; due: string[] }) {
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<Stage[]>(["ingest", "curate", "digest", "posts"]);
   // "" = what is due now; otherwise the key of one definition.
@@ -53,7 +58,7 @@ export default function RunButton({ defs }: { defs: RunDef[] }) {
 
   const picked = defs.find((d) => d.key === target);
   const periodOk = !picked || period === "current" || period === "previous" || isPeriodKey(picked.cadence, period);
-  const options: RunOptions = picked ? { defs: [picked.key], period } : {};
+  const options: ClientRunOptions = picked ? { defs: [picked.key], period } : {};
 
   // A stage is one call now, so the run follows the canonical order, not the
   // order the checkboxes were clicked in.
@@ -77,9 +82,15 @@ export default function RunButton({ defs }: { defs: RunDef[] }) {
     setElapsed(0);
     setProgress(Object.fromEntries(plan.map((k) => [k, { state: "queued", log: [] }])));
     start(async () => {
+      // The first stage resolves what the run works on; every later stage
+      // gets those exact targets, so a run that crosses midnight (or a
+      // Monday) does not switch to another day's digests half-way.
+      let opts = options;
       for (const [i, stage] of plan.entries()) {
         setProgress((p) => ({ ...p, [stage]: { state: "running", log: [] } }));
-        const res = await actionRunPipeline([stage], options);
+        const res = await actionRunPipeline([stage], opts);
+        const targets = res.stats.targets;
+        if (i === 0 && Array.isArray(targets)) opts = { targets: targets as { def: string; period: string }[] };
         setProgress((p) => ({
           ...p,
           [stage]: { state: res.ok ? "ok" : "error", log: res.log },
@@ -161,10 +172,7 @@ export default function RunButton({ defs }: { defs: RunDef[] }) {
                 </div>
               ) : (
                 <p className="text-[11.5px] text-faint leading-snug">
-                  {(() => {
-                    const due = defs.filter((d) => isDue(d.cadence, new Date())).map((d) => d.label);
-                    return due.length ? t.run.dueNow(due.join(", ")) : t.run.nothingDue;
-                  })()}
+                  {due.length ? t.run.dueNow(due.join(", ")) : t.run.nothingDue}
                 </p>
               )}
               <p className="text-[11.5px] text-faint leading-snug">{t.run.scopeHint}</p>

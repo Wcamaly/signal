@@ -164,6 +164,43 @@ export function groupChannelsByTarget(
   return { groups, skipped };
 }
 
+/** What a browser may ask for: everything in RunOptions but the clock and the trigger. */
+export type ClientRunOptions = Pick<RunOptions, "week" | "defs" | "period" | "targets">;
+
+/**
+ * The run options a server action accepts from the browser. `now` and
+ * `trigger` are dropped — the due rules follow the server's clock, never the
+ * visitor's — and the rest is checked for shape only: which definitions and
+ * periods exist is resolveTargets()'s job, as for /api/cron.
+ */
+export function clientRunOptions(raw: ClientRunOptions | null | undefined): ClientRunOptions {
+  if (!raw || typeof raw !== "object") return {};
+  const out: ClientRunOptions = {};
+  const isStr = (v: unknown): v is string => typeof v === "string";
+  if (raw.week !== undefined) {
+    if (!isStr(raw.week)) throw new Error('"week" must be a string.');
+    out.week = raw.week;
+  }
+  if (raw.period !== undefined) {
+    if (!isStr(raw.period)) throw new Error('"period" must be a string.');
+    out.period = raw.period;
+  }
+  if (raw.defs !== undefined) {
+    if (!Array.isArray(raw.defs) || !raw.defs.every(isStr)) throw new Error('"defs" must be a list of digest keys.');
+    out.defs = [...raw.defs];
+  }
+  if (raw.targets !== undefined) {
+    if (
+      !Array.isArray(raw.targets) ||
+      !raw.targets.every((t) => t && typeof t === "object" && isStr(t.def) && isStr(t.period))
+    ) {
+      throw new Error('"targets" must be a list of { def, period } pairs.');
+    }
+    out.targets = raw.targets.map(({ def, period }) => ({ def, period }));
+  }
+  return out;
+}
+
 /**
  * "Run again": the stages and digests of a past run, interrupted ones
  * included. Every run opened since targets existed records them when it

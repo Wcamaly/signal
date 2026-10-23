@@ -14,7 +14,7 @@ process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-pipe
 
 const { getDb } = await import("./db");
 const { getChannels } = await import("./channels");
-const { curateWeeks, dueTargets, groupChannelsByTarget, relaunchOptions, resolveTargets, runPipeline } =
+const { clientRunOptions, curateWeeks, dueTargets, groupChannelsByTarget, relaunchOptions, resolveTargets, runPipeline } =
   await import("./pipeline");
 const { getRun, reconcileStaleRuns } = await import("./runs");
 
@@ -103,6 +103,36 @@ describe("resolveTargets", () => {
     expect(() => resolveTargets({ defs: ["nope"] }, DEFS, THURSDAY)).toThrow('Unknown digest "nope"');
     expect(() => resolveTargets({ defs: ["daily"], period: "2026-W40" }, DEFS, THURSDAY)).toThrow(/Unknown daily period/);
     expect(() => resolveTargets({ period: "previous" }, DEFS, THURSDAY)).toThrow(/needs "defs"/);
+  });
+});
+
+describe("clientRunOptions", () => {
+  it("keeps what the run dialog sends and drops the client's clock and trigger", () => {
+    expect(
+      clientRunOptions({
+        defs: ["daily"],
+        period: "2026-10-05",
+        now: new Date(2020, 0, 1),
+        trigger: "cron",
+      } as never),
+    ).toEqual({ defs: ["daily"], period: "2026-10-05" });
+    expect(clientRunOptions({ targets: [{ def: "daily", period: "2026-10-05" }] })).toEqual({
+      targets: [{ def: "daily", period: "2026-10-05" }],
+    });
+    expect(clientRunOptions(undefined)).toEqual({});
+  });
+
+  it("refuses targets that are not definition + period pairs", () => {
+    expect(() => clientRunOptions({ targets: [{ def: 1 }] } as never)).toThrow(/targets/);
+    expect(() => clientRunOptions({ targets: "general" } as never)).toThrow(/targets/);
+    expect(() => clientRunOptions({ defs: [{}] } as never)).toThrow(/defs/);
+  });
+
+  it("leaves unknown definitions and keys to the resolver, which rejects them", async () => {
+    const res = await runPipeline(["digest"], clientRunOptions({ targets: [{ def: "general", period: "2026-13" }] }));
+    expect(res).toMatchObject({ ok: false, runId: null, refused: "invalid" });
+    const other = await runPipeline(["digest"], clientRunOptions({ targets: [{ def: "nope", period: "2026-W40" }] }));
+    expect(other).toMatchObject({ ok: false, runId: null, error: expect.stringMatching(/Unknown digest "nope"/) });
   });
 });
 
