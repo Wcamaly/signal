@@ -20,18 +20,19 @@ export const es: Dictionary = {
   },
 
   nav: {
-    configure: "Configuración",
+    operation: "Operación",
+    management: "Gestión",
     dashboard: "Panel",
     radar: "Radar",
     digest: "Archivo",
     posts: "Publicaciones",
-    sources: "Fuentes",
     runs: "Ejecuciones",
-    voice: "Voz y ajustes",
-    channels: "Canales",
+    sources: "Fuentes",
     digestDefs: "Resúmenes",
-    prompts: "Prompts",
-    model: "Modelo y claves",
+    channels: "Canales",
+    writing: "Escritura",
+    model: "Modelo",
+    settings: "Ajustes",
   },
 
   common: {
@@ -39,7 +40,6 @@ export const es: Dictionary = {
     saving: "Guardando…",
     saved: "Guardado ✓",
     cancel: "Cancelar",
-    close: "Cerrar",
     edit: "Editar",
     delete: "Eliminar",
     remove: "Quitar",
@@ -51,16 +51,32 @@ export const es: Dictionary = {
     enabled: "Activo",
     disabled: "desactivado",
     working: "Trabajando…",
-    configuration: "Configuración",
+  },
+
+  manage: {
+    kicker: "Gestión",
+    back: (label: string) => `← ${label}`,
+    tabs: {
+      sources: "Fuentes",
+      categories: "Categorías",
+      voice: "Voz",
+      prompts: "Prompts",
+      pipeline: "Pipeline",
+      interface: "Interfaz",
+      provider: "Proveedor",
+      credentials: "Credenciales",
+    },
   },
 
   run: {
     button: "Ejecutar pipeline",
-    running: "Ejecutando…",
     title: "Ejecutar el pipeline",
     intro:
       "Cada etapa consume la salida de la anterior. Ejecutalas por separado si ya tenés los datos previos.",
     notRun: "No se ejecutó.",
+    leaveNote:
+      "Si salís de esta página, la etapa en curso no se cancela: termina en el servidor y aparece en Ejecuciones. Las etapas siguientes no van a arrancar.",
+    openRun: (id: number) => `Abrir la ejecución #${id} →`,
     start: "Ejecutar",
     starting: "Arrancando",
     digests: "Resúmenes",
@@ -267,7 +283,6 @@ export const es: Dictionary = {
   },
 
   sources: {
-    kicker: "Entrada",
     title: "Fuentes",
     addSource: "Agregar una fuente",
     name: "Nombre",
@@ -280,27 +295,34 @@ export const es: Dictionary = {
     test: "Probar",
     testing: "probando…",
     testResult: (found: number, sample: string) => `${found} items · ${sample}`,
+    newSource: "Nueva fuente",
+    kindFixed: "El tipo queda fijo una vez creada la fuente: un feed y un subreddit son fuentes distintas.",
+    confirmDelete: (name: string) => `¿Eliminar «${name}»? Los items que ya trajo siguen en el radar.`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit y YouTube — ninguna necesita clave de API. Agregá las que leés de verdad: el radar vale lo que valen sus fuentes.",
   },
   categories: {
     title: "Categorías",
     hint: "Agrupá tus fuentes. Un resumen propio para algunas categorías — diario, semanal o mensual — se arma en",
-    digestsPointer: "Configuración → Resúmenes.",
+    digestsPointer: "Gestión → Resúmenes.",
     name: "Nombre",
     namePlaceholder: "Nueva categoría",
     colour: "Color",
     order: "Orden",
     create: "Crear",
+    newCategory: "Nueva categoría",
+    sources: (n: number) => `${n} fuente${n === 1 ? "" : "s"}`,
     confirmDelete: (label: string) =>
       `¿Eliminar «${label}»? Sus fuentes pasan a General y sale de todos los resúmenes — un resumen que se queda sin categorías se desactiva.`,
   },
 
   settings: {
-    title: "Voz y ajustes",
+    title: "Voz",
     sub: "Esto es lo que separa un post que suena a vos de uno que suena a un LLM. Cuanto más específico, mejor — sobre todo la lista de prohibidos y las muestras de tu escritura.",
     interfaceLanguage: "Idioma de la interfaz",
     interfaceLanguageHint:
-      "El idioma de Signal en sí: este menú, los botones y las etiquetas. Lo que escribe el modelo es el idioma de trabajo, más abajo.",
+      "El idioma de Signal en sí: el menú, los botones y las etiquetas. Lo que escribe el modelo es el idioma de trabajo, en Escritura → Voz.",
+    interfaceTitle: "Interfaz",
+    interfaceSub: "El idioma en el que te habla Signal. No cambia lo que escribe el modelo.",
     voiceProfile: "Perfil de voz",
     loadExample: "Cargar ejemplo",
     name: "Nombre",
@@ -330,6 +352,7 @@ export const es: Dictionary = {
     samplesHint:
       "Pegá 2 o 3 posts tuyos que hayan funcionado. Sin esto el agente escribe correcto pero neutro; con esto empieza a sonar a vos.",
     pipeline: "Pipeline",
+    pipelineSub: "Cuántas señales se queda el curador por semana y qué tan atrás se leen las fuentes.",
     signalsPerWeek: "Señales seleccionadas por semana",
     signalsPerWeekHint: "Cuántos items sobreviven a la curación y alimentan el resumen General. Es el mismo número que sus items en Resúmenes: si cambiás uno, cambia el otro.",
     maxAge: "Ignorar items más viejos que (días)",
@@ -367,7 +390,8 @@ export const es: Dictionary = {
     storedHint: (hint: string) => ` · guardado ${hint}`,
     keepStored: "Dejalo vacío para conservar el guardado",
     pasteToken: "Pegá el token",
-    credentialError: "No se pudo guardar la credencial",
+    confirmDelete: (label: string) =>
+      `¿Eliminar el canal «${label}»? Sus posts quedan en la cola bajo su clave.`,
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} caracteres · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} por ejecución${language ? ` · ${language}` : ""}`,
   },
@@ -405,8 +429,10 @@ export const es: Dictionary = {
   },
 
   model: {
-    title: "Modelo y claves",
-    sub: "Qué modelo escribe para vos y dónde vive su clave. Todo se guarda cifrado y nunca vuelve al navegador.",
+    title: "Modelo",
+    sub: "Qué modelo escribe para vos: proveedor, id del modelo y límites.",
+    credentialsTitle: "Credenciales",
+    credentialsSub: "Las claves de API de cada proveedor. Todo se guarda cifrado y nunca vuelve al navegador.",
     provider: "Proveedor",
     modelId: "Id del modelo",
     baseUrl: "URL base",
@@ -422,8 +448,15 @@ export const es: Dictionary = {
     saveKey: "Guardar clave",
     unknownProvider: (id: string) => `Proveedor desconocido "${id}"`,
     noKey: (provider: string) =>
-      `No hay clave de API para ${provider}. Agregá una en Modelo y claves.`,
+      `No hay clave de API para ${provider}. Agregá una en Modelo → Credenciales.`,
     chooseModel: "Elegí un modelo para este proveedor.",
+    credentialsFor: (provider: string) => `Credenciales de ${provider}`,
+    getKeyAt: "Conseguí una en",
+    storedEncrypted: "Se guarda cifrada; después solo se muestran los últimos caracteres.",
+    envFallback: "Si no guardás una acá, Signal usa",
+    noKeyNeeded: "Este proveedor no necesita clave.",
+    encryptionKeyBefore: "Clave de cifrado: generada automáticamente en el directorio de datos. Definí",
+    encryptionKeyAfter: "para fijarla vos — hace falta si restaurás esta base de datos en otra máquina.",
   },
 
   registry: {

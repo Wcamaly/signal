@@ -25,18 +25,19 @@ export const en = {
   },
 
   nav: {
-    configure: "Configure",
+    operation: "Operation",
+    management: "Management",
     dashboard: "Dashboard",
     radar: "Radar",
     digest: "Digest archive",
     posts: "Publications",
-    sources: "Sources",
     runs: "Runs",
-    voice: "Voice & settings",
-    channels: "Channels",
+    sources: "Sources",
     digestDefs: "Digests",
-    prompts: "Prompts",
-    model: "Model & keys",
+    channels: "Channels",
+    writing: "Writing",
+    model: "Model",
+    settings: "Settings",
   },
 
   common: {
@@ -44,7 +45,6 @@ export const en = {
     saving: "Saving…",
     saved: "Saved ✓",
     cancel: "Cancel",
-    close: "Close",
     edit: "Edit",
     delete: "Delete",
     remove: "Remove",
@@ -56,16 +56,32 @@ export const en = {
     enabled: "Enabled",
     disabled: "disabled",
     working: "Working…",
-    configuration: "Configuration",
+  },
+
+  manage: {
+    kicker: "Management",
+    back: (label: string) => `← ${label}`,
+    tabs: {
+      sources: "Sources",
+      categories: "Categories",
+      voice: "Voice",
+      prompts: "Prompts",
+      pipeline: "Pipeline",
+      interface: "Interface",
+      provider: "Provider",
+      credentials: "Credentials",
+    },
   },
 
   run: {
     button: "Run pipeline",
-    running: "Running…",
     title: "Run the pipeline",
     intro:
       "Each stage consumes the output of the previous one. Run them separately if you already have the earlier data.",
     notRun: "Not run.",
+    leaveNote:
+      "Leaving this page does not cancel the stage in progress: it finishes on the server and shows up in Runs. The stages after it will not start.",
+    openRun: (id: number) => `Open run #${id} →`,
     start: "Run",
     starting: "Starting",
     digests: "Digests",
@@ -272,7 +288,6 @@ export const en = {
   },
 
   sources: {
-    kicker: "Input",
     title: "Sources",
     addSource: "Add a source",
     name: "Name",
@@ -285,27 +300,34 @@ export const en = {
     test: "Test",
     testing: "testing…",
     testResult: (found: number, sample: string) => `${found} items · ${sample}`,
+    newSource: "New source",
+    kindFixed: "The type is fixed once the source exists: a feed and a subreddit are different sources.",
+    confirmDelete: (name: string) => `Delete "${name}"? The items it already brought in stay on the radar.`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit and YouTube — none of them needs an API key. Add the ones you actually read: the radar is worth what its sources are worth.",
   },
   categories: {
     title: "Categories",
     hint: "Group your sources. A digest of its own for some categories — daily, weekly or monthly — is set up under",
-    digestsPointer: "Settings → Digests.",
+    digestsPointer: "Management → Digests.",
     name: "Name",
     namePlaceholder: "New category",
     colour: "Colour",
     order: "Order",
     create: "Create",
+    newCategory: "New category",
+    sources: (n: number) => `${n} source${n === 1 ? "" : "s"}`,
     confirmDelete: (label: string) =>
       `Delete "${label}"? Its sources move to General, and it is taken out of every digest — a digest left with no category is disabled.`,
   },
 
   settings: {
-    title: "Voice & settings",
+    title: "Voice",
     sub: "This is what separates a post that sounds like you from one that sounds like an LLM. The more specific, the better — above all the banned list and the writing samples.",
     interfaceLanguage: "Interface language",
     interfaceLanguageHint:
-      "The language of Signal itself: this menu, the buttons and the labels. What the model writes is the working language below.",
+      "The language of Signal itself: the menu, the buttons and the labels. What the model writes is the working language, under Writing → Voice.",
+    interfaceTitle: "Interface",
+    interfaceSub: "The language Signal itself speaks. It does not change what the model writes.",
     voiceProfile: "Voice profile",
     loadExample: "Load example",
     name: "Name",
@@ -335,6 +357,7 @@ export const en = {
     samplesHint:
       "Paste 2 or 3 of your own posts that worked. Without this the agent writes correct but neutral text; with it, it starts to sound like you.",
     pipeline: "Pipeline",
+    pipelineSub: "How many signals the curator keeps a week, and how far back ingest reads.",
     signalsPerWeek: "Signals selected per week",
     signalsPerWeekHint: "How many items survive curation and feed the General digest. It is the same number as General's item count under Digests: changing one changes the other.",
     maxAge: "Ignore items older than (days)",
@@ -372,7 +395,8 @@ export const en = {
     storedHint: (hint: string) => ` · stored ${hint}`,
     keepStored: "Leave empty to keep the stored one",
     pasteToken: "Paste the token",
-    credentialError: "Could not store the credential",
+    confirmDelete: (label: string) =>
+      `Delete the channel "${label}"? Its posts stay in the queue under its key.`,
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} chars · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} per run${language ? ` · ${language}` : ""}`,
   },
@@ -410,8 +434,10 @@ export const en = {
   },
 
   model: {
-    title: "Model & keys",
-    sub: "Which model writes for you, and where its key lives. Everything is stored encrypted and never sent back to the browser.",
+    title: "Model",
+    sub: "Which model writes for you: provider, model id and limits.",
+    credentialsTitle: "Credentials",
+    credentialsSub: "The API keys of each provider. Everything is stored encrypted and never sent back to the browser.",
     provider: "Provider",
     modelId: "Model id",
     baseUrl: "Base URL",
@@ -426,8 +452,18 @@ export const en = {
     replaceKey: "Replace key",
     saveKey: "Save key",
     unknownProvider: (id: string) => `Unknown provider "${id}"`,
-    noKey: (provider: string) => `No API key for ${provider}. Add one in Model & keys.`,
+    noKey: (provider: string) => `No API key for ${provider}. Add one under Model → Credentials.`,
     chooseModel: "Choose a model for this provider.",
+    credentialsFor: (provider: string) => `Credentials for ${provider}`,
+    /** Followed by a link to the provider's key page. */
+    getKeyAt: "Get one at",
+    storedEncrypted: "Stored encrypted; only the last characters are ever shown again.",
+    /** Followed by the provider's environment variables. */
+    envFallback: "Without one stored here, Signal falls back to",
+    noKeyNeeded: "This provider does not need a key.",
+    /** Wrapped around the SIGNAL_SECRET_KEY variable name. */
+    encryptionKeyBefore: "Encryption key: auto-generated in the data directory. Set",
+    encryptionKeyAfter: "to pin it yourself — required if you restore this database on another machine.",
   },
 
   /**

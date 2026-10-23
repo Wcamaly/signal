@@ -107,7 +107,7 @@ describe("resolveTargets", () => {
 });
 
 describe("clientRunOptions", () => {
-  it("keeps what the run dialog sends and drops the client's clock and trigger", () => {
+  it("keeps what the run page sends and drops the client's clock and trigger", () => {
     expect(
       clientRunOptions({
         defs: ["daily"],

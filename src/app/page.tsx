@@ -68,8 +68,8 @@ export default function Dashboard() {
             <div className="text-[13px] font-medium mb-1">{t.dashboard.demoTitle}</div>
             <p className="text-[12.5px] text-muted leading-relaxed">
               {status.reason} {t.dashboard.demoBody}{" "}
-              <Link href="/settings/model" className="text-accent">
-                {t.nav.model}
+              <Link href="/manage/model/credentials" className="text-accent">
+                {t.nav.model} → {t.model.credentialsTitle}
               </Link>
               .
             </p>
@@ -82,7 +82,7 @@ export default function Dashboard() {
           <Stat n={drafts} label={t.dashboard.stats.drafts} href="/posts" />
           <Stat n={approved} label={t.dashboard.stats.approved} href="/posts" />
           <Stat n={published} label={t.dashboard.stats.published} href="/posts" />
-          <Stat n={sources} label={t.dashboard.stats.sources} href="/sources" />
+          <Stat n={sources} label={t.dashboard.stats.sources} href="/manage/sources" />
         </section>
 
         <div className="grid grid-cols-[1.15fr_1fr] gap-7 items-start">

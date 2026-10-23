@@ -2,32 +2,41 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { underPath } from "@/lib/nav";
 import { useT } from "./I18nProvider";
 
+/** `also`: other paths that light the same entry, e.g. the second tab of a topic. */
+type NavLink = { href: string; label: string; also?: string[] };
+
+/**
+ * Two fixed groups: Operation (what the pipeline produced, and running it) and
+ * Management (what it is made of). A management topic stays lit on every page
+ * below it, tabs included.
+ */
 export default function Nav() {
   const path = usePathname();
   const t = useT();
 
-  const GROUPS: { title: string | null; links: { href: string; label: string; exact?: boolean }[] }[] = [
+  const GROUPS: { title: string; links: NavLink[] }[] = [
     {
-      title: null,
+      title: t.nav.operation,
       links: [
-        { href: "/", label: t.nav.dashboard, exact: true },
+        { href: "/", label: t.nav.dashboard },
         { href: "/radar", label: t.nav.radar },
         { href: "/digest", label: t.nav.digest },
         { href: "/posts", label: t.nav.posts },
-        { href: "/sources", label: t.nav.sources },
         { href: "/runs", label: t.nav.runs },
       ],
     },
     {
-      title: t.nav.configure,
+      title: t.nav.management,
       links: [
-        { href: "/settings", label: t.nav.voice, exact: true },
-        { href: "/settings/channels", label: t.nav.channels },
-        { href: "/settings/digests", label: t.nav.digestDefs },
-        { href: "/settings/prompts", label: t.nav.prompts },
-        { href: "/settings/model", label: t.nav.model },
+        { href: "/manage/sources", label: t.nav.sources, also: ["/manage/categories"] },
+        { href: "/manage/digests", label: t.nav.digestDefs },
+        { href: "/manage/channels", label: t.nav.channels },
+        { href: "/manage/voice", label: t.nav.writing, also: ["/manage/prompts"] },
+        { href: "/manage/model", label: t.nav.model },
+        { href: "/manage/settings", label: t.nav.settings },
       ],
     },
   ];
@@ -35,10 +44,10 @@ export default function Nav() {
   return (
     <nav className="px-2.5 flex flex-col gap-4">
       {GROUPS.map((group) => (
-        <div key={group.title ?? "main"} className="flex flex-col gap-0.5">
-          {group.title && <div className="kicker px-2.5 pt-2 pb-1">{group.title}</div>}
+        <div key={group.title} className="flex flex-col gap-0.5">
+          <div className="kicker px-2.5 pt-2 pb-1">{group.title}</div>
           {group.links.map((l) => {
-            const active = l.exact ? path === l.href : path.startsWith(l.href);
+            const active = [l.href, ...(l.also ?? [])].some((p) => underPath(path, p));
             return (
               <Link
                 key={l.href}

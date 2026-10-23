@@ -27,7 +27,7 @@ function heuristicScore(item: Item, voice: VoiceProfile): Verdict {
   return {
     id: item.id,
     score,
-    why: "Heuristic score: no LLM configured yet. Add a provider under Model & keys for the real analysis.",
+    why: "Heuristic score: no LLM configured yet. Add a provider under Model for the real analysis.",
     angle: voice.pillars[0] ? `Tentative angle around ${voice.pillars[0].toLowerCase()}.` : "Tentative angle.",
     topics: [],
     cluster: item.title.split(/[:—-]/)[0].trim().slice(0, 60),

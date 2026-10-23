@@ -27,7 +27,7 @@ npm run dev          # http://localhost:3000
 ```
 
 That is all. No `.env` needed to start: pick a provider and paste your key in
-**Settings → Model & keys**, or run it with no model at all — ingest works
+**Model → Credentials**, or run it with no model at all — ingest works
 normally and the rest comes out as filler, which is enough to see the shape of
 the thing before spending a cent.
 
@@ -54,17 +54,31 @@ Every run is recorded in the `runs` table with its log.
 
 ### The screens
 
+The sidebar has two groups.
+
+**Operation** — what the pipeline produced, and running it:
+
 - **Dashboard** — the state of the week, top signals, approval queue, last run.
 - **Radar** — every item with its score, the why and the angle. Select or reject
   by hand what the curator got wrong.
-- **Weekly digest** — the document, the signals that fed it, the posts that came
-  out of it.
+- **Digest archive** — every digest by definition and period: the document, the
+  signals that fed it, the posts that came out of it.
 - **Publications** — the queue. Edit inline, **ask for a rewrite** with an
   instruction ("shorter and sharper", "take the opposite position"), preview what
   the template will publish, approve, schedule, publish.
-- **Sources** — add, disable, test. Each row shows its last error and how many
-  items it has contributed.
-- **Settings** — voice, channels, prompts, model and keys.
+- **Runs** — every execution with its log. **Run pipeline** opens a run of your
+  own.
+
+**Management** — what it is made of, under `/manage`. Lists show, filter and
+test; **New …** and **Edit** open the item's own page.
+
+- **Sources** — add, edit, disable, test; **Categories** in the next tab. Each
+  row shows its last error and how many items it has contributed.
+- **Digests** — what each digest is made of and how often it is written.
+- **Channels** — where the drafts go and how they are published.
+- **Writing** — your voice profile, and the prompts.
+- **Model** — provider and model; **Credentials** in the next tab.
+- **Settings** — the pipeline knobs, and the interface language.
 
 ---
 

@@ -10,7 +10,7 @@ import {
   saveChannel,
   type ChannelInput,
 } from "./channels";
-import { deleteCategory, getCategory, saveCategory, type CategoryInput } from "./categories";
+import { deleteCategory, saveCategory, type CategoryInput } from "./categories";
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
 import { deleteDigestDef, saveDigestDef, setSignalsPerWeek, type DigestDefInput } from "./digest-defs";
 import { getDb, setSetting } from "./db";
@@ -21,6 +21,7 @@ import { getPublisher } from "./publishers";
 import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { fetchText } from "./sources/util";
+import { addSource, updateSource, type SourceInput } from "./source-store";
 import {
   clientRunOptions,
   getVoice,
@@ -66,8 +67,8 @@ async function absoluteUrl(pathOrUrl: string | null): Promise<string | null> {
 /* ---------- pipeline ---------- */
 
 /**
- * One run from the run dialog. The options come from the browser, so they go
- * through clientRunOptions(): no client clock, and the targets the dialog
+ * One stage from the run page. The options come from the browser, so they go
+ * through clientRunOptions(): no client clock, and the targets the page
  * resolved on its first stage are checked by the same resolver as anything else.
  */
 export async function actionRunPipeline(stages: Stage[], options: ClientRunOptions = {}): Promise<PipelineResult> {
@@ -310,42 +311,41 @@ export async function actionSaveGeneral(cfg: { signals_per_week: number; ingest_
 
 /* ---------- sources ---------- */
 
-export async function actionToggleSource(id: number, enabled: boolean) {
-  getDb().prepare("UPDATE sources SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id);
-  revalidatePath("/sources");
+/** The list, each source's page, and the categories list, which counts sources. */
+function revalidateSources() {
+  revalidatePath("/manage/sources");
+  revalidatePath("/manage/sources/[id]", "page");
+  revalidatePath("/manage/categories");
 }
 
-export async function actionAddSource(input: {
-  name: string;
-  url: string;
-  kind: string;
-  category: string;
-  config: Record<string, string>;
-}): Promise<Result> {
+export async function actionToggleSource(id: number, enabled: boolean) {
+  getDb().prepare("UPDATE sources SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id);
+  revalidateSources();
+}
+
+export async function actionAddSource(input: SourceInput): Promise<Result> {
   const res = await guard(() => {
-    if (!input.name.trim() || !input.url.trim()) throw new Error("Name and URL are required");
-    if (!getCategory(input.category)) throw new Error(`Unknown category "${input.category}"`);
-    const config = Object.fromEntries(
-      Object.entries(input.config ?? {}).filter(([, v]) => String(v).trim() !== ""),
-    );
-    getDb()
-      .prepare(
-        "INSERT INTO sources (name, url, kind, category, weight, config) VALUES (?, ?, ?, ?, 1.0, ?)",
-      )
-      .run(input.name.trim(), input.url.trim(), input.kind, input.category, JSON.stringify(config));
+    addSource(input);
   });
-  revalidatePath("/sources");
+  revalidateSources();
+  return res;
+}
+
+/** Edits a source. Same checks as adding one; the kind cannot change. */
+export async function actionUpdateSource(id: number, input: Omit<SourceInput, "kind">): Promise<Result> {
+  const res = await guard(() => updateSource(id, input));
+  revalidateSources();
   return res;
 }
 
 export async function actionDeleteSource(id: number) {
   getDb().prepare("DELETE FROM sources WHERE id = ?").run(id);
-  revalidatePath("/sources");
+  revalidateSources();
 }
 
 export async function actionSeedSources() {
   seedSources();
-  revalidatePath("/sources");
+  revalidateSources();
 }
 
 /** Fetches one source without writing anything, to validate it from the UI. */
@@ -368,7 +368,13 @@ export async function actionSetItemStatus(id: number, status: string) {
 /* ---------- categories ---------- */
 
 function revalidateCategories() {
-  for (const p of ["/sources", "/radar", "/digest", "/settings/channels", "/settings/digests"]) revalidatePath(p);
+  for (const p of ["/manage/sources", "/manage/categories", "/radar", "/digest", "/manage/channels", "/manage/digests"]) {
+    revalidatePath(p);
+  }
+  revalidatePath("/manage/categories/[key]", "page");
+  // A source's page and a digest's page both offer the categories.
+  revalidatePath("/manage/sources/[id]", "page");
+  revalidatePath("/manage/digests/[key]", "page");
 }
 
 export async function actionSaveCategory(input: CategoryInput): Promise<Result> {
@@ -387,22 +393,15 @@ export async function actionDeleteCategory(key: string): Promise<Result> {
   return res;
 }
 
-export async function actionSetSourceCategory(id: number, key: string): Promise<Result> {
-  const res = await guard(() => {
-    if (!getCategory(key)) throw new Error(`Unknown category "${key}"`);
-    getDb().prepare("UPDATE sources SET category = ? WHERE id = ?").run(key, id);
-  });
-  revalidatePath("/sources");
-  revalidatePath("/radar");
-  return res;
-}
-
 /* ---------- digest definitions ---------- */
 
 function revalidateDigestDefs() {
-  for (const p of ["/settings/digests", "/settings/channels", "/digest"]) revalidatePath(p);
-  // The run dialog in the sidebar lists the definitions.
-  revalidatePath("/", "layout");
+  for (const p of ["/manage/digests", "/manage/channels", "/digest"]) revalidatePath(p);
+  revalidatePath("/manage/digests/[key]", "page");
+  // A channel's page offers the definitions as its source digest.
+  revalidatePath("/manage/channels/[key]", "page");
+  // The run page lists the definitions and what is due.
+  revalidatePath("/runs/new");
 }
 
 export async function actionSaveDigestDef(input: DigestDefInput): Promise<Result> {
@@ -421,9 +420,25 @@ export async function actionDeleteDigestDef(key: string): Promise<Result> {
 
 /* ---------- channels ---------- */
 
-export async function actionSaveChannel(input: ChannelInput): Promise<Result> {
-  const res = await guard(() => saveChannel(input));
-  revalidatePath("/settings/channels");
+/** The list and each channel's page, which shows its stored credential. */
+function revalidateChannels() {
+  revalidatePath("/manage/channels");
+  revalidatePath("/manage/channels/[key]", "page");
+}
+
+/**
+ * Creates or edits a channel. A pasted `secret` is stored, in the same
+ * transaction, only for a publisher that takes one and only if the channel
+ * itself is valid.
+ */
+export async function actionSaveChannel(
+  input: ChannelInput & { isNew?: boolean; secret?: string },
+): Promise<Result> {
+  const res = await guard(() => {
+    const secret = getPublisher(input.publisher)?.needsCredential ? input.secret : undefined;
+    saveChannel({ ...input, secret });
+  });
+  revalidateChannels();
   revalidatePath("/posts");
   revalidatePath("/", "layout");
   return res;
@@ -431,7 +446,7 @@ export async function actionSaveChannel(input: ChannelInput): Promise<Result> {
 
 export async function actionDeleteChannel(key: string): Promise<Result> {
   const res = await guard(() => deleteChannel(key));
-  revalidatePath("/settings/channels");
+  revalidateChannels();
   revalidatePath("/posts");
   return res;
 }
@@ -447,8 +462,9 @@ export async function actionSaveCredential(input: {
 }): Promise<Result & { id?: number }> {
   try {
     const cred = saveCredential(input);
-    revalidatePath("/settings/model");
-    revalidatePath("/settings/channels");
+    revalidatePath("/manage/model");
+    revalidatePath("/manage/model/credentials");
+    revalidateChannels();
     revalidatePath("/", "layout");
     return { ok: true, id: cred.id };
   } catch (e) {
@@ -458,8 +474,9 @@ export async function actionSaveCredential(input: {
 
 export async function actionDeleteCredential(id: number): Promise<Result> {
   const res = await guard(() => deleteCredential(id));
-  revalidatePath("/settings/model");
-  revalidatePath("/settings/channels");
+  revalidatePath("/manage/model");
+  revalidatePath("/manage/model/credentials");
+  revalidateChannels();
   revalidatePath("/", "layout");
   return res;
 }
@@ -493,14 +510,16 @@ export async function actionSavePrompt(
   value: { system: string; template: string },
 ): Promise<Result> {
   const res = await guard(() => savePrompt(key, value));
-  revalidatePath("/settings/prompts");
+  revalidatePath("/manage/prompts");
+  revalidatePath("/manage/prompts/[key]", "page");
   return res;
 }
 
 export async function actionResetPrompt(key: PromptKey): Promise<Result & { prompt?: { system: string; template: string } }> {
   try {
     resetPrompt(key);
-    revalidatePath("/settings/prompts");
+    revalidatePath("/manage/prompts");
+    revalidatePath("/manage/prompts/[key]", "page");
     const prompt = getPrompt(key);
     return { ok: true, prompt: { system: prompt.system, template: prompt.template } };
   } catch (e) {

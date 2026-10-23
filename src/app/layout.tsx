@@ -3,11 +3,8 @@ import Link from "next/link";
 import "./globals.css";
 import I18nProvider from "@/components/I18nProvider";
 import Nav from "@/components/Nav";
-import RunButton from "@/components/RunButton";
-import { getDigestDefs } from "@/lib/digest-defs";
 import { getDictionary, getUiLocale } from "@/lib/i18n";
 import { llmStatus } from "@/lib/llm";
-import { dueTargets } from "@/lib/pipeline";
 
 export function generateMetadata(): Metadata {
   const t = getDictionary();
@@ -18,7 +15,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const status = llmStatus();
   const locale = getUiLocale();
   const t = getDictionary();
-  const defs = getDigestDefs(true);
 
   return (
     <html lang={locale}>
@@ -40,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <Nav />
             <div className="mt-auto px-5 py-4 border-t border-line">
-              <Link href="/settings/model" className="flex items-center gap-1.5 mb-3 group">
+              <Link href="/manage/model" className="flex items-center gap-1.5 mb-3 group">
                 <span
                   className="w-1.5 h-1.5 rounded-full shrink-0"
                   style={{ background: status.ready ? "var(--good)" : "var(--warn)" }}
@@ -49,12 +45,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {status.ready ? `${status.provider}/${status.model}` : t.app.noModel}
                 </span>
               </Link>
-              <RunButton
-                defs={defs
-                  .filter((d) => d.kind === "items")
-                  .map(({ key, label, cadence }) => ({ key, label, cadence }))}
-                due={dueTargets(defs, new Date()).map((d) => `${d.def.label} (${d.period})`)}
-              />
+              <Link href="/runs/new" className="btn btn-primary w-full justify-center">
+                {t.run.button}
+              </Link>
             </div>
           </aside>
           <main className="flex-1 min-w-0">{children}</main>

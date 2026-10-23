@@ -15,7 +15,7 @@ async function translateFields<T extends Record<string, unknown>>(
   voice: VoiceProfile,
 ): Promise<T> {
   if (!llmReady()) {
-    throw new Error("Configure an LLM provider under Model & keys to translate");
+    throw new Error("Configure an LLM provider under Model to translate");
   }
   const prompt = getPrompt("translate");
   const out = await chatJson<Partial<T>>({

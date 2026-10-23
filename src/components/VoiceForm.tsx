@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { actionSaveGeneral, actionSaveUiLanguage, actionSaveVoice, actionUploadImage } from "@/lib/actions";
+import { actionSaveVoice, actionUploadImage } from "@/lib/actions";
+import Field from "./Field";
 import { useT } from "./I18nProvider";
 import LanguageSelect from "./LanguageSelect";
 import type { VoiceProfile } from "@/lib/types";
@@ -38,30 +39,9 @@ const EXAMPLE: VoiceProfile = {
   samples: "",
 };
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-5">
-      <span className="label">{label}</span>
-      {children}
-      {hint && <p className="text-[11.5px] text-faint mt-1.5 leading-snug">{hint}</p>}
-    </div>
-  );
-}
-
-export default function VoiceForm({
-  voice: initial,
-  general: initialGeneral,
-  uiLocale,
-  uiLocales,
-}: {
-  voice: VoiceProfile;
-  general: { signals_per_week: number; ingest_max_age_days: number };
-  /** The interface language, which is not the language the model writes in. */
-  uiLocale: string;
-  uiLocales: { code: string; label: string }[];
-}) {
+/** The voice profile: who writes, for whom, and how. */
+export default function VoiceForm({ voice: initial }: { voice: VoiceProfile }) {
   const [v, setV] = useState(initial);
-  const [general, setGeneral] = useState(initialGeneral);
   const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
   const avatarInput = useRef<HTMLInputElement>(null);
@@ -73,7 +53,6 @@ export default function VoiceForm({
   function save() {
     start(async () => {
       await actionSaveVoice(v);
-      await actionSaveGeneral(general);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     });
@@ -81,23 +60,6 @@ export default function VoiceForm({
 
   return (
     <div className="flex flex-col gap-7">
-      <section className="card p-6">
-        <Field label={t.settings.interfaceLanguage} hint={t.settings.interfaceLanguageHint}>
-          <select
-            className="select !w-56"
-            value={uiLocale}
-            onChange={(e) => start(async () => void (await actionSaveUiLanguage(e.target.value)))}
-            disabled={pending}
-          >
-            {uiLocales.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </section>
-
       <section className="card p-6">
         <div className="flex items-start justify-between gap-4 mb-5">
           <h2 className="kicker">{t.settings.voiceProfile}</h2>
@@ -208,35 +170,6 @@ export default function VoiceForm({
             placeholder="---&#10;Post 1…&#10;---&#10;Post 2…"
           />
         </Field>
-      </section>
-
-      <section className="card p-6">
-        <h2 className="kicker mb-5">{t.settings.pipeline}</h2>
-        <div className="grid grid-cols-2 gap-x-4">
-          <Field label={t.settings.signalsPerWeek} hint={t.settings.signalsPerWeekHint}>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              className="input !w-24"
-              value={general.signals_per_week}
-              onChange={(e) => setGeneral((g) => ({ ...g, signals_per_week: Number(e.target.value) }))}
-            />
-          </Field>
-          <Field label={t.settings.maxAge} hint={t.settings.maxAgeHint}>
-            <input
-              type="number"
-              min={1}
-              max={90}
-              className="input !w-24"
-              value={general.ingest_max_age_days}
-              onChange={(e) => setGeneral((g) => ({ ...g, ingest_max_age_days: Number(e.target.value) }))}
-            />
-          </Field>
-        </div>
-        <p className="text-[12px] text-muted">
-          {t.settings.perChannelNote} <strong>{t.nav.channels}</strong>.
-        </p>
       </section>
 
       <div className="flex items-center gap-3">

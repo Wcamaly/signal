@@ -266,6 +266,44 @@ export const PROMPT_KEYS = Object.keys(PROMPT_DEFINITIONS) as PromptKey[];
 
 export type StoredPrompt = { system: string; template: string; customized: boolean };
 
+/** Whether a URL segment names a shipped prompt. */
+export function isPromptKey(key: string): key is PromptKey {
+  return (PROMPT_KEYS as string[]).includes(key);
+}
+
+/** A prompt as the list and the editor show it. */
+export type EditablePrompt = {
+  key: PromptKey;
+  label: string;
+  description: string;
+  variables: PromptVariable[];
+  system: string;
+  template: string;
+  customized: boolean;
+};
+
+/**
+ * The stored text of a prompt, labelled in the interface language. `overrides`
+ * is the dictionary's `registry.prompts`; a prompt it does not translate keeps
+ * the English it ships with.
+ */
+export function editablePrompt(
+  key: PromptKey,
+  overrides: Record<string, { label?: string; description?: string }>,
+): EditablePrompt {
+  const def = PROMPT_DEFINITIONS[key];
+  const current = getPrompt(key);
+  return {
+    key,
+    label: overrides[key]?.label ?? def.label,
+    description: overrides[key]?.description ?? def.description,
+    variables: def.variables,
+    system: current.system,
+    template: current.template,
+    customized: current.customized,
+  };
+}
+
 export function getPrompt(key: PromptKey): StoredPrompt {
   const def = PROMPT_DEFINITIONS[key];
   const row = getDb().prepare("SELECT system, template FROM prompts WHERE key = ?").get(key) as

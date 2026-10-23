@@ -180,7 +180,7 @@ export async function chat(req: ChatRequest): Promise<string> {
     ? resolveSecret("llm", provider.id, provider.envKeys)
     : { secret: null };
   if (provider.needsKey && !secret) {
-    throw new Error(`No API key stored for ${provider.label}. Add one under Model & keys.`);
+    throw new Error(`No API key stored for ${provider.label}. Add one under Model → Credentials.`);
   }
 
   return provider.chat(req, {
