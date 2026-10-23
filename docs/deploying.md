@@ -69,7 +69,7 @@ systemctl start signal-pipeline      # run it now
 ## Kubernetes
 
 `deploy/kubernetes/` is a working Kustomize example: namespace, config, PVC,
-deployment, service, ingress and the weekly CronJob. Read it before applying it
+deployment, service, ingress and the daily CronJob. Read it before applying it
 — the ingress host, the ingress class and the timezone are placeholders.
 
 ```bash
