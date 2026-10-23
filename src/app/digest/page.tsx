@@ -69,7 +69,9 @@ export default async function DigestList({ searchParams }: { searchParams: Searc
         {digests.length ? (
           digests.map((d) => {
             const meta = digestDefLabel(defs, d.def_key);
-            const cadence = defs.some((x) => x.key === d.def_key) ? meta.cadence : (cadenceOf(d.period_key) ?? "weekly");
+            // The period key says what the digest was; the definition may
+            // have changed cadence since.
+            const cadence = cadenceOf(d.period_key) ?? meta.cadence;
             return (
               <Link key={d.id} href={`/digest/${d.id}`} className="card p-5 hover:border-line-strong transition-colors">
                 <div className="flex items-baseline gap-3 flex-wrap">
