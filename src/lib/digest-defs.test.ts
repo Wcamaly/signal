@@ -7,7 +7,9 @@ process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-defs
 
 const { getDb, setSetting } = await import("./db");
 const { deleteCategory, getCategories } = await import("./categories");
-const { deleteDigestDef, getDigestDef, getDigestDefs, saveDigestDef } = await import("./digest-defs");
+const { deleteDigestDef, generalItemCount, getDigestDef, getDigestDefs, saveDigestDef, setSignalsPerWeek } =
+  await import("./digest-defs");
+const { getSetting } = await import("./db");
 
 const db = () => getDb();
 const input = (over: Partial<Parameters<typeof saveDigestDef>[0]> = {}) => ({
@@ -37,6 +39,41 @@ describe("seeding", () => {
     saveDigestDef(input({ key: "general", label: "Everything", cadence: "weekly", item_count: 12 }));
     setSetting("signals_per_week", 3);
     expect(getDigestDef("general")).toMatchObject({ label: "Everything", item_count: 12 });
+  });
+});
+
+describe("general.item_count and signals_per_week are one number", () => {
+  it("saving signals_per_week from Settings updates general", () => {
+    getDigestDefs();
+    setSignalsPerWeek(12);
+    expect(getSetting("signals_per_week", 0)).toBe(12);
+    expect(getDigestDef("general")?.item_count).toBe(12);
+    expect(generalItemCount()).toBe(12);
+  });
+
+  it("saving the general definition writes the setting", () => {
+    getDigestDefs();
+    saveDigestDef(input({ key: "general", label: "General", cadence: "weekly", item_count: 4 }));
+    expect(getSetting("signals_per_week", 0)).toBe(4);
+    expect(generalItemCount()).toBe(4);
+  });
+
+  it("saving another definition leaves the setting alone", () => {
+    setSignalsPerWeek(6);
+    saveDigestDef(input({ item_count: 3 }));
+    expect(getSetting("signals_per_week", 0)).toBe(6);
+  });
+
+  it("clamps what Settings sends", () => {
+    setSignalsPerWeek(0);
+    expect(generalItemCount()).toBe(1);
+    expect(getSetting("signals_per_week", 0)).toBe(1);
+  });
+
+  it("falls back to the setting when general is missing", () => {
+    setSetting("signals_per_week", 9);
+    db().exec("DELETE FROM digest_defs");
+    expect(generalItemCount()).toBe(9);
   });
 });
 

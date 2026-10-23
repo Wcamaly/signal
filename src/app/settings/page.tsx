@@ -1,4 +1,5 @@
 import { getSetting } from "@/lib/db";
+import { generalItemCount, seedDigestDefs } from "@/lib/digest-defs";
 import { getDictionary, getUiLocale, uiLocaleOptions } from "@/lib/i18n";
 import { getVoice } from "@/lib/pipeline";
 import PageHeader from "@/components/PageHeader";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
   const t = getDictionary();
+  seedDigestDefs();
   return (
     <div>
       <PageHeader
@@ -23,7 +25,8 @@ export default function SettingsPage() {
           uiLocale={getUiLocale()}
           uiLocales={uiLocaleOptions()}
           general={{
-            signals_per_week: getSetting<number>("signals_per_week", 8),
+            // The general digest's item count: the number the curator uses.
+            signals_per_week: generalItemCount(),
             ingest_max_age_days: getSetting<number>("ingest_max_age_days", 14),
           }}
         />

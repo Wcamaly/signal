@@ -12,6 +12,7 @@ process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-cura
 const { getDb, setSetting } = await import("../db");
 const { getVoice } = await import("../pipeline");
 const { curateWeek } = await import("./curator");
+const { saveDigestDef, setSignalsPerWeek } = await import("../digest-defs");
 
 const db = () => getDb();
 let n = 0;
@@ -29,7 +30,7 @@ const row = (id: number) => db().prepare("SELECT status, score FROM items WHERE 
 
 beforeEach(() => {
   db().exec("DELETE FROM items;");
-  setSetting("signals_per_week", 2);
+  setSignalsPerWeek(2);
 });
 
 describe("curateWeek", () => {
@@ -54,6 +55,17 @@ describe("curateWeek", () => {
     expect(row(best).status).toBe("selected");
     // signals_per_week = 2: the used item counts towards it.
     expect(row(other).status).toBe("scored");
+  });
+
+  it("selects as many items as the general definition asks for", async () => {
+    for (let i = 0; i < 5; i++) item(`Story ${i}`, "scored", 50 + i);
+    item("Trigger", "new");
+    saveDigestDef({ key: "general", label: "General", cadence: "weekly", categories: [], item_count: 4, enabled: true });
+    expect(await curateWeek("2026-W43", getVoice())).toMatchObject({ selected: 4 });
+    // Even if the setting drifted on its own, general is what counts.
+    setSetting("signals_per_week", 1);
+    db().exec("UPDATE items SET status = 'new' WHERE title = 'Trigger'");
+    expect(await curateWeek("2026-W43", getVoice())).toMatchObject({ selected: 4 });
   });
 
   it("does nothing on a week with no new items", async () => {

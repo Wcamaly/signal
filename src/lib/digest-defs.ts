@@ -1,4 +1,4 @@
-import { clampItemCount, getDb, getSetting, parseJson } from "./db";
+import { clampItemCount, getDb, getSetting, parseJson, setSetting } from "./db";
 import { isCadence, type Cadence } from "./periods";
 import { slugify } from "./slug";
 import type { DigestDef, DigestKind } from "./types";
@@ -59,6 +59,31 @@ export function getDigestDef(key: string): DigestDef | undefined {
   return row && toDef(row);
 }
 
+/**
+ * How many signals the general digest carries — and so how many the curator
+ * selects a week. `general.item_count` and the `signals_per_week` setting are
+ * one number, kept in step by setSignalsPerWeek() and saveDigestDef(); the
+ * definition wins, the setting is the fallback when it is missing.
+ */
+export function generalItemCount(): number {
+  const row = getDb().prepare("SELECT item_count FROM digest_defs WHERE key = ?").get(GENERAL_DEF) as
+    | { item_count: number }
+    | undefined;
+  return clampItemCount(row ? row.item_count : getSetting<number>("signals_per_week", 8));
+}
+
+/** Settings → General: writes the setting and the general definition together. */
+export function setSignalsPerWeek(value: number): number {
+  const n = clampItemCount(value);
+  seedDigestDefs();
+  const db = getDb();
+  db.transaction(() => {
+    setSetting("signals_per_week", n);
+    db.prepare("UPDATE digest_defs SET item_count = ? WHERE key = ?").run(n, GENERAL_DEF);
+  })();
+  return n;
+}
+
 /** Display metadata for a key whose definition was deleted. */
 export function digestDefLabel(defs: DigestDef[], key: string): DigestDef {
   return (
@@ -104,15 +129,20 @@ export function saveDigestDef(input: DigestDefInput): string {
   };
 
   if (input.key) {
-    const res = db
-      .prepare(
-        `UPDATE digest_defs SET label = @label, cadence = @cadence, categories = @categories,
-           item_count = @item_count, enabled = @enabled, sort_order = @sort_order
-         WHERE key = @key`,
-      )
-      .run({ ...row, key: input.key });
-    if (!res.changes) throw new Error(`Unknown digest "${input.key}"`);
-    return input.key;
+    const key = input.key;
+    db.transaction(() => {
+      const res = db
+        .prepare(
+          `UPDATE digest_defs SET label = @label, cadence = @cadence, categories = @categories,
+             item_count = @item_count, enabled = @enabled, sort_order = @sort_order
+           WHERE key = @key`,
+        )
+        .run({ ...row, key });
+      if (!res.changes) throw new Error(`Unknown digest "${key}"`);
+      // The general digest's size is also the curator's weekly selection.
+      if (key === GENERAL_DEF) setSetting("signals_per_week", row.item_count);
+    })();
+    return key;
   }
 
   const key = slugify(label);

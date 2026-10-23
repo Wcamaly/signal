@@ -12,7 +12,7 @@ import {
 } from "./channels";
 import { deleteCategory, getCategory, saveCategory, type CategoryInput } from "./categories";
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
-import { deleteDigestDef, saveDigestDef, type DigestDefInput } from "./digest-defs";
+import { deleteDigestDef, saveDigestDef, setSignalsPerWeek, type DigestDefInput } from "./digest-defs";
 import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
 import { saveLlmConfig, saveProviderOptions, testLlm, type LlmConfig } from "./llm";
@@ -283,7 +283,8 @@ export async function actionSaveUiLanguage(locale: string) {
 }
 
 export async function actionSaveGeneral(cfg: { signals_per_week: number; ingest_max_age_days: number }) {
-  setSetting("signals_per_week", Math.max(1, Math.min(30, Math.round(cfg.signals_per_week) || 8)));
+  // Also the general digest's item count: one number in two places.
+  setSignalsPerWeek(cfg.signals_per_week);
   setSetting("ingest_max_age_days", Math.max(1, Math.min(90, Math.round(cfg.ingest_max_age_days) || 14)));
   revalidatePath("/", "layout");
 }
