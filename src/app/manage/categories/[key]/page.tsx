@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getCategory } from "@/lib/categories";
+import { getCategory, seedCategories } from "@/lib/categories";
 import { getDictionary } from "@/lib/i18n";
 import { sourcesTabs } from "@/lib/manage-tabs";
 import BackLink from "@/components/BackLink";
@@ -13,6 +13,8 @@ type Params = Promise<{ key: string }>;
 
 export default async function EditCategoryPage({ params }: { params: Params }) {
   const { key } = await params;
+  // A fresh install has no rows until something seeds them (the list does).
+  seedCategories();
   const category = getCategory(key);
   if (!category) notFound();
 
