@@ -126,7 +126,9 @@ export const en = {
     noLog: "This run recorded no log.",
     result: "Result",
     relaunch: "Run again",
-    relaunchHint: (week: string) => `Runs the same stages again, on ${week} and the same digests.`,
+    relaunchTargets: (digests: string) => `Runs the same stages again, for the same digests: ${digests}.`,
+    relaunchNoTargets: "Runs the same stages again. No digest was due in this run.",
+    relaunchLegacy: (week: string) => `Runs the same stages again, as the weekly run of ${week}.`,
     unknownWeek: "no week",
   },
 

@@ -120,7 +120,9 @@ export const es: Dictionary = {
     noLog: "Esta ejecución no dejó registro.",
     result: "Resultado",
     relaunch: "Ejecutar de nuevo",
-    relaunchHint: (week: string) => `Vuelve a correr las mismas etapas, sobre ${week} y los mismos resúmenes.`,
+    relaunchTargets: (digests: string) => `Vuelve a correr las mismas etapas, para los mismos resúmenes: ${digests}.`,
+    relaunchNoTargets: "Vuelve a correr las mismas etapas. En esta corrida no tocaba ningún resumen.",
+    relaunchLegacy: (week: string) => `Vuelve a correr las mismas etapas, como la corrida semanal de ${week}.`,
     unknownWeek: "sin semana",
   },
 

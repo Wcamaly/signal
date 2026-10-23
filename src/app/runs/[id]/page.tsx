@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { digestDefLabel, getDigestDefs } from "@/lib/digest-defs";
 import { getDictionary } from "@/lib/i18n";
 import { getRun, runStages, runStats } from "@/lib/runs";
 import PageHeader from "@/components/PageHeader";
@@ -53,14 +54,25 @@ export default async function RunDetailPage({ params }: { params: Params }) {
 
   const t = getDictionary();
   const stages = runStages(run);
-  const rows = statRows(runStats(run));
+  const stats = runStats(run);
+  const rows = statRows(stats);
+
+  // What "Run again" replays: the recorded targets, or — for a run from
+  // before digest definitions — the old weekly run of its week.
+  const defs = getDigestDefs();
+  const targets = Array.isArray(stats.targets) ? (stats.targets as { def: string; period: string }[]) : null;
+  const relaunchSub = targets
+    ? targets.length
+      ? t.runs.relaunchTargets(targets.map((x) => `${digestDefLabel(defs, x.def).label} · ${x.period}`).join(", "))
+      : t.runs.relaunchNoTargets
+    : t.runs.relaunchLegacy(run.week_key ?? t.runs.unknownWeek);
 
   return (
     <div>
       <PageHeader
         kicker={t.runs.kicker}
         title={t.runs.detailTitle(run.id)}
-        sub={t.runs.relaunchHint(run.week_key ?? t.runs.unknownWeek)}
+        sub={relaunchSub}
         right={<RelaunchButton id={run.id} disabled={run.status === "running"} />}
       />
 

@@ -130,6 +130,17 @@ export function curateWeeks(options: RunOptions, targets: DigestTarget[], now: D
   return [...new Set(weeks)];
 }
 
+/**
+ * The week a run is filed under (runs.week_key, the filter on /runs): the
+ * legacy `week` when given, else the week of its weekly digest when it writes
+ * exactly one, else the week it runs in.
+ */
+export function runWeek(options: RunOptions, targets: DigestTarget[], now: Date): WeekKey {
+  if (options.week) return resolveWeek(options.week, now);
+  const weekly = [...new Set(targets.filter((t) => t.def.cadence === "weekly").map((t) => t.period))];
+  return weekly.length === 1 ? weekly[0] : weekKey(now);
+}
+
 export type PostGroup = { digestId: number; defKey: string; period: PeriodKey; channels: Channel[] };
 
 /**
@@ -228,8 +239,8 @@ export async function runPipeline(
   let targets: DigestTarget[];
   let weeks: WeekKey[];
   try {
-    week = options.week ? resolveWeek(options.week, now) : weekKey(now);
     targets = resolveTargets(options, getDigestDefs(), now);
+    week = runWeek(options, targets, now);
     weeks = curateWeeks(options, targets, now);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -250,6 +250,20 @@ describe("runPipeline", () => {
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/No channel/) });
   });
 
+  it("records on the run the week of its single weekly digest, otherwise the current week", async () => {
+    const weekOf = (id: number | null) =>
+      (db().prepare("SELECT week_key FROM runs WHERE id = ?").get(id) as { week_key: string }).week_key;
+    const named = await runPipeline(["digest"], { defs: ["general"], period: "2026-W40", now: THURSDAY });
+    expect(weekOf(named.runId)).toBe("2026-W40");
+    expect(named.week).toBe("2026-W40");
+    // Monday: the weekly digest of the week that closed, plus a daily one.
+    expect(weekOf((await runPipeline(["digest"], { now: MONDAY })).runId)).toBe("2026-W43");
+    // Only a daily digest: the week the run happens in.
+    expect(weekOf((await runPipeline(["digest"], { defs: ["pulse"], period: "2026-10-05", now: MONDAY })).runId)).toBe(
+      "2026-W44",
+    );
+  });
+
   it("keeps the legacy week working for the general digest", async () => {
     const res = await runPipeline(["digest"], { week: "2026-W43", now: THURSDAY });
     expect(res.ok).toBe(true);
