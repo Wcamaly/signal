@@ -299,8 +299,15 @@ export async function runPipeline(
       }
     }
     if (stages.includes("posts")) {
-      const channels = getChannels(true).filter((c) => c.posts_per_run > 0);
-      if (!channels.length) throw new Error("No channel is enabled. Enable one under Channels.");
+      // Only the channels bound to this run's digests matter: on a day when
+      // no bound definition is due, every channel being off is not an error.
+      const bound = getChannels().filter((c) => targets.some((t) => (c.digest_def ?? "general") === t.def.key));
+      const channels = bound.filter((c) => c.enabled && c.posts_per_run > 0);
+      if (bound.length && !channels.length) {
+        throw new Error(
+          `No channel of the digests in this run is enabled (${bound.map((c) => c.label).join(", ")}). Enable one under Channels.`,
+        );
+      }
       const plan = groupChannelsByTarget(targets, stages.includes("digest") ? written : null, channels);
       plan.skipped.forEach((s) => log.push(`⚠ ${s}`));
       let created = 0;

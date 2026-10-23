@@ -237,6 +237,19 @@ describe("runPipeline", () => {
     expect(db().prepare("SELECT COUNT(*) c FROM posts").get()).toEqual({ c: 0 });
   });
 
+  it("is green on a day when no channel's definition is due, even with every channel off", async () => {
+    db().exec("DELETE FROM channels WHERE key = 'pulse-ch'; UPDATE channels SET enabled = 0;");
+    const res = await runPipeline(["posts"], { now: THURSDAY });
+    expect(res.ok).toBe(true);
+    expect(res.log).toContain("Writing: no channel writes from the digests of this run.");
+  });
+
+  it("fails when the digests of the run have channels and none of them is enabled", async () => {
+    db().exec("UPDATE channels SET enabled = 0 WHERE key = 'pulse-ch'");
+    const res = await runPipeline(["posts"], { now: THURSDAY });
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/No channel/) });
+  });
+
   it("keeps the legacy week working for the general digest", async () => {
     const res = await runPipeline(["digest"], { week: "2026-W43", now: THURSDAY });
     expect(res.ok).toBe(true);
