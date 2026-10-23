@@ -65,6 +65,8 @@ export const es: Dictionary = {
       prompts: "Prompts",
       pipeline: "Pipeline",
       interface: "Interfaz",
+      provider: "Proveedor",
+      credentials: "Credenciales",
     },
   },
 
@@ -429,8 +431,10 @@ export const es: Dictionary = {
   },
 
   model: {
-    title: "Modelo y claves",
-    sub: "Qué modelo escribe para vos y dónde vive su clave. Todo se guarda cifrado y nunca vuelve al navegador.",
+    title: "Modelo",
+    sub: "Qué modelo escribe para vos: proveedor, id del modelo y límites.",
+    credentialsTitle: "Credenciales",
+    credentialsSub: "Las claves de API de cada proveedor. Todo se guarda cifrado y nunca vuelve al navegador.",
     provider: "Proveedor",
     modelId: "Id del modelo",
     baseUrl: "URL base",
@@ -446,7 +450,7 @@ export const es: Dictionary = {
     saveKey: "Guardar clave",
     unknownProvider: (id: string) => `Proveedor desconocido "${id}"`,
     noKey: (provider: string) =>
-      `No hay clave de API para ${provider}. Agregá una en Modelo y claves.`,
+      `No hay clave de API para ${provider}. Agregá una en Modelo → Credenciales.`,
     chooseModel: "Elegí un modelo para este proveedor.",
   },
 

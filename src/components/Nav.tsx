@@ -28,7 +28,7 @@ export default function Nav() {
         { href: "/manage/digests", label: t.nav.digestDefs },
         { href: "/manage/prompts", label: t.nav.prompts },
         { href: "/manage/settings", label: t.nav.settings },
-        { href: "/settings/model", label: t.nav.model },
+        { href: "/manage/model", label: t.nav.model },
       ],
     },
   ];

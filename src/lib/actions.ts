@@ -447,7 +447,8 @@ export async function actionSaveCredential(input: {
 }): Promise<Result & { id?: number }> {
   try {
     const cred = saveCredential(input);
-    revalidatePath("/settings/model");
+    revalidatePath("/manage/model");
+    revalidatePath("/manage/model/credentials");
     revalidateChannels();
     revalidatePath("/", "layout");
     return { ok: true, id: cred.id };
@@ -458,7 +459,8 @@ export async function actionSaveCredential(input: {
 
 export async function actionDeleteCredential(id: number): Promise<Result> {
   const res = await guard(() => deleteCredential(id));
-  revalidatePath("/settings/model");
+  revalidatePath("/manage/model");
+  revalidatePath("/manage/model/credentials");
   revalidateChannels();
   revalidatePath("/", "layout");
   return res;

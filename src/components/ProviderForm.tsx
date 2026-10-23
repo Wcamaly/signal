@@ -1,38 +1,27 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useT } from "./I18nProvider";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  actionDeleteCredential,
-  actionSaveCredential,
-  actionSaveLlmConfig,
-  actionSaveProviderOptions,
-  actionTestLlm,
-} from "@/lib/actions";
-import type { CredentialInfo } from "@/lib/credentials";
-import type { LlmConfig, ProviderInfo } from "@/lib/llm";
-import type { LlmStatus } from "@/lib/llm";
+import { actionSaveLlmConfig, actionSaveProviderOptions, actionTestLlm } from "@/lib/actions";
+import type { LlmConfig, LlmStatus, ProviderInfo } from "@/lib/llm";
+import { useT } from "./I18nProvider";
 
-export default function ModelForm({
+/** Which model writes: provider, model id, limits, and the provider's non-secret options. */
+export default function ProviderForm({
   providers,
   config: initial,
   options: initialOptions,
   status,
-  credentials,
-  keyIsManaged,
 }: {
   providers: ProviderInfo[];
   config: LlmConfig;
   /** Non-secret provider settings the UI has stored, keyed by provider. */
   options: Record<string, Record<string, string>>;
   status: LlmStatus;
-  credentials: CredentialInfo[];
-  keyIsManaged: boolean;
 }) {
   const [cfg, setCfg] = useState(initial);
   const [options, setOptions] = useState(initialOptions);
-  const [secret, setSecret] = useState("");
   const [saved, setSaved] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; detail: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +33,6 @@ export default function ModelForm({
     () => providers.find((p) => p.id === cfg.provider) ?? providers[0],
     [providers, cfg.provider],
   );
-  const stored = credentials.filter((c) => c.provider === provider.id);
 
   function selectProvider(id: string) {
     const next = providers.find((p) => p.id === id);
@@ -78,23 +66,6 @@ export default function ModelForm({
     });
   }
 
-  function saveKey() {
-    setError(null);
-    start(async () => {
-      const res = await actionSaveCredential({
-        scope: "llm",
-        provider: provider.id,
-        label: "default",
-        secret,
-      });
-      if (!res.ok) setError(res.error ?? t.common.error);
-      else {
-        setSecret("");
-        router.refresh();
-      }
-    });
-  }
-
   function runTest() {
     setTest(null);
     start(async () => {
@@ -115,7 +86,12 @@ export default function ModelForm({
               {status.keyFrom === "env" && " · key read from the environment"}
             </>
           ) : (
-            status.reason
+            <>
+              {status.reason}{" "}
+              <Link href="/manage/model/credentials" className="text-accent">
+                {t.model.credentialsTitle} →
+              </Link>
+            </>
           )}
         </div>
       </div>
@@ -226,84 +202,6 @@ export default function ModelForm({
             {test.ok ? `✓ ${test.detail}` : `✖ ${test.detail}`}
           </p>
         )}
-      </section>
-
-      <section className="card p-6">
-        <h2 className="kicker mb-2">Credentials for {provider.label}</h2>
-        <p className="text-[12px] text-muted mb-5 leading-relaxed">
-          {provider.needsKey ? (
-            <>
-              Get one at{" "}
-              <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">
-                {new URL(provider.docsUrl).host}
-              </a>
-              . Stored encrypted; only the last characters are ever shown again.
-              {provider.envKeys.length > 0 && (
-                <>
-                  {" "}
-                  Without one stored here, Signal falls back to{" "}
-                  <code className="font-mono text-[11.5px]">{provider.envKeys.join(" / ")}</code>.
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              This provider does not need a key.{" "}
-              <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent">{t.model.setupInstructions}</a>
-              .
-            </>
-          )}
-        </p>
-
-        {stored.length > 0 && (
-          <div className="flex flex-col gap-1.5 mb-5">
-            {stored.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-md border border-line">
-                <span className="text-[12.5px] flex-1">
-                  {c.label} <span className="font-mono text-faint">{c.hint}</span>
-                </span>
-                <span className="text-[11px] text-faint font-mono">{c.updated_at}</span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() =>
-                    start(async () => {
-                      await actionDeleteCredential(c.id);
-                      router.refresh();
-                    })
-                  }
-                  disabled={pending}
-                >{t.common.delete}</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {provider.needsKey && (
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <span className="label">{provider.keyLabel}</span>
-              <input
-                className="input font-mono !text-[12px]"
-                type="password"
-                autoComplete="off"
-                placeholder={provider.keyPlaceholder}
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-              />
-            </div>
-            <button className="btn btn-primary" onClick={saveKey} disabled={pending || !secret.trim()}>
-              {stored.length ? t.model.replaceKey : t.model.saveKey}
-            </button>
-          </div>
-        )}
-
-        {!keyIsManaged && (
-          <p className="text-[11.5px] text-faint mt-4 leading-snug">
-            Encryption key: auto-generated in the data directory. Set{" "}
-            <code className="font-mono">SIGNAL_SECRET_KEY</code> to pin it yourself — required if you restore
-            this database on another machine.
-          </p>
-        )}
 
         {error && (
           <p className="text-[12px] mt-3" style={{ color: "var(--bad)" }}>
@@ -311,6 +209,7 @@ export default function ModelForm({
           </p>
         )}
       </section>
+
     </div>
   );
 }

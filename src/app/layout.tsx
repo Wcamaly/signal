@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <Nav />
             <div className="mt-auto px-5 py-4 border-t border-line">
-              <Link href="/settings/model" className="flex items-center gap-1.5 mb-3 group">
+              <Link href="/manage/model" className="flex items-center gap-1.5 mb-3 group">
                 <span
                   className="w-1.5 h-1.5 rounded-full shrink-0"
                   style={{ background: status.ready ? "var(--good)" : "var(--warn)" }}

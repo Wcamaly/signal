@@ -23,3 +23,10 @@ export function settingsTabs(t: Dictionary): SectionTab[] {
     { href: "/manage/settings/interface", label: t.manage.tabs.interface },
   ];
 }
+
+export function modelTabs(t: Dictionary): SectionTab[] {
+  return [
+    { href: "/manage/model", label: t.manage.tabs.provider },
+    { href: "/manage/model/credentials", label: t.manage.tabs.credentials },
+  ];
+}

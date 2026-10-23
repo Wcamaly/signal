@@ -68,7 +68,7 @@ export default function Dashboard() {
             <div className="text-[13px] font-medium mb-1">{t.dashboard.demoTitle}</div>
             <p className="text-[12.5px] text-muted leading-relaxed">
               {status.reason} {t.dashboard.demoBody}{" "}
-              <Link href="/settings/model" className="text-accent">
+              <Link href="/manage/model/credentials" className="text-accent">
                 {t.nav.model}
               </Link>
               .

@@ -70,6 +70,8 @@ export const en = {
       prompts: "Prompts",
       pipeline: "Pipeline",
       interface: "Interface",
+      provider: "Provider",
+      credentials: "Credentials",
     },
   },
 
@@ -434,8 +436,10 @@ export const en = {
   },
 
   model: {
-    title: "Model & keys",
-    sub: "Which model writes for you, and where its key lives. Everything is stored encrypted and never sent back to the browser.",
+    title: "Model",
+    sub: "Which model writes for you: provider, model id and limits.",
+    credentialsTitle: "Credentials",
+    credentialsSub: "The API keys of each provider. Everything is stored encrypted and never sent back to the browser.",
     provider: "Provider",
     modelId: "Model id",
     baseUrl: "Base URL",
@@ -450,7 +454,7 @@ export const en = {
     replaceKey: "Replace key",
     saveKey: "Save key",
     unknownProvider: (id: string) => `Unknown provider "${id}"`,
-    noKey: (provider: string) => `No API key for ${provider}. Add one in Model & keys.`,
+    noKey: (provider: string) => `No API key for ${provider}. Add one under Model → Credentials.`,
     chooseModel: "Choose a model for this provider.",
   },
 
