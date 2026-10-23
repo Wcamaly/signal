@@ -8,7 +8,7 @@ export type ChatRequest = {
 
 /**
  * A non-secret value a provider needs next to its key — Anthropic's workspace
- * id, for instance. Rendered as an input under Model & keys.
+ * id, for instance. Rendered as an input under Model → Provider.
  */
 export type ProviderOption = {
   key: string;

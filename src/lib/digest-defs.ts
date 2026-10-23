@@ -72,7 +72,7 @@ export function generalItemCount(): number {
   return clampItemCount(row ? row.item_count : getSetting<number>("signals_per_week", 8));
 }
 
-/** Settings → General: writes the setting and the general definition together. */
+/** Settings → Pipeline: writes the setting and the general definition together. */
 export function setSignalsPerWeek(value: number): number {
   const n = clampItemCount(value);
   seedDigestDefs();

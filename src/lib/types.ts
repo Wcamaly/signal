@@ -23,7 +23,7 @@ export type Category = {
 
 export type DigestKind = "items" | "rollup";
 
-/** What a digest is made of and how often it is written. Settings → Digests. */
+/** What a digest is made of and how often it is written. Management → Digests. */
 export type DigestDef = {
   id: number;
   /** Stable slug: digests.def_key and channels.digest_def store it. */
@@ -148,7 +148,7 @@ export type VoiceProfile = {
 };
 
 /**
- * Neutral starting point. Everything here is editable under Voice & settings,
+ * Neutral starting point. Everything here is editable under Writing → Voice,
  * and the two fields that change the output the most are `banned` and
  * `samples` — see docs/configuring.md.
  */

@@ -69,7 +69,7 @@ export const anthropicProvider: LlmProvider = {
         if (!workspaceId && err.message.includes("anthropic-workspace-id")) {
           throw new LlmError(
             "This Anthropic key is identity-linked, so the request must name a workspace. " +
-              "Add the workspace id under Model & keys (or set ANTHROPIC_WORKSPACE_ID).",
+              "Add the workspace id under Model (or set ANTHROPIC_WORKSPACE_ID).",
             "anthropic",
             err.status,
           );

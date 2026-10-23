@@ -6,13 +6,39 @@ none of them is required.
 
 ---
 
-## Model & keys
+## Where things are
 
-**Settings → Model & keys.**
+The sidebar has two groups. **Operation** is what the pipeline produced, and
+running it: Dashboard, Radar, Digest archive, Publications and Runs — **Run
+pipeline** at the bottom opens the run page, `/runs/new`. **Management** is what
+the pipeline is made of, all under `/manage`:
 
-Pick a provider, a model, and paste the key. Signal ships with Anthropic,
-OpenAI, Google, OpenRouter, Groq, Ollama, and a generic OpenAI-compatible entry
-for anything else (vLLM, LM Studio, Together, DeepSeek, your own gateway).
+| Topic | Tabs | URL |
+|---|---|---|
+| Sources | Sources · Categories | `/manage/sources`, `/manage/categories` |
+| Digests | — | `/manage/digests` |
+| Channels | — | `/manage/channels` |
+| Writing | Voice · Prompts | `/manage/voice`, `/manage/prompts` |
+| Model | Provider · Credentials | `/manage/model`, `/manage/model/credentials` |
+| Settings | Pipeline · Interface | `/manage/settings`, `/manage/settings/interface` |
+
+A list shows, filters and runs the quick actions (enable, test); **New …** and
+**Edit** open the item's own page, with **← Back**, **Save** and **Delete**.
+The old addresses — `/sources`, `/settings`, `/settings/channels`,
+`/settings/digests`, `/settings/prompts`, `/settings/model` — redirect
+permanently to their new place.
+
+---
+
+## Model and credentials
+
+**Management → Model.** The **Provider** tab picks what writes; the
+**Credentials** tab holds the keys.
+
+Pick a provider and a model, then paste the key under **Credentials**. Signal
+ships with Anthropic, OpenAI, Google, OpenRouter, Groq, Ollama, and a generic
+OpenAI-compatible entry for anything else (vLLM, LM Studio, Together, DeepSeek,
+your own gateway).
 
 - **Model** is a free text field with suggestions. Any model id the provider
   accepts works, including one released after this version of Signal.
@@ -22,7 +48,7 @@ for anything else (vLLM, LM Studio, Together, DeepSeek, your own gateway).
 - **Max tokens** is the ceiling for a single response. The curator sends up to
   120 items in one request; if a run fails with *"the response ended in the
   middle of a JSON value"*, this is the number to raise.
-- **Test connection** does one cheap round trip and shows the answer or the
+- **Test connection** (on the Provider tab) does one cheap round trip and shows the answer or the
   error verbatim.
 - **Workspace ID** (Anthropic only) is needed when the key is identity-linked,
   that is shared across the workspaces of an organisation. Those keys are
@@ -30,7 +56,9 @@ for anything else (vLLM, LM Studio, Together, DeepSeek, your own gateway).
   the workspace it acts in; paste the `wrkspc_...` id here, or set
   `ANTHROPIC_WORKSPACE_ID`. Workspace-scoped keys ignore it.
 
-Keys are encrypted with AES-256-GCM before being stored, and the interface only
+**Credentials** opens on the provider in use; its picker reaches the others, so
+a key can be stored before switching providers. Keys are encrypted with
+AES-256-GCM before being stored, and the interface only
 ever shows the last four characters. The encryption key comes from
 `SIGNAL_SECRET_KEY`, or is generated once into `data/.signal-key` if that is
 unset — see [SECURITY.md](../SECURITY.md).
@@ -47,9 +75,9 @@ no external services, means the whole pipeline can run air-gapped.
 
 ---
 
-## Voice & settings
+## Voice, pipeline and interface
 
-**Settings → Voice & settings.** This is what separates a post that sounds like
+**Management → Writing → Voice.** This is what separates a post that sounds like
 you from one that sounds like an LLM.
 
 Two fields do most of the work:
@@ -64,31 +92,32 @@ Two fields do most of the work:
 highly, so the radar filters by what is useful for you to say, not by what is
 trending.
 
-**Interface language** is the language of Signal itself — this menu, the
-buttons, the labels. English and Spanish ship; adding one is a single file, see
-[extending.md](extending.md). It is independent of everything below.
+**Interface language**, under **Management → Settings → Interface**, is the
+language of Signal itself — the menu, the buttons, the labels. English and
+Spanish ship; adding one is a single file, see [extending.md](extending.md). It
+is independent of everything below.
 
 **Working language** is the language the curator and the weekly digest are
-written in. Posts do not have to follow it: each channel under **Channels** can
-write in another language, and any single post can be rewritten into another one
-from the queue. The digest has the same override on its own page. All three
+written in. Posts do not have to follow it: each channel under **Management →
+Channels** can write in another language, and any single post can be rewritten
+into another one from the queue. The digest has the same override on its own page. All three
 translate what already exists rather than regenerating it, so your edits
 survive.
 
 **Picture** is used only by the previews in the publication queue. It is stored
 next to the database and sent nowhere.
 
-The **Pipeline** section holds two knobs: how many signals survive curation each
-week, and how old an item can be at ingest before it is dropped. The first one
-also sized the general digest when it was created; its item count lives under
-**Settings → Digests** now.
+**Management → Settings → Pipeline** holds two knobs: how many signals survive
+curation each week, and how old an item can be at ingest before it is dropped.
+The first one is also the general digest's item count, under **Management →
+Digests**: changing either changes both.
 
 ---
 
 ## Sources
 
-**Sources.** Six kinds ship: RSS/Atom, Hacker News, arXiv, GitHub, Reddit and
-YouTube. None needs an API key.
+**Management → Sources.** Six kinds ship: RSS/Atom, Hacker News, arXiv, GitHub,
+Reddit and YouTube. None needs an API key.
 
 | Kind | What you type | Options |
 |---|---|---|
@@ -99,9 +128,15 @@ YouTube. None needs an API key.
 | Reddit | `reddit:LocalLLaMA` | minimum score, window |
 | YouTube | `youtube:UC…` (channel) or `youtube:PL…` (playlist) | max videos |
 
+**New source** opens a page of its own. Clicking a source (or **Edit**) opens
+its page: change the name, the URL, the category or the kind's options, or
+delete it. The kind is fixed once the source exists — a feed and a subreddit
+are different sources — and saving clears the last error, which belonged to the
+old settings.
+
 **Test** on any row fetches it right there and tells you how many items came
-back, without writing anything. Feeds that fail record the error under the
-source; a broken feed never stops a run.
+back, without writing anything. The checkbox enables or disables it. Feeds that
+fail record the error under the source; a broken feed never stops a run.
 
 The defaults are a starting point, not a recommendation. Replace them with what
 you actually read — the radar is worth exactly what its sources are worth.
@@ -109,13 +144,14 @@ Adding a new *kind* is a small file: [docs/extending.md](extending.md).
 
 ### Categories
 
-Every source belongs to one category. The **Categories** box at the top of
-**Sources** creates, renames, recolours, reorders and deletes them; the select
-on each source row moves it. The chips above the list filter sources, and the
-same chips filter the radar and the digest archive.
+Every source belongs to one category. The **Categories** tab next to
+**Sources** lists them with how many sources each holds; **New category** and
+each category's page create, rename, recolour, reorder and delete them. A source
+moves to another category from its own page. The chips above the source list
+filter it, and the same chips filter the radar and the digest archive.
 
 - A digest of its own for one or more categories is a **digest definition**,
-  under **Settings → Digests** — see [Digests](#digests) below.
+  under **Management → Digests** — see [Digests](#digests) below.
 - Deleting a category moves its sources to **General** and takes it out of every
   digest definition. A definition left with no category is **disabled** rather
   than silently widened to every category. General itself cannot be deleted.
@@ -127,8 +163,8 @@ same chips filter the radar and the digest archive.
 
 ## Digests
 
-**Settings → Digests.** A digest definition says what a digest is made of and
-how often it is written.
+**Management → Digests.** A digest definition says what a digest is made of and
+how often it is written. **New digest** and each definition's page edit it.
 
 - **Cadence** — daily, weekly or monthly. A run writes every enabled definition
   that is due: daily ones every day, for yesterday; weekly ones on Monday, for
@@ -142,8 +178,8 @@ how often it is written.
 - **General** always exists: created weekly, over every category. It feeds the
   dashboard and every channel not bound to another digest. It can be edited and
   disabled, not deleted. Its item count is the same number as **Signals selected
-  per week** in Settings → General (how many items the curator picks a week):
-  changing either changes both.
+  per week** under Management → Settings → Pipeline (how many items the curator
+  picks a week): changing either changes both.
 - Deleting a definition sends its channels back to General. The digests it
   already wrote stay in the archive, under its key.
 - The prompt follows the shape: a definition with no categories uses **Digest
@@ -166,8 +202,9 @@ The archive filters by definition, and each card shows its cadence and period.
 
 ## Channels
 
-**Settings → Channels.** A channel is any place a draft can end up: a social
-network, a newsletter, your blog.
+**Management → Channels.** A channel is any place a draft can end up: a social
+network, a newsletter, your blog. **New channel** and each channel's page edit
+it; deleting asks first, and the channel's posts stay in the queue.
 
 - **Format hint** goes into the writer prompt. This is where you say "thread,
   dense, no filler" or "carousel, visual first".
@@ -187,7 +224,8 @@ network, a newsletter, your blog.
 
 LinkedIn, X and Instagram are enabled by default; Threads, Bluesky, Mastodon,
 newsletter and blog ship disabled. All of them are ordinary rows you can edit or
-delete, and **New channel** creates your own.
+delete, and **New channel** creates your own. (The shipped ones are seeded
+again while their key is free, so to drop one for good, disable it.)
 
 ### Publishing
 
@@ -209,10 +247,11 @@ Channel credentials are encrypted exactly like the LLM keys.
 
 ## Prompts
 
-**Settings → Prompts.** The four prompts that run the pipeline — curator,
-digest, writer, rewrite — are editable, with the variable list for each one next
-to the editor. **Reset to default** deletes your override and restores the
-shipped version, so experimenting is cheap.
+**Management → Writing → Prompts.** The prompts that run the pipeline — curator,
+digest, category digest, writer, rewrite, translation — are listed there, and
+each one opens in its own editor with its variable list next to it. Saving
+keeps you on the page; **Restore the shipped version** deletes your override,
+so experimenting is cheap.
 
 Keep the JSON shape the agent asks for. If the answer stops parsing, the stage
 fails with *"the response contains no JSON"* and the run log tells you which
@@ -262,8 +301,9 @@ Parameters:
   definition for it. A Monday `?week=previous` schedule keeps working, but
   daily and monthly definitions need the daily one.
 
-The run dialog in the sidebar offers the same choice: what is due now, or one
-definition and a period.
+The run page — **Run pipeline** in the sidebar, `/runs/new` — offers the same
+choice: what is due now, or one definition and a period. It runs one stage per
+call and shows each stage's log as it finishes.
 
 ### Runs
 

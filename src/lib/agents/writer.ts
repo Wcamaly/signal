@@ -130,7 +130,7 @@ export async function refinePost(postId: number, instruction: string, voice: Voi
     | { id: number; platform: string; body: string; angle: string | null }
     | undefined;
   if (!post) throw new Error("Post not found");
-  if (!llmReady()) throw new Error("Configure an LLM provider under Model & keys to rewrite posts");
+  if (!llmReady()) throw new Error("Configure an LLM provider under Model to rewrite posts");
 
   const channel = getChannel(post.platform);
   const prompt = getPrompt("refine");

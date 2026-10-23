@@ -64,7 +64,7 @@ if [ ! -f "$ENV_FILE" ]; then
   CRON_SECRET="$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 32)"
   SECRET_KEY="$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 43)"
   cat > "$ENV_FILE" <<EOF
-# Optional: an LLM key can also be pasted in the UI (Settings -> Model & keys).
+# Optional: an LLM key can also be pasted in the UI (Model -> Credentials).
 ANTHROPIC_API_KEY=
 # Pins the key used to encrypt credentials stored from the UI. Keep it safe.
 SIGNAL_SECRET_KEY=${SECRET_KEY}
@@ -105,7 +105,7 @@ IP=$(hostname -I | awk '{print $1}')
 PORT_USED=$(grep -oP '^PORT=\K.*' "$ENV_FILE" || echo 3000)
 
 if ! grep -qE '^ANTHROPIC_API_KEY=.+' "$ENV_FILE"; then
-  KEY_WARN="ℹ  No LLM key yet: add one in the UI under Model & keys, or edit $ENV_FILE and run  systemctl restart signal"
+  KEY_WARN="ℹ  No LLM key yet: add one in the UI under Model -> Credentials, or edit $ENV_FILE and run  systemctl restart signal"
 else
   KEY_WARN=""
 fi

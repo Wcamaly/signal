@@ -126,12 +126,12 @@ export async function buildDigestFor(
       ? {
           title: `${def.label} — ${period}`,
           subtitle: "Demo mode: no LLM configured, so the best items of these categories are listed without analysis.",
-          markdown: `This digest was produced without a model. Configure a provider under **Model & keys** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}`,
+          markdown: `This digest was produced without a model. Configure a provider under **Model** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}`,
         }
       : {
           title: `AI radar — ${period}`,
           subtitle: "Demo mode: no LLM configured, so the selected items are listed without analysis.",
-          markdown: `This digest was produced without a model. Configure a provider under **Model & keys** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}\n\n## Noise of the week\n\n_(needs a model)_\n\n## What I would say\n\n_(needs a model)_`,
+          markdown: `This digest was produced without a model. Configure a provider under **Model** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}\n\n## Noise of the week\n\n_(needs a model)_\n\n## What I would say\n\n_(needs a model)_`,
         };
   } else {
     const prompt = getPrompt(scope ? "category_digest" : "digest");

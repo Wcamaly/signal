@@ -97,9 +97,9 @@ export const mistralProvider: LlmProvider = {
 };
 ```
 
-Register it in `PROVIDERS` (`src/lib/llm/index.ts`) and it appears in
-**Model & keys**, with its own credential slot and a working *Test connection*
-button.
+Register it in `PROVIDERS` (`src/lib/llm/index.ts`) and it appears under
+**Management → Model**, with its own slot under **Credentials** and a working
+*Test connection* button.
 
 If the API speaks the OpenAI chat-completions shape, reuse
 `openAiCompatibleChat` as above — that is what OpenAI, OpenRouter, Groq, Ollama
@@ -120,7 +120,7 @@ Two constraints that bit us already, worth knowing before you write a provider:
 
 ## Add a channel
 
-A channel is data, not code: **Settings → Channels → New channel**. It has a key,
+A channel is data, not code: **Management → Channels → New channel**. It has a key,
 a character limit, a *format hint* (injected into the writer prompt), a
 *template* (what actually gets published), a publisher, and how many posts the
 pipeline should draft for it per run.
@@ -271,7 +271,7 @@ import { pt } from "./pt";
 export const UI_LOCALES: Record<string, Dictionary> = { en, es, pt };
 ```
 
-It appears in **Settings → Interface language** immediately; `localeLabel` is
+It appears under **Management → Settings → Interface** immediately; `localeLabel` is
 what the picker shows, written in its own language.
 
 Three things to know:
