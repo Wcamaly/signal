@@ -10,7 +10,7 @@ import {
   saveChannel,
   type ChannelInput,
 } from "./channels";
-import { deleteCategory, getCategory, saveCategory, type CategoryInput } from "./categories";
+import { deleteCategory, saveCategory, type CategoryInput } from "./categories";
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
 import { deleteDigestDef, saveDigestDef, setSignalsPerWeek, type DigestDefInput } from "./digest-defs";
 import { getDb, setSetting } from "./db";
@@ -311,34 +311,41 @@ export async function actionSaveGeneral(cfg: { signals_per_week: number; ingest_
 
 /* ---------- sources ---------- */
 
+/** The list, each source's page, and the categories list, which counts sources. */
+function revalidateSources() {
+  revalidatePath("/manage/sources");
+  revalidatePath("/manage/sources/[id]", "page");
+  revalidatePath("/manage/categories");
+}
+
 export async function actionToggleSource(id: number, enabled: boolean) {
   getDb().prepare("UPDATE sources SET enabled = ? WHERE id = ?").run(enabled ? 1 : 0, id);
-  revalidatePath("/sources");
+  revalidateSources();
 }
 
 export async function actionAddSource(input: SourceInput): Promise<Result> {
   const res = await guard(() => {
     addSource(input);
   });
-  revalidatePath("/sources");
+  revalidateSources();
   return res;
 }
 
 /** Edits a source. Same checks as adding one; the kind cannot change. */
 export async function actionUpdateSource(id: number, input: Omit<SourceInput, "kind">): Promise<Result> {
   const res = await guard(() => updateSource(id, input));
-  revalidatePath("/sources");
+  revalidateSources();
   return res;
 }
 
 export async function actionDeleteSource(id: number) {
   getDb().prepare("DELETE FROM sources WHERE id = ?").run(id);
-  revalidatePath("/sources");
+  revalidateSources();
 }
 
 export async function actionSeedSources() {
   seedSources();
-  revalidatePath("/sources");
+  revalidateSources();
 }
 
 /** Fetches one source without writing anything, to validate it from the UI. */
@@ -361,7 +368,10 @@ export async function actionSetItemStatus(id: number, status: string) {
 /* ---------- categories ---------- */
 
 function revalidateCategories() {
-  for (const p of ["/sources", "/radar", "/digest", "/settings/channels", "/settings/digests"]) revalidatePath(p);
+  for (const p of ["/manage/sources", "/manage/categories", "/radar", "/digest", "/settings/channels", "/settings/digests"]) {
+    revalidatePath(p);
+  }
+  revalidatePath("/manage/categories/[key]", "page");
 }
 
 export async function actionSaveCategory(input: CategoryInput): Promise<Result> {
@@ -377,16 +387,6 @@ export async function actionDeleteCategory(key: string): Promise<Result> {
     deleteCategory(key);
   });
   revalidateCategories();
-  return res;
-}
-
-export async function actionSetSourceCategory(id: number, key: string): Promise<Result> {
-  const res = await guard(() => {
-    if (!getCategory(key)) throw new Error(`Unknown category "${key}"`);
-    getDb().prepare("UPDATE sources SET category = ? WHERE id = ?").run(key, id);
-  });
-  revalidatePath("/sources");
-  revalidatePath("/radar");
   return res;
 }
 

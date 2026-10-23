@@ -59,6 +59,15 @@ export const en = {
     configuration: "Configuration",
   },
 
+  manage: {
+    kicker: "Management",
+    back: (label: string) => `← ${label}`,
+    tabs: {
+      sources: "Sources",
+      categories: "Categories",
+    },
+  },
+
   run: {
     button: "Run pipeline",
     running: "Running…",
@@ -285,6 +294,9 @@ export const en = {
     test: "Test",
     testing: "testing…",
     testResult: (found: number, sample: string) => `${found} items · ${sample}`,
+    newSource: "New source",
+    kindFixed: "The type is fixed once the source exists: a feed and a subreddit are different sources.",
+    confirmDelete: (name: string) => `Delete "${name}"? The items it already brought in stay on the radar.`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit and YouTube — none of them needs an API key. Add the ones you actually read: the radar is worth what its sources are worth.",
   },
   categories: {
@@ -296,6 +308,8 @@ export const en = {
     colour: "Colour",
     order: "Order",
     create: "Create",
+    newCategory: "New category",
+    sources: (n: number) => `${n} source${n === 1 ? "" : "s"}`,
     confirmDelete: (label: string) =>
       `Delete "${label}"? Its sources move to General, and it is taken out of every digest — a digest left with no category is disabled.`,
   },

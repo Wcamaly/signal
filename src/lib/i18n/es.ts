@@ -54,6 +54,15 @@ export const es: Dictionary = {
     configuration: "Configuración",
   },
 
+  manage: {
+    kicker: "Gestión",
+    back: (label: string) => `← ${label}`,
+    tabs: {
+      sources: "Fuentes",
+      categories: "Categorías",
+    },
+  },
+
   run: {
     button: "Ejecutar pipeline",
     running: "Ejecutando…",
@@ -280,6 +289,9 @@ export const es: Dictionary = {
     test: "Probar",
     testing: "probando…",
     testResult: (found: number, sample: string) => `${found} items · ${sample}`,
+    newSource: "Nueva fuente",
+    kindFixed: "El tipo queda fijo una vez creada la fuente: un feed y un subreddit son fuentes distintas.",
+    confirmDelete: (name: string) => `¿Eliminar «${name}»? Los items que ya trajo siguen en el radar.`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit y YouTube — ninguna necesita clave de API. Agregá las que leés de verdad: el radar vale lo que valen sus fuentes.",
   },
   categories: {
@@ -291,6 +303,8 @@ export const es: Dictionary = {
     colour: "Color",
     order: "Orden",
     create: "Crear",
+    newCategory: "Nueva categoría",
+    sources: (n: number) => `${n} fuente${n === 1 ? "" : "s"}`,
     confirmDelete: (label: string) =>
       `¿Eliminar «${label}»? Sus fuentes pasan a General y sale de todos los resúmenes — un resumen que se queda sin categorías se desactiva.`,
   },

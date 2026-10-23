@@ -16,7 +16,7 @@ export default function Nav() {
         { href: "/radar", label: t.nav.radar },
         { href: "/digest", label: t.nav.digest },
         { href: "/posts", label: t.nav.posts },
-        { href: "/sources", label: t.nav.sources },
+        { href: "/manage/sources", label: t.nav.sources },
         { href: "/runs", label: t.nav.runs },
       ],
     },

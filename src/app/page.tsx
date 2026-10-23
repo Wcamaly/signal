@@ -82,7 +82,7 @@ export default function Dashboard() {
           <Stat n={drafts} label={t.dashboard.stats.drafts} href="/posts" />
           <Stat n={approved} label={t.dashboard.stats.approved} href="/posts" />
           <Stat n={published} label={t.dashboard.stats.published} href="/posts" />
-          <Stat n={sources} label={t.dashboard.stats.sources} href="/sources" />
+          <Stat n={sources} label={t.dashboard.stats.sources} href="/manage/sources" />
         </section>
 
         <div className="grid grid-cols-[1.15fr_1fr] gap-7 items-start">
