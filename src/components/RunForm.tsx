@@ -80,6 +80,18 @@ export default function RunForm({ defs, due }: { defs: RunDef[]; due: string[] }
     return () => clearInterval(t);
   }, [pending]);
 
+  // Stages are chained from this page: closing or reloading it mid-run stops
+  // the chain after the current stage, so the browser asks first.
+  useEffect(() => {
+    if (!pending) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [pending]);
+
   function run() {
     setElapsed(0);
     setLastRun(null);
@@ -240,6 +252,8 @@ export default function RunForm({ defs, due }: { defs: RunDef[]; due: string[] }
           </div>
         </div>
       )}
+
+      {pending && <p className="text-[11.5px] text-faint leading-snug mb-3">{t.run.leaveNote}</p>}
 
       <div className="flex gap-2 items-center justify-end">
         {lastRun !== null && !pending && (

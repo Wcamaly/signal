@@ -79,6 +79,8 @@ export const en = {
     intro:
       "Each stage consumes the output of the previous one. Run them separately if you already have the earlier data.",
     notRun: "Not run.",
+    leaveNote:
+      "Leaving this page does not cancel the stage in progress: it finishes on the server and shows up in Runs. The stages after it will not start.",
     openRun: (id: number) => `Open run #${id} →`,
     start: "Run",
     starting: "Starting",

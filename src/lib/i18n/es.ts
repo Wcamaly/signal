@@ -74,6 +74,8 @@ export const es: Dictionary = {
     intro:
       "Cada etapa consume la salida de la anterior. Ejecutalas por separado si ya tenés los datos previos.",
     notRun: "No se ejecutó.",
+    leaveNote:
+      "Si salís de esta página, la etapa en curso no se cancela: termina en el servidor y aparece en Ejecuciones. Las etapas siguientes no van a arrancar.",
     openRun: (id: number) => `Abrir la ejecución #${id} →`,
     start: "Ejecutar",
     starting: "Arrancando",
