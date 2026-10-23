@@ -66,7 +66,7 @@ export default function ChannelForm({
         credentialId = cred.id ?? null;
       }
 
-      const res = await actionSaveChannel({ ...d, credential_id: credentialId });
+      const res = await actionSaveChannel({ ...d, isNew, credential_id: credentialId });
       if (!res.ok) setError(res.error ?? t.common.error);
       else done();
     });

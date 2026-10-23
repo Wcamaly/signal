@@ -7,7 +7,8 @@ process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-chan
 
 const { getChannel, saveChannel } = await import("./channels");
 
-const input = (digest_def: string) => ({
+const input = (digest_def: string, isNew = false) => ({
+  isNew,
   key: "policy",
   label: "Policy",
   char_limit: 500,
@@ -25,7 +26,7 @@ const input = (digest_def: string) => ({
 
 describe("saveChannel and the source digest", () => {
   it("stores the definition the channel writes from", () => {
-    saveChannel(input("ai-daily"));
+    saveChannel(input("ai-daily", true));
     expect(getChannel("policy")?.digest_def).toBe("ai-daily");
   });
 
@@ -37,6 +38,27 @@ describe("saveChannel and the source digest", () => {
   });
 
   it("refuses the key of the create page", () => {
-    expect(() => saveChannel({ ...input(""), key: "New" })).toThrow(/"new" is reserved/);
+    expect(() => saveChannel({ ...input("", true), key: "New" })).toThrow(/"new" is reserved/);
+  });
+});
+
+describe("saveChannel: create vs edit", () => {
+  it("refuses to create a channel over an existing key", () => {
+    saveChannel({ ...input("", true), key: "dupe", label: "First" });
+    expect(() => saveChannel({ ...input("", true), key: "dupe", label: "Second" })).toThrow(
+      'A channel with the key "dupe" already exists',
+    );
+    expect(getChannel("dupe")?.label).toBe("First");
+  });
+
+  it("edits an existing channel", () => {
+    saveChannel({ ...input("", true), key: "edited", label: "Before" });
+    saveChannel({ ...input(""), key: "edited", label: "After" });
+    expect(getChannel("edited")?.label).toBe("After");
+  });
+
+  it("refuses to edit a channel that does not exist", () => {
+    expect(() => saveChannel({ ...input(""), key: "ghost" })).toThrow(/Unknown channel "ghost"/);
+    expect(getChannel("ghost")).toBeUndefined();
   });
 });

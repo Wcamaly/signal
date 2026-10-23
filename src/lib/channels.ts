@@ -182,10 +182,15 @@ export function channelLabel(channels: Channel[], key: string): Channel {
   );
 }
 
-export function saveChannel(input: ChannelInput & { id?: number }) {
+/**
+ * Creates (`isNew`) or edits a channel. Creating refuses a key already in use
+ * instead of overwriting that channel; editing refuses a key that does not
+ * exist instead of recreating it.
+ */
+export function saveChannel(input: ChannelInput & { isNew?: boolean }) {
   const key = input.key.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "");
   if (!key) throw new Error("The channel needs a key (letters, digits and dashes)");
-  assertFreeKey(key);
+  if (input.isNew) assertFreeKey(key);
   if (!input.label.trim()) throw new Error("The channel needs a name");
 
   const row = {
@@ -206,19 +211,28 @@ export function saveChannel(input: ChannelInput & { id?: number }) {
     sort_order: input.sort_order ?? 100,
   };
 
-  getDb()
-    .prepare(
+  const db = getDb();
+  if (input.isNew) {
+    if (getChannel(key)) throw new Error(`A channel with the key "${key}" already exists`);
+    db.prepare(
       `INSERT INTO channels (key, label, char_limit, color, hint, language, digest_def, template, publisher, config, credential_id, posts_per_run, enabled, sort_order)
-       VALUES (@key, @label, @char_limit, @color, @hint, @language, @digest_def, @template, @publisher, @config, @credential_id, @posts_per_run, @enabled, @sort_order)
-       ON CONFLICT(key) DO UPDATE SET
-         label = excluded.label, char_limit = excluded.char_limit, color = excluded.color,
-         hint = excluded.hint, language = excluded.language, digest_def = excluded.digest_def, template = excluded.template,
-         publisher = excluded.publisher, config = excluded.config,
-         credential_id = excluded.credential_id,
-         posts_per_run = excluded.posts_per_run, enabled = excluded.enabled,
-         sort_order = excluded.sort_order`,
+       VALUES (@key, @label, @char_limit, @color, @hint, @language, @digest_def, @template, @publisher, @config, @credential_id, @posts_per_run, @enabled, @sort_order)`,
+    ).run(row);
+    return key;
+  }
+
+  const res = db
+    .prepare(
+      `UPDATE channels SET
+         label = @label, char_limit = @char_limit, color = @color, hint = @hint, language = @language,
+         digest_def = @digest_def, template = @template, publisher = @publisher, config = @config,
+         credential_id = @credential_id, posts_per_run = @posts_per_run, enabled = @enabled,
+         sort_order = @sort_order
+       WHERE key = @key`,
     )
     .run(row);
+  if (!res.changes) throw new Error(`Unknown channel "${key}"`);
+  return key;
 }
 
 export function deleteChannel(key: string) {

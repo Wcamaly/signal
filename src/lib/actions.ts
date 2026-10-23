@@ -421,8 +421,10 @@ function revalidateChannels() {
   revalidatePath("/manage/channels/[key]", "page");
 }
 
-export async function actionSaveChannel(input: ChannelInput): Promise<Result> {
-  const res = await guard(() => saveChannel(input));
+export async function actionSaveChannel(input: ChannelInput & { isNew?: boolean }): Promise<Result> {
+  const res = await guard(() => {
+    saveChannel(input);
+  });
   revalidateChannels();
   revalidatePath("/posts");
   revalidatePath("/", "layout");
