@@ -23,12 +23,13 @@ export const es: Dictionary = {
     configure: "Configuración",
     dashboard: "Panel",
     radar: "Radar",
-    digest: "Resumen semanal",
+    digest: "Archivo",
     posts: "Publicaciones",
     sources: "Fuentes",
     runs: "Ejecuciones",
     voice: "Voz y ajustes",
     channels: "Canales",
+    digestDefs: "Resúmenes",
     prompts: "Prompts",
     model: "Modelo y claves",
   },
@@ -371,7 +372,24 @@ export const es: Dictionary = {
   },
 
   digestDefs: {
+    title: "Resúmenes",
+    sub: "De qué está hecho cada resumen y cada cuánto se escribe. El general alimenta el panel y todo canal que no esté asociado a otro resumen.",
+    hint: "Cada ejecución escribe los resúmenes activos que tocan: los diarios todos los días, los semanales los lunes, los mensuales el día 1 — cada uno sobre el período que acaba de cerrar.",
+    newDef: "Nuevo resumen",
+    create: "Crear resumen",
+    name: "Nombre",
+    namePlaceholder: "IA diaria",
+    cadence: "Frecuencia",
     cadences: { daily: "diario", weekly: "semanal", monthly: "mensual" },
+    itemCount: "Items",
+    order: "Orden",
+    categories: "Categorías",
+    categoriesHint:
+      "Lo alimentan las fuentes de estas categorías. Ninguna marcada = todas. Primero van los items que eligió el curador, después los mejor puntuados; los rechazados nunca.",
+    allCategories: "Todas las categorías",
+    summary: (scope: string, items: number) => `${scope} · hasta ${items} items`,
+    confirmDelete: (label: string) =>
+      `¿Eliminar «${label}»? Sus canales vuelven al resumen general. Los resúmenes que ya escribió quedan en el archivo.`,
   },
 
   promptsPage: {

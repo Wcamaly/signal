@@ -28,12 +28,13 @@ export const en = {
     configure: "Configure",
     dashboard: "Dashboard",
     radar: "Radar",
-    digest: "Weekly digest",
+    digest: "Digest archive",
     posts: "Publications",
     sources: "Sources",
     runs: "Runs",
     voice: "Voice & settings",
     channels: "Channels",
+    digestDefs: "Digests",
     prompts: "Prompts",
     model: "Model & keys",
   },
@@ -376,7 +377,24 @@ export const en = {
   },
 
   digestDefs: {
+    title: "Digests",
+    sub: "What each digest is made of and how often it is written. The general one feeds the dashboard and every channel not bound to another digest.",
+    hint: "A run writes every enabled digest that is due: daily ones every day, weekly ones on Monday, monthly ones on the 1st — each for the period that just closed.",
+    newDef: "New digest",
+    create: "Create digest",
+    name: "Name",
+    namePlaceholder: "AI daily",
+    cadence: "Cadence",
     cadences: { daily: "daily", weekly: "weekly", monthly: "monthly" },
+    itemCount: "Items",
+    order: "Order",
+    categories: "Categories",
+    categoriesHint:
+      "The sources of these categories feed it. None ticked = every category. Items the curator picked go first, then the best scored; rejected items never.",
+    allCategories: "All categories",
+    summary: (scope: string, items: number) => `${scope} · up to ${items} items`,
+    confirmDelete: (label: string) =>
+      `Delete "${label}"? Its channels go back to the general digest. The digests it already wrote stay in the archive.`,
   },
 
   promptsPage: {

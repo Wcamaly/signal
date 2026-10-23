@@ -11,6 +11,7 @@ export default function SettingsTabs() {
   const TABS = [
     { href: "/settings", label: t.nav.voice },
     { href: "/settings/channels", label: t.nav.channels },
+    { href: "/settings/digests", label: t.nav.digestDefs },
     { href: "/settings/prompts", label: t.nav.prompts },
     { href: "/settings/model", label: t.nav.model },
   ];

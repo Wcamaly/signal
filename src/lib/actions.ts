@@ -12,6 +12,7 @@ import {
 } from "./channels";
 import { deleteCategory, getCategory, saveCategory, type CategoryInput } from "./categories";
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
+import { deleteDigestDef, saveDigestDef, type DigestDefInput } from "./digest-defs";
 import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
 import { saveLlmConfig, saveProviderOptions, testLlm, type LlmConfig } from "./llm";
@@ -347,7 +348,7 @@ export async function actionSetItemStatus(id: number, status: string) {
 /* ---------- categories ---------- */
 
 function revalidateCategories() {
-  for (const p of ["/sources", "/radar", "/digest", "/settings/channels"]) revalidatePath(p);
+  for (const p of ["/sources", "/radar", "/digest", "/settings/channels", "/settings/digests"]) revalidatePath(p);
 }
 
 export async function actionSaveCategory(input: CategoryInput): Promise<Result> {
@@ -373,6 +374,28 @@ export async function actionSetSourceCategory(id: number, key: string): Promise<
   });
   revalidatePath("/sources");
   revalidatePath("/radar");
+  return res;
+}
+
+/* ---------- digest definitions ---------- */
+
+function revalidateDigestDefs() {
+  for (const p of ["/settings/digests", "/settings/channels", "/digest"]) revalidatePath(p);
+  // The run dialog in the sidebar lists the definitions.
+  revalidatePath("/", "layout");
+}
+
+export async function actionSaveDigestDef(input: DigestDefInput): Promise<Result> {
+  const res = await guard(() => {
+    saveDigestDef(input);
+  });
+  revalidateDigestDefs();
+  return res;
+}
+
+export async function actionDeleteDigestDef(key: string): Promise<Result> {
+  const res = await guard(() => deleteDigestDef(key));
+  revalidateDigestDefs();
   return res;
 }
 
