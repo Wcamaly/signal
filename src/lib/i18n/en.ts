@@ -28,12 +28,13 @@ export const en = {
     configure: "Configure",
     dashboard: "Dashboard",
     radar: "Radar",
-    digest: "Weekly digest",
+    digest: "Digest archive",
     posts: "Publications",
     sources: "Sources",
     runs: "Runs",
     voice: "Voice & settings",
     channels: "Channels",
+    digestDefs: "Digests",
     prompts: "Prompts",
     model: "Model & keys",
   },
@@ -67,11 +68,19 @@ export const en = {
     notRun: "Not run.",
     start: "Run",
     starting: "Starting",
-    week: "Week",
-    weekCurrent: "Current",
-    weekPrevious: "Previous",
-    weekHint:
-      "Ingest always reads every source. Curation, the digest and the posts work on the week picked here.",
+    digests: "Digests",
+    due: "What is due now",
+    dueNow: (labels: string) =>
+      `Due now: ${labels}. Daily digests are due every day, weekly ones on Monday, monthly ones on the 1st — each for the period that just closed.`,
+    nothingDue:
+      "Nothing is due now. Daily digests are due every day, weekly ones on Monday, monthly ones on the 1st.",
+    period: "Period",
+    periodCurrent: "Current",
+    periodPrevious: "Previous",
+    periodKey: "Period key",
+    periodInvalid: (example: string) => `Not a period of this digest. Example: ${example}`,
+    scopeHint:
+      "Ingest always reads every source. Curation scores the current week, and on Monday the one that closed too. The digests and the posts work on what is picked here.",
     /** e.g. "2/4 · Curate · 31s" while running. */
     progressRunning: (done: number, total: number, stage: string, seconds: number) =>
       `${done}/${total} · ${stage} · ${seconds}s`,
@@ -84,10 +93,10 @@ export const en = {
       },
       curate: { label: "Curate", hint: "Scores, clusters and selects the signals of the week." },
       digest: {
-        label: "Weekly digest",
-        hint: "Writes the working document from the selected signals.",
+        label: "Digests",
+        hint: "Writes the digests picked above from the best signals of their period.",
       },
-      posts: { label: "Write posts", hint: "Drafts posts for every enabled channel." },
+      posts: { label: "Write posts", hint: "Drafts posts for the channels of those digests." },
     },
   },
 
@@ -117,7 +126,9 @@ export const en = {
     noLog: "This run recorded no log.",
     result: "Result",
     relaunch: "Run again",
-    relaunchHint: (week: string) => `Runs the same stages again on ${week}.`,
+    relaunchTargets: (digests: string) => `Runs the same stages again, for the same digests: ${digests}.`,
+    relaunchNoTargets: "Runs the same stages again. No digest was due in this run.",
+    relaunchLegacy: (week: string) => `Runs the same stages again, as the weekly run of ${week}.`,
     unknownWeek: "no week",
   },
 
@@ -170,10 +181,9 @@ export const en = {
 
   digestList: {
     kicker: "Archive",
-    title: "Weekly digests",
+    title: "Digests",
     sub: "The working document every publication is derived from. It has an opinion; it is not a newsletter.",
     empty: "No digest yet. Run the pipeline from the sidebar.",
-    general: "General",
   },
 
   digestPage: {
@@ -279,16 +289,15 @@ export const en = {
   },
   categories: {
     title: "Categories",
-    hint: "Group your sources. A category with its digest turned on gets its own weekly digest, built from its best-scored items, and channels can write from it.",
+    hint: "Group your sources. A digest of its own for some categories — daily, weekly or monthly — is set up under",
+    digestsPointer: "Settings → Digests.",
     name: "Name",
     namePlaceholder: "New category",
     colour: "Colour",
-    digest: "Weekly digest",
-    digestItems: "Items",
     order: "Order",
     create: "Create",
     confirmDelete: (label: string) =>
-      `Delete "${label}"? Its sources move to General and its channels go back to the general digest.`,
+      `Delete "${label}"? Its sources move to General, and it is taken out of every digest — a digest left with no category is disabled.`,
   },
 
   settings: {
@@ -327,7 +336,7 @@ export const en = {
       "Paste 2 or 3 of your own posts that worked. Without this the agent writes correct but neutral text; with it, it starts to sound like you.",
     pipeline: "Pipeline",
     signalsPerWeek: "Signals selected per week",
-    signalsPerWeekHint: "How many items survive curation and feed the digest.",
+    signalsPerWeekHint: "How many items survive curation and feed the General digest. It is the same number as General's item count under Digests: changing one changes the other.",
     maxAge: "Ignore items older than (days)",
     maxAgeHint: "Anything published before this window is dropped at ingest.",
     perChannelNote: "How many posts each channel gets is set per channel, under",
@@ -350,10 +359,10 @@ export const en = {
     inherit: "Inherit from the voice profile",
     languageHint:
       "The posts of this channel are written in this language. Any single post can still be changed from the queue.",
+    deletedDigest: (key: string) => `${key} (deleted)`,
     sourceDigest: "Source digest",
-    generalDigest: "General digest",
     sourceDigestHint:
-      "Which weekly digest this channel writes from. A category channel is skipped in a week where that category has no digest.",
+      "The digest this channel writes from. It writes when that digest is written: every day for a daily one, on Mondays for a weekly one, on the 1st for a monthly one.",
     handle: "Handle (preview only)",
     handleHint: "Shown under your name in the preview. Not sent anywhere.",
     template: "Publication template",
@@ -366,6 +375,27 @@ export const en = {
     credentialError: "Could not store the credential",
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} chars · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} per run${language ? ` · ${language}` : ""}`,
+  },
+
+  digestDefs: {
+    title: "Digests",
+    sub: "What each digest is made of and how often it is written. The general one feeds the dashboard and every channel not bound to another digest.",
+    hint: "A run writes every enabled digest that is due: daily ones every day, weekly ones on Monday, monthly ones on the 1st — each for the period that just closed.",
+    newDef: "New digest",
+    create: "Create digest",
+    name: "Name",
+    namePlaceholder: "AI daily",
+    cadence: "Cadence",
+    cadences: { daily: "daily", weekly: "weekly", monthly: "monthly" },
+    itemCount: "Items",
+    order: "Order",
+    categories: "Categories",
+    categoriesHint:
+      "The sources of these categories feed it. None ticked = every category. Items the curator picked go first, then the best scored; rejected items never.",
+    allCategories: "All categories",
+    summary: (scope: string, items: number) => `${scope} · up to ${items} items`,
+    confirmDelete: (label: string) =>
+      `Delete "${label}"? Its channels go back to the general digest. The digests it already wrote stay in the archive.`,
   },
 
   promptsPage: {

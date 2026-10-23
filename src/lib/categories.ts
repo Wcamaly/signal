@@ -1,4 +1,6 @@
 import { getDb } from "./db";
+import { removeCategoryFromDefs } from "./digest-defs";
+import { slugify } from "./slug";
 import { SOURCE_CATEGORIES } from "./sources";
 import type { Category } from "./types";
 
@@ -10,8 +12,6 @@ export type CategoryInput = {
   key?: string;
   label: string;
   color: string;
-  digest_enabled: boolean;
-  digest_items: number;
   sort_order?: number;
 };
 
@@ -27,15 +27,7 @@ const SEED_COLORS: Record<string, string> = {
   general: "#8b93a1",
 };
 
-export function slugify(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+export { slugify };
 
 /**
  * Runs on every read, like seedChannels(). The shipped list goes in only while
@@ -80,8 +72,6 @@ export function categoryLabel(categories: Category[], key: string): Category {
       key,
       label: key,
       color: "#8b93a1",
-      digest_enabled: 0,
-      digest_items: 8,
       sort_order: 999,
     }
   );
@@ -94,8 +84,6 @@ export function saveCategory(input: CategoryInput): string {
   const row = {
     label,
     color: input.color || "#8b93a1",
-    digest_enabled: input.digest_enabled ? 1 : 0,
-    digest_items: Math.min(30, Math.max(1, Math.round(input.digest_items) || 8)),
     sort_order: Math.round(input.sort_order ?? 100),
   };
   const db = getDb();
@@ -103,9 +91,7 @@ export function saveCategory(input: CategoryInput): string {
   if (input.key) {
     const res = db
       .prepare(
-        `UPDATE categories SET label = @label, color = @color, digest_enabled = @digest_enabled,
-           digest_items = @digest_items, sort_order = @sort_order
-         WHERE key = @key`,
+        `UPDATE categories SET label = @label, color = @color, sort_order = @sort_order WHERE key = @key`,
       )
       .run({ ...row, key: input.key });
     if (!res.changes) throw new Error(`Unknown category "${input.key}"`);
@@ -116,22 +102,25 @@ export function saveCategory(input: CategoryInput): string {
   if (!key) throw new Error("The category name needs at least one letter or digit");
   if (getCategory(key)) throw new Error(`A category with the key "${key}" already exists`);
   db.prepare(
-    `INSERT INTO categories (key, label, color, digest_enabled, digest_items, sort_order)
-     VALUES (@key, @label, @color, @digest_enabled, @digest_items, @sort_order)`,
+    `INSERT INTO categories (key, label, color, sort_order) VALUES (@key, @label, @color, @sort_order)`,
   ).run({ ...row, key });
   return key;
 }
 
 /**
  * Its sources move to `general` and its channels back to the general digest.
- * Digests already written for it are kept; they show the bare key afterwards.
+ * It is also taken out of every digest definition; a definition left with no
+ * category is disabled rather than silently widened to every category. Returns
+ * the labels of the definitions disabled that way. Digests already written
+ * for it are kept.
  */
-export function deleteCategory(key: string) {
+export function deleteCategory(key: string): string[] {
   if (key === GENERAL) throw new Error("The general category cannot be deleted: it is where orphaned sources go");
   const db = getDb();
-  db.transaction(() => {
+  return db.transaction(() => {
     db.prepare("UPDATE sources SET category = ? WHERE category = ?").run(GENERAL, key);
     db.prepare("UPDATE channels SET category = NULL WHERE category = ?").run(key);
     db.prepare("DELETE FROM categories WHERE key = ?").run(key);
+    return removeCategoryFromDefs(key);
   })();
 }

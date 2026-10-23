@@ -4,7 +4,11 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionRunPipeline } from "@/lib/actions";
 import { useT } from "./I18nProvider";
-import type { Stage } from "@/lib/pipeline";
+import { isPeriodKey, periodKey, type Cadence } from "@/lib/periods";
+import type { ClientRunOptions, Stage } from "@/lib/pipeline";
+
+/** What the dialog needs to know about a digest definition. */
+export type RunDef = { key: string; label: string; cadence: Cadence };
 
 const STAGE_KEYS: Stage[] = ["ingest", "curate", "digest", "posts"];
 
@@ -33,10 +37,17 @@ function Indicator({ state }: { state: StageState }) {
   );
 }
 
-export default function RunButton() {
+/**
+ * `due` is what a run would write now, worked out on the server — by the
+ * server's clock and time zone, the ones the run itself uses — as
+ * "label (period)" entries.
+ */
+export default function RunButton({ defs, due }: { defs: RunDef[]; due: string[] }) {
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<Stage[]>(["ingest", "curate", "digest", "posts"]);
-  const [week, setWeek] = useState<"current" | "previous">("current");
+  // "" = what is due now; otherwise the key of one definition.
+  const [target, setTarget] = useState("");
+  const [period, setPeriod] = useState("previous");
   const [progress, setProgress] = useState<Progress>({});
   const [elapsed, setElapsed] = useState(0);
   const [pending, start] = useTransition();
@@ -44,6 +55,10 @@ export default function RunButton() {
   const t = useT();
 
   const STAGES = STAGE_KEYS.map((key) => ({ key, ...t.run.stages[key] }));
+
+  const picked = defs.find((d) => d.key === target);
+  const periodOk = !picked || period === "current" || period === "previous" || isPeriodKey(picked.cadence, period);
+  const options: ClientRunOptions = picked ? { defs: [picked.key], period } : {};
 
   // A stage is one call now, so the run follows the canonical order, not the
   // order the checkboxes were clicked in.
@@ -67,9 +82,15 @@ export default function RunButton() {
     setElapsed(0);
     setProgress(Object.fromEntries(plan.map((k) => [k, { state: "queued", log: [] }])));
     start(async () => {
+      // The first stage resolves what the run works on; every later stage
+      // gets those exact targets, so a run that crosses midnight (or a
+      // Monday) does not switch to another day's digests half-way.
+      let opts = options;
       for (const [i, stage] of plan.entries()) {
         setProgress((p) => ({ ...p, [stage]: { state: "running", log: [] } }));
-        const res = await actionRunPipeline([stage], { week });
+        const res = await actionRunPipeline([stage], opts);
+        const targets = res.stats.targets;
+        if (i === 0 && Array.isArray(targets)) opts = { targets: targets as { def: string; period: string }[] };
         setProgress((p) => ({
           ...p,
           [stage]: { state: res.ok ? "ok" : "error", log: res.log },
@@ -101,22 +122,60 @@ export default function RunButton() {
             <h2 className="text-[15px] font-semibold mb-1">{t.run.title}</h2>
             <p className="text-[12.5px] text-muted mb-5">{t.run.intro}</p>
 
-            <div className="mb-5">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="kicker">{t.run.week}</span>
-                {(["current", "previous"] as const).map((w) => (
-                  <button
-                    key={w}
-                    type="button"
-                    disabled={pending}
-                    onClick={() => setWeek(w)}
-                    className={`chip ${week === w ? "!text-ink !border-line-strong" : ""}`}
-                  >
-                    {w === "current" ? t.run.weekCurrent : t.run.weekPrevious}
-                  </button>
-                ))}
+            <div className="mb-5 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="kicker">{t.run.digests}</span>
+                <select
+                  className="select !w-auto"
+                  value={target}
+                  disabled={pending}
+                  onChange={(e) => {
+                    setTarget(e.target.value);
+                    setPeriod("previous");
+                  }}
+                >
+                  <option value="">{t.run.due}</option>
+                  {defs.map((d) => (
+                    <option key={d.key} value={d.key}>
+                      {d.label} · {t.digestDefs.cadences[d.cadence]}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <p className="text-[11.5px] text-faint leading-snug">{t.run.weekHint}</p>
+              {picked ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="kicker">{t.run.period}</span>
+                  {(["previous", "current"] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => setPeriod(p)}
+                      className={`chip ${period === p ? "!text-ink !border-line-strong" : ""}`}
+                    >
+                      {p === "current" ? t.run.periodCurrent : t.run.periodPrevious}
+                    </button>
+                  ))}
+                  <input
+                    className="input !w-36 font-mono !text-[12px]"
+                    disabled={pending}
+                    placeholder={periodKey(picked.cadence)}
+                    aria-label={t.run.periodKey}
+                    value={period === "current" || period === "previous" ? "" : period}
+                    onChange={(e) => setPeriod(e.target.value.trim() || "previous")}
+                  />
+                  {!periodOk && (
+                    <span className="text-[11.5px]" style={{ color: "var(--bad)" }}>
+                      {t.run.periodInvalid(periodKey(picked.cadence))}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11.5px] text-faint leading-snug">
+                  {due.length ? t.run.dueNow(due.join(", ")) : t.run.nothingDue}
+                </p>
+              )}
+              <p className="text-[11.5px] text-faint leading-snug">{t.run.scopeHint}</p>
             </div>
 
             <div className="flex flex-col gap-1.5 mb-5 max-h-[55vh] overflow-auto">
@@ -195,7 +254,7 @@ export default function RunButton() {
               <button className="btn btn-ghost" onClick={() => setOpen(false)} disabled={pending}>
                 {t.common.close}
               </button>
-              <button className="btn btn-primary" onClick={run} disabled={pending || !plan.length}>
+              <button className="btn btn-primary" onClick={run} disabled={pending || !plan.length || !periodOk}>
                 {pending ? `${current?.label ?? t.run.starting}…` : t.run.start}
               </button>
             </div>

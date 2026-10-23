@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { digestDefLabel, getDigestDefs } from "@/lib/digest-defs";
 import { getDictionary } from "@/lib/i18n";
 import { getRun, runStages, runStats } from "@/lib/runs";
 import PageHeader from "@/components/PageHeader";
@@ -10,20 +11,37 @@ export const dynamic = "force-dynamic";
 
 type Params = Promise<{ id: string }>;
 
-/** The per-stage numbers the pipeline recorded, flattened into readable rows. */
+/** One value on one line: a list by its length, an object as `key: value · …`. */
+function describeValue(value: unknown): string {
+  if (Array.isArray(value)) return String(value.length);
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([k, v]) => `${k}: ${describeValue(v)}`)
+      .join(" · ");
+  }
+  return String(value);
+}
+
+/**
+ * The per-stage numbers the pipeline recorded, flattened into readable rows.
+ * A stage that recorded a list (one entry per digest, per curated week) gets
+ * one row per entry.
+ */
 function statRows(stats: Record<string, unknown>): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
   for (const [stage, value] of Object.entries(stats)) {
     if (value === null || value === undefined) continue;
+    if (Array.isArray(value)) {
+      if (!value.length) rows.push({ label: stage, value: "—" });
+      value.forEach((entry, i) => rows.push({ label: `${stage}.${i + 1}`, value: describeValue(entry) }));
+      continue;
+    }
     if (typeof value !== "object") {
       rows.push({ label: stage, value: String(value) });
       continue;
     }
     for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
-      rows.push({
-        label: `${stage}.${key}`,
-        value: Array.isArray(inner) ? String(inner.length) : String(inner),
-      });
+      rows.push({ label: `${stage}.${key}`, value: describeValue(inner) });
     }
   }
   return rows;
@@ -36,14 +54,25 @@ export default async function RunDetailPage({ params }: { params: Params }) {
 
   const t = getDictionary();
   const stages = runStages(run);
-  const rows = statRows(runStats(run));
+  const stats = runStats(run);
+  const rows = statRows(stats);
+
+  // What "Run again" replays: the recorded targets, or — for a run from
+  // before digest definitions — the old weekly run of its week.
+  const defs = getDigestDefs();
+  const targets = Array.isArray(stats.targets) ? (stats.targets as { def: string; period: string }[]) : null;
+  const relaunchSub = targets
+    ? targets.length
+      ? t.runs.relaunchTargets(targets.map((x) => `${digestDefLabel(defs, x.def).label} · ${x.period}`).join(", "))
+      : t.runs.relaunchNoTargets
+    : t.runs.relaunchLegacy(run.week_key ?? t.runs.unknownWeek);
 
   return (
     <div>
       <PageHeader
         kicker={t.runs.kicker}
         title={t.runs.detailTitle(run.id)}
-        sub={t.runs.relaunchHint(run.week_key ?? t.runs.unknownWeek)}
+        sub={relaunchSub}
         right={<RelaunchButton id={run.id} disabled={run.status === "running"} />}
       />
 

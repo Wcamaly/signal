@@ -12,6 +12,7 @@ import {
 } from "./channels";
 import { deleteCategory, getCategory, saveCategory, type CategoryInput } from "./categories";
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
+import { deleteDigestDef, saveDigestDef, setSignalsPerWeek, type DigestDefInput } from "./digest-defs";
 import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
 import { saveLlmConfig, saveProviderOptions, testLlm, type LlmConfig } from "./llm";
@@ -20,7 +21,16 @@ import { getPublisher } from "./publishers";
 import { parseOg } from "./og";
 import { getPrompt, resetPrompt, savePrompt, type PromptKey } from "./prompts";
 import { fetchText } from "./sources/util";
-import { getVoice, runPipeline, type RunOptions, type Stage } from "./pipeline";
+import {
+  clientRunOptions,
+  getVoice,
+  parseStages,
+  relaunchOptions,
+  runPipeline,
+  type ClientRunOptions,
+  type PipelineResult,
+  type Stage,
+} from "./pipeline";
 import { getRun, runStages } from "./runs";
 import { refinePost } from "./agents/writer";
 import { translateDigest, translatePost } from "./agents/translate";
@@ -55,20 +65,36 @@ async function absoluteUrl(pathOrUrl: string | null): Promise<string | null> {
 
 /* ---------- pipeline ---------- */
 
-export async function actionRunPipeline(stages: Stage[], options: RunOptions = {}) {
-  const res = await runPipeline(stages, { ...options, trigger: "ui" });
+/**
+ * One run from the run dialog. The options come from the browser, so they go
+ * through clientRunOptions(): no client clock, and the targets the dialog
+ * resolved on its first stage are checked by the same resolver as anything else.
+ */
+export async function actionRunPipeline(stages: Stage[], options: ClientRunOptions = {}): Promise<PipelineResult> {
+  let safe: ClientRunOptions;
+  let picked: Stage[];
+  try {
+    safe = clientRunOptions(options);
+    if (!Array.isArray(stages) || !stages.length) throw new Error("Pick at least one stage.");
+    picked = parseStages(stages.join(","));
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    return { ok: false, runId: null, week: null, log: [`✖ ${error}`], stats: {}, error, refused: "invalid" };
+  }
+  const res = await runPipeline(picked, { ...safe, trigger: "ui" });
   revalidatePath("/", "layout");
   return res;
 }
 
-/** Runs a past run again: same stages, same week. */
+/**
+ * Runs a past run again: same stages, same week, same digests. A run recorded
+ * before digest definitions has no `targets`, and replays as the old weekly
+ * run of its week.
+ */
 export async function actionRelaunchRun(id: number) {
   const run = getRun(id);
   if (!run) return { ok: false, runId: null, week: null, log: [], stats: {}, error: "Run not found" };
-  const res = await runPipeline(runStages(run), {
-    week: run.week_key ?? undefined,
-    trigger: "ui",
-  });
+  const res = await runPipeline(runStages(run), { ...relaunchOptions(run), trigger: "ui" });
   revalidatePath("/", "layout");
   return res;
 }
@@ -276,7 +302,8 @@ export async function actionSaveUiLanguage(locale: string) {
 }
 
 export async function actionSaveGeneral(cfg: { signals_per_week: number; ingest_max_age_days: number }) {
-  setSetting("signals_per_week", Math.max(1, Math.min(30, Math.round(cfg.signals_per_week) || 8)));
+  // Also the general digest's item count: one number in two places.
+  setSignalsPerWeek(cfg.signals_per_week);
   setSetting("ingest_max_age_days", Math.max(1, Math.min(90, Math.round(cfg.ingest_max_age_days) || 14)));
   revalidatePath("/", "layout");
 }
@@ -341,7 +368,7 @@ export async function actionSetItemStatus(id: number, status: string) {
 /* ---------- categories ---------- */
 
 function revalidateCategories() {
-  for (const p of ["/sources", "/radar", "/digest", "/settings/channels"]) revalidatePath(p);
+  for (const p of ["/sources", "/radar", "/digest", "/settings/channels", "/settings/digests"]) revalidatePath(p);
 }
 
 export async function actionSaveCategory(input: CategoryInput): Promise<Result> {
@@ -353,7 +380,9 @@ export async function actionSaveCategory(input: CategoryInput): Promise<Result> 
 }
 
 export async function actionDeleteCategory(key: string): Promise<Result> {
-  const res = await guard(() => deleteCategory(key));
+  const res = await guard(() => {
+    deleteCategory(key);
+  });
   revalidateCategories();
   return res;
 }
@@ -365,6 +394,28 @@ export async function actionSetSourceCategory(id: number, key: string): Promise<
   });
   revalidatePath("/sources");
   revalidatePath("/radar");
+  return res;
+}
+
+/* ---------- digest definitions ---------- */
+
+function revalidateDigestDefs() {
+  for (const p of ["/settings/digests", "/settings/channels", "/digest"]) revalidatePath(p);
+  // The run dialog in the sidebar lists the definitions.
+  revalidatePath("/", "layout");
+}
+
+export async function actionSaveDigestDef(input: DigestDefInput): Promise<Result> {
+  const res = await guard(() => {
+    saveDigestDef(input);
+  });
+  revalidateDigestDefs();
+  return res;
+}
+
+export async function actionDeleteDigestDef(key: string): Promise<Result> {
+  const res = await guard(() => deleteDigestDef(key));
+  revalidateDigestDefs();
   return res;
 }
 

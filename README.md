@@ -133,17 +133,19 @@ Walkthroughs with working code: **[docs/extending.md](docs/extending.md)**.
 
 ---
 
-## Automating the weekly run
+## Automating the runs
 
-`GET /api/cron` runs the whole pipeline; `?stages=ingest,curate` runs part of it.
+`GET /api/cron` runs the pipeline; `?stages=ingest,curate` runs part of it.
 Protect it with `CRON_SECRET` if it is reachable from anywhere but localhost.
 
-`?week=` picks what gets curated: `current` (the default), `previous`, or an ISO
-week such as `2026-W37`. A Monday schedule wants `previous` — the week that just
-closed holds seven days of news, the one starting holds a few hours.
+Schedule it once a day. Each run writes the digests that are due — daily ones
+every day, weekly ones on Monday, monthly ones on the 1st, each for the period
+that just closed — and the posts of the channels bound to them. `?defs=` and
+`?period=` write a given digest and period instead; see
+[docs/configuring.md](docs/configuring.md#what-a-run-works-on).
 
 ```bash
-0 8 * * 1 curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron?week=previous"
+0 8 * * * curl -sS -H "authorization: Bearer $CRON_SECRET" "http://localhost:3000/api/cron"
 ```
 
 Every execution is recorded. **Runs** in the sidebar lists them with their week,
@@ -161,10 +163,10 @@ docker compose up -d       # http://localhost:3000
 ```
 
 **A Debian box:** `bash deploy/install.sh` installs the app under systemd with a
-weekly timer.
+daily timer.
 
 **Kubernetes:** `deploy/kubernetes/` is a Kustomize example — namespace, config,
-PVC, deployment, service, ingress and the weekly CronJob. The host, the ingress
+PVC, deployment, service, ingress and the daily CronJob. The host, the ingress
 class and the timezone are placeholders; read it before applying it.
 
 Backups, schedules, and the one mistake worth avoiding — **never let Argo CD or

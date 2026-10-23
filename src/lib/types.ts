@@ -1,3 +1,5 @@
+import type { Cadence } from "./periods";
+
 export type Source = {
   id: number;
   name: string;
@@ -16,8 +18,27 @@ export type Category = {
   key: string;
   label: string;
   color: string;
-  digest_enabled: number;
-  digest_items: number;
+  sort_order: number;
+};
+
+export type DigestKind = "items" | "rollup";
+
+/** What a digest is made of and how often it is written. Settings → Digests. */
+export type DigestDef = {
+  id: number;
+  /** Stable slug: digests.def_key and channels.digest_def store it. */
+  key: string;
+  label: string;
+  /** Phase 1 builds `items` only; `rollup` exists in the schema for phase 2. */
+  kind: DigestKind;
+  cadence: Cadence;
+  /** items: category keys whose sources feed it. Empty = every category. */
+  categories: string[];
+  /** rollup: keys of the item definitions it combines. */
+  sources: string[];
+  /** items: how many items feed it, 1..30. */
+  item_count: number;
+  enabled: number;
   sort_order: number;
 };
 
@@ -43,7 +64,14 @@ export type Item = {
 
 export type Digest = {
   id: number;
-  week_key: string;
+  /** The digest definition that produced it. */
+  def_key: string;
+  /** `2026-10-23`, `2026-W43` or `2026-10`. */
+  period_key: string;
+  /** Filled for weekly digests only. */
+  week_key: string | null;
+  /** Legacy: '' = general, otherwise the definition key. */
+  category: string;
   title: string | null;
   subtitle: string | null;
   markdown: string | null;
@@ -64,8 +92,8 @@ export type Channel = {
   hint: string | null;
   /** Output language of this channel's posts. NULL inherits the voice profile. */
   language: string | null;
-  /** Key of the category whose digest this channel writes from. NULL = the general digest. */
-  category: string | null;
+  /** Key of the digest definition this channel writes from. NULL = the general one. */
+  digest_def: string | null;
   template: string | null;
   publisher: string;
   config: string | null;

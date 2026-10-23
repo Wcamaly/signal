@@ -32,7 +32,7 @@ function demoDraft(item: Item): Draft {
 export async function writePosts(digestId: number, voice: VoiceProfile, channels: Channel[]) {
   const db = getDb();
   const digest = db.prepare("SELECT * FROM digests WHERE id = ?").get(digestId) as
-    | { id: number; week_key: string; title: string; markdown: string; item_ids: string }
+    | { id: number; period_key: string; title: string; markdown: string; item_ids: string }
     | undefined;
   if (!digest) throw new Error("Digest not found");
 
@@ -65,7 +65,7 @@ export async function writePosts(digestId: number, voice: VoiceProfile, channels
       drafts = await chatJson<Draft[]>({
         system: prompt.system,
         prompt: renderPrompt(prompt.template, {
-          ...voiceVars(voice, digest.week_key),
+          ...voiceVars(voice, digest.period_key),
           language,
           channel_label: channel.label,
           channel_hint: channel.hint ?? "",
