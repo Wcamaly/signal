@@ -1,0 +1,256 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { actionRunPipeline } from "@/lib/actions";
+import { useT } from "./I18nProvider";
+import { isPeriodKey, periodKey, type Cadence } from "@/lib/periods";
+import type { ClientRunOptions, Stage } from "@/lib/pipeline";
+
+/** What the run page needs to know about a digest definition. */
+export type RunDef = { key: string; label: string; cadence: Cadence };
+
+const STAGE_KEYS: Stage[] = ["ingest", "curate", "digest", "posts"];
+
+/** `skipped` is what the stages after a failure get: the chain stops there. */
+type StageState = "queued" | "running" | "ok" | "error" | "skipped";
+type StageProgress = { state: StageState; log: string[] };
+type Progress = Partial<Record<Stage, StageProgress>>;
+
+function Indicator({ state }: { state: StageState }) {
+  if (state === "running") {
+    return (
+      <span
+        className="w-3 h-3 mt-0.5 shrink-0 rounded-full border-2 border-transparent animate-spin"
+        style={{ borderTopColor: "var(--accent)", borderRightColor: "var(--accent)" }}
+      />
+    );
+  }
+  const glyph = { queued: "·", ok: "✓", error: "✖", skipped: "—" }[state];
+  const color = { queued: "var(--faint)", ok: "var(--good)", error: "var(--bad)", skipped: "var(--faint)" }[
+    state
+  ];
+  return (
+    <span className="w-3 text-center text-[12px] leading-4 shrink-0" style={{ color }}>
+      {glyph}
+    </span>
+  );
+}
+
+/**
+ * The body of /runs/new: pick the digests and the stages, run them one call
+ * per stage and watch each one finish. `due` is what a run would write now,
+ * worked out on the server — by the server's clock and time zone, the ones the
+ * run itself uses — as "label (period)" entries.
+ */
+export default function RunForm({ defs, due }: { defs: RunDef[]; due: string[] }) {
+  const [sel, setSel] = useState<Stage[]>(["ingest", "curate", "digest", "posts"]);
+  // "" = what is due now; otherwise the key of one definition.
+  const [target, setTarget] = useState("");
+  const [period, setPeriod] = useState("previous");
+  const [progress, setProgress] = useState<Progress>({});
+  const [elapsed, setElapsed] = useState(0);
+  const [lastRun, setLastRun] = useState<number | null>(null);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const t = useT();
+
+  const STAGES = STAGE_KEYS.map((key) => ({ key, ...t.run.stages[key] }));
+
+  const picked = defs.find((d) => d.key === target);
+  const periodOk = !picked || period === "current" || period === "previous" || isPeriodKey(picked.cadence, period);
+  const options: ClientRunOptions = picked ? { defs: [picked.key], period } : {};
+
+  // A stage is one call now, so the run follows the canonical order, not the
+  // order the checkboxes were clicked in.
+  const plan = STAGES.filter((s) => sel.includes(s.key)).map((s) => s.key);
+  const done = STAGES.filter((s) => {
+    const state = progress[s.key]?.state;
+    return state === "ok" || state === "error";
+  }).length;
+  const current = STAGES.find((s) => progress[s.key]?.state === "running");
+  const total = Object.keys(progress).length;
+
+  // Long stages say nothing while they work; the clock at least shows it is alive.
+  useEffect(() => {
+    if (!pending) return;
+    const started = Date.now();
+    const t = setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [pending]);
+
+  function run() {
+    setElapsed(0);
+    setLastRun(null);
+    setProgress(Object.fromEntries(plan.map((k) => [k, { state: "queued", log: [] }])));
+    start(async () => {
+      // The first stage resolves what the run works on; every later stage
+      // gets those exact targets, so a run that crosses midnight (or a
+      // Monday) does not switch to another day's digests half-way.
+      let opts = options;
+      for (const [i, stage] of plan.entries()) {
+        setProgress((p) => ({ ...p, [stage]: { state: "running", log: [] } }));
+        const res = await actionRunPipeline([stage], opts);
+        if (res.runId) setLastRun(res.runId);
+        const targets = res.stats.targets;
+        if (i === 0 && Array.isArray(targets)) opts = { targets: targets as { def: string; period: string }[] };
+        setProgress((p) => ({
+          ...p,
+          [stage]: { state: res.ok ? "ok" : "error", log: res.log },
+          // The pipeline aborts on the first error, so the rest never runs.
+          ...(res.ok
+            ? {}
+            : Object.fromEntries(
+                plan.slice(i + 1).map((k) => [k, { state: "skipped" as const, log: [] }]),
+              )),
+        }));
+        if (!res.ok) break;
+      }
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="card p-6" style={{ background: "var(--surface)" }}>
+      <div className="mb-5 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="kicker">{t.run.digests}</span>
+          <select
+            className="select !w-auto"
+            value={target}
+            disabled={pending}
+            onChange={(e) => {
+              setTarget(e.target.value);
+              setPeriod("previous");
+            }}
+          >
+            <option value="">{t.run.due}</option>
+            {defs.map((d) => (
+              <option key={d.key} value={d.key}>
+                {d.label} · {t.digestDefs.cadences[d.cadence]}
+              </option>
+            ))}
+          </select>
+        </div>
+        {picked ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="kicker">{t.run.period}</span>
+            {(["previous", "current"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                disabled={pending}
+                onClick={() => setPeriod(p)}
+                className={`chip ${period === p ? "!text-ink !border-line-strong" : ""}`}
+              >
+                {p === "current" ? t.run.periodCurrent : t.run.periodPrevious}
+              </button>
+            ))}
+            <input
+              className="input !w-36 font-mono !text-[12px]"
+              disabled={pending}
+              placeholder={periodKey(picked.cadence)}
+              aria-label={t.run.periodKey}
+              value={period === "current" || period === "previous" ? "" : period}
+              onChange={(e) => setPeriod(e.target.value.trim() || "previous")}
+            />
+            {!periodOk && (
+              <span className="text-[11.5px]" style={{ color: "var(--bad)" }}>
+                {t.run.periodInvalid(periodKey(picked.cadence))}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="text-[11.5px] text-faint leading-snug">
+            {due.length ? t.run.dueNow(due.join(", ")) : t.run.nothingDue}
+          </p>
+        )}
+        <p className="text-[11.5px] text-faint leading-snug">{t.run.scopeHint}</p>
+      </div>
+
+      <div className="flex flex-col gap-1.5 mb-5">
+        {STAGES.map((s) => {
+          const st = progress[s.key];
+          return (
+            <label
+              key={s.key}
+              className={`flex items-start gap-2.5 px-3 py-2 rounded-md border border-line text-[13px] ${
+                pending ? "opacity-90" : "cursor-pointer hover:bg-surface-2"
+              }`}
+            >
+              {pending && st ? (
+                <Indicator state={st.state} />
+              ) : (
+                <input
+                  type="checkbox"
+                  className="accent-[var(--accent)] mt-0.5"
+                  checked={sel.includes(s.key)}
+                  disabled={pending}
+                  onChange={(e) =>
+                    setSel((prev) =>
+                      e.target.checked ? [...prev, s.key] : prev.filter((x) => x !== s.key),
+                    )
+                  }
+                />
+              )}
+              <span className="flex-1 min-w-0">
+                <span className="flex items-center gap-2">
+                  {s.label}
+                  {!pending && st && <Indicator state={st.state} />}
+                </span>
+                <span className="block text-[11.5px] text-faint mt-0.5">
+                  {st?.state === "running"
+                    ? t.common.working
+                    : st?.state === "skipped"
+                      ? t.run.notRun
+                      : s.hint}
+                </span>
+                {st && st.log.length > 0 && (
+                  <pre
+                    className="text-[11.5px] font-mono mt-2 whitespace-pre-wrap leading-relaxed max-h-28 overflow-auto"
+                    style={{ color: st.state === "error" ? "var(--bad)" : "var(--muted)" }}
+                  >
+                    {st.log.join("\n")}
+                  </pre>
+                )}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      {total > 0 && (
+        <div className="mb-5">
+          <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+            <div
+              className="h-full transition-[width] duration-300"
+              style={{ width: `${(done / total) * 100}%`, background: "var(--accent)" }}
+            />
+          </div>
+          <div className="text-[11.5px] text-faint mt-2 font-mono">
+            {pending
+              ? t.run.progressRunning(
+                  Math.min(done + 1, total),
+                  total,
+                  current?.label ?? t.run.starting,
+                  elapsed,
+                )
+              : t.run.progressDone(done, total, elapsed)}
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 items-center justify-end">
+        {lastRun !== null && !pending && (
+          <Link href={`/runs/${lastRun}`} className="text-[12px] text-muted hover:text-ink mr-auto">
+            {t.run.openRun(lastRun)}
+          </Link>
+        )}
+        <button className="btn btn-primary" onClick={run} disabled={pending || !plan.length || !periodOk}>
+          {pending ? `${current?.label ?? t.run.starting}…` : t.run.start}
+        </button>
+      </div>
+    </div>
+  );
+}

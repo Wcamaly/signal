@@ -67,8 +67,8 @@ async function absoluteUrl(pathOrUrl: string | null): Promise<string | null> {
 /* ---------- pipeline ---------- */
 
 /**
- * One run from the run dialog. The options come from the browser, so they go
- * through clientRunOptions(): no client clock, and the targets the dialog
+ * One stage from the run page. The options come from the browser, so they go
+ * through clientRunOptions(): no client clock, and the targets the page
  * resolved on its first stage are checked by the same resolver as anything else.
  */
 export async function actionRunPipeline(stages: Stage[], options: ClientRunOptions = {}): Promise<PipelineResult> {
@@ -395,8 +395,8 @@ export async function actionDeleteCategory(key: string): Promise<Result> {
 function revalidateDigestDefs() {
   for (const p of ["/manage/digests", "/manage/channels", "/digest"]) revalidatePath(p);
   revalidatePath("/manage/digests/[key]", "page");
-  // The run dialog in the sidebar lists the definitions.
-  revalidatePath("/", "layout");
+  // The run page lists the definitions and what is due.
+  revalidatePath("/runs/new");
 }
 
 export async function actionSaveDigestDef(input: DigestDefInput): Promise<Result> {

@@ -151,7 +151,7 @@ export type PostGroup = { digestId: number; defKey: string; period: PeriodKey; c
  *
  * `written` holds the digests the digest stage wrote in this same run; a
  * target missing from it was skipped or failed, and its channels are skipped
- * with a warning. When the digest stage did not run (the run dialog runs one
+ * with a warning. When the digest stage did not run (the run page runs one
  * stage per call), `written` is null and the stored digest of each target is
  * used instead.
  */

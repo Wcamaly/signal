@@ -77,6 +77,7 @@ export const es: Dictionary = {
     intro:
       "Cada etapa consume la salida de la anterior. Ejecutalas por separado si ya tenés los datos previos.",
     notRun: "No se ejecutó.",
+    openRun: (id: number) => `Abrir la ejecución #${id} →`,
     start: "Ejecutar",
     starting: "Arrancando",
     digests: "Resúmenes",

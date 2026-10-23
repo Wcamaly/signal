@@ -82,6 +82,7 @@ export const en = {
     intro:
       "Each stage consumes the output of the previous one. Run them separately if you already have the earlier data.",
     notRun: "Not run.",
+    openRun: (id: number) => `Open run #${id} →`,
     start: "Run",
     starting: "Starting",
     digests: "Digests",
