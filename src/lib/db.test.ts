@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-db-"));
 
-const { getDb } = await import("./db");
+const { getDb, migrateDigestCategory } = await import("./db");
 
 /**
  * The migration has already run by the time `getDb()` returns, so the backfill
@@ -68,5 +68,87 @@ describe("schema", () => {
       (c) => c.name,
     );
     expect(columns).toEqual(expect.arrayContaining(["week_key", "trigger", "status", "kind"]));
+  });
+});
+
+/**
+ * `digests.week_key` was UNIQUE on its own. Moving the constraint to
+ * (week_key, category) means rebuilding the table, and `posts.digest_id` is
+ * ON DELETE CASCADE: dropping the old table with foreign keys on deletes every
+ * post. These run against a file shaped like a database from before the change.
+ */
+describe("digests.category rebuild", () => {
+  const legacy = () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "signal-digests-"));
+    const raw = new Database(path.join(dir, "signal.db"));
+    raw.exec(`
+      CREATE TABLE digests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        week_key TEXT NOT NULL UNIQUE,
+        title TEXT, subtitle TEXT, markdown TEXT, item_ids TEXT,
+        status TEXT DEFAULT 'draft', model TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        language TEXT
+      );
+      CREATE TABLE posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        digest_id INTEGER REFERENCES digests(id) ON DELETE CASCADE,
+        platform TEXT NOT NULL,
+        body TEXT NOT NULL
+      );
+      INSERT INTO digests (id, week_key, title, language) VALUES (7, '2026-W40', 'Old', 'English'), (9, '2026-W41', 'Older', NULL);
+      INSERT INTO posts (digest_id, platform, body) VALUES (7, 'x', 'a'), (7, 'linkedin', 'b'), (9, 'x', 'c');
+    `);
+    return raw;
+  };
+
+  it("starts with foreign keys on, which is what makes the rebuild dangerous", () => {
+    expect(legacy().pragma("foreign_keys", { simple: true })).toBe(1);
+  });
+
+  it("keeps every digest id, its data and every post", () => {
+    const db = legacy();
+    migrateDigestCategory(db);
+    expect(db.prepare("SELECT id, week_key, category, title, language FROM digests ORDER BY id").all()).toEqual([
+      { id: 7, week_key: "2026-W40", category: "", title: "Old", language: "English" },
+      { id: 9, week_key: "2026-W41", category: "", title: "Older", language: null },
+    ]);
+    expect((db.prepare("SELECT COUNT(*) c FROM posts").get() as { c: number }).c).toBe(3);
+    expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
+  });
+
+  it("allows one digest per week and category", () => {
+    const db = legacy();
+    migrateDigestCategory(db);
+    db.prepare("INSERT INTO digests (week_key, category, title) VALUES ('2026-W40', 'regulation', 'R')").run();
+    expect(() =>
+      db.prepare("INSERT INTO digests (week_key, category, title) VALUES ('2026-W40', '', 'Dup')").run(),
+    ).toThrow(/UNIQUE/);
+  });
+
+  it("does nothing the second time", () => {
+    const db = legacy();
+    migrateDigestCategory(db);
+    migrateDigestCategory(db);
+    expect((db.prepare("SELECT COUNT(*) c FROM digests").get() as { c: number }).c).toBe(2);
+  });
+});
+
+describe("category schema", () => {
+  const columns = (table: string) =>
+    (getDb().prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+
+  it("has a categories table", () => {
+    expect(columns("categories")).toEqual(
+      expect.arrayContaining(["key", "label", "color", "digest_enabled", "digest_items", "sort_order"]),
+    );
+  });
+
+  it("lets a channel point at a category", () => {
+    expect(columns("channels")).toContain("category");
+  });
+
+  it("creates digests with a category on a fresh database", () => {
+    expect(columns("digests")).toContain("category");
   });
 });

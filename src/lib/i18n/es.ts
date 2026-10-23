@@ -168,6 +168,7 @@ export const es: Dictionary = {
     title: "Resúmenes semanales",
     sub: "El documento de trabajo del que sale cada publicación. Tiene opinión; no es un newsletter.",
     empty: "Todavía no hay ningún resumen. Ejecutá el pipeline desde la barra lateral.",
+    general: "General",
   },
 
   digestPage: {
@@ -271,6 +272,19 @@ export const es: Dictionary = {
     testResult: (found: number, sample: string) => `${found} items · ${sample}`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit y YouTube — ninguna necesita clave de API. Agregá las que leés de verdad: el radar vale lo que valen sus fuentes.",
   },
+  categories: {
+    title: "Categorías",
+    hint: "Agrupá tus fuentes. Una categoría con el resumen activado tiene su propio resumen semanal, hecho con sus items mejor puntuados, y los canales pueden escribir a partir de él.",
+    name: "Nombre",
+    namePlaceholder: "Nueva categoría",
+    colour: "Color",
+    digest: "Resumen semanal",
+    digestItems: "Items",
+    order: "Orden",
+    create: "Crear",
+    confirmDelete: (label: string) =>
+      `¿Eliminar «${label}»? Sus fuentes pasan a General y sus canales vuelven al resumen general.`,
+  },
 
   settings: {
     title: "Voz y ajustes",
@@ -331,6 +345,10 @@ export const es: Dictionary = {
     inherit: "Heredar del perfil de voz",
     languageHint:
       "Los posts de este canal se escriben en este idioma. Cualquier post individual se puede cambiar desde la cola.",
+    sourceDigest: "Resumen de origen",
+    generalDigest: "Resumen general",
+    sourceDigestHint:
+      "De qué resumen semanal salen los posts de este canal. Un canal de categoría se salta la semana en que esa categoría no tiene resumen.",
     handle: "Usuario (solo para la vista previa)",
     handleHint: "Se muestra debajo de tu nombre en la vista previa. No se envía a ningún lado.",
     template: "Plantilla de publicación",
@@ -452,6 +470,11 @@ export const es: Dictionary = {
         label: "Resumen semanal",
         description:
           "Escribe el documento de trabajo de la semana a partir de las señales seleccionadas. Es la materia prima de la que sale cada post.",
+      },
+      category_digest: {
+        label: "Resumen por categoría",
+        description:
+          "Escribe el resumen semanal de una categoría a partir de sus items mejor puntuados. Se ejecuta una vez por cada categoría con el resumen activado; los canales asociados a esa categoría escriben a partir de él.",
       },
       writer: {
         label: "Escritor",

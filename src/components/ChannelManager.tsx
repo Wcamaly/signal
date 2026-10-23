@@ -7,7 +7,7 @@ import { useT } from "./I18nProvider";
 import LanguageSelect from "./LanguageSelect";
 import type { CredentialInfo } from "@/lib/credentials";
 import type { PublisherInfo } from "@/lib/publishers";
-import type { Channel } from "@/lib/types";
+import type { Category, Channel } from "@/lib/types";
 
 type Draft = {
   key: string;
@@ -16,6 +16,7 @@ type Draft = {
   color: string;
   hint: string;
   language: string;
+  category: string;
   template: string;
   publisher: string;
   config: Record<string, string>;
@@ -32,6 +33,7 @@ const BLANK: Draft = {
   color: "#8b93a1",
   hint: "",
   language: "",
+  category: "",
   template: "{{body}}\n\n{{hashtags}}",
   publisher: "manual",
   config: {},
@@ -55,6 +57,7 @@ function toDraft(c: Channel): Draft {
     color: c.color,
     hint: c.hint ?? "",
     language: c.language ?? "",
+    category: c.category ?? "",
     template: c.template ?? "{{body}}",
     publisher: c.publisher,
     config,
@@ -71,6 +74,7 @@ function Editor({
   publishers,
   credentials,
   templateVariables,
+  categories,
   onDone,
 }: {
   initial: Draft;
@@ -78,6 +82,7 @@ function Editor({
   publishers: PublisherInfo[];
   credentials: CredentialInfo[];
   templateVariables: { name: string; description: string }[];
+  categories: Category[];
   onDone: () => void;
 }) {
   const [d, setD] = useState(initial);
@@ -173,6 +178,23 @@ function Editor({
             inheritLabel={t.channels.inherit}
           />
           <p className="text-[11px] text-faint mt-1">{t.channels.languageHint}</p>
+        </div>
+        <div>
+          <span className="label">{t.channels.sourceDigest}</span>
+          <select
+            className="select"
+            value={d.category}
+            onChange={(e) => setD({ ...d, category: e.target.value })}
+          >
+            <option value="">{t.channels.generalDigest}</option>
+            {/* Only categories that get a digest, plus the one already bound. */}
+            {categories.filter((c) => c.digest_enabled || c.key === d.category).map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-faint mt-1">{t.channels.sourceDigestHint}</p>
         </div>
         {!publisher.configFields.some((f) => f.key === "handle") && (
           <div>
@@ -311,11 +333,13 @@ export default function ChannelManager({
   publishers,
   credentials,
   templateVariables,
+  categories,
 }: {
   channels: Channel[];
   publishers: PublisherInfo[];
   credentials: CredentialInfo[];
   templateVariables: { name: string; description: string }[];
+  categories: Category[];
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -342,6 +366,7 @@ export default function ChannelManager({
             publishers={publishers}
             credentials={credentials}
             templateVariables={templateVariables}
+            categories={categories}
             onDone={() => setCreating(false)}
           />
         </section>
@@ -358,6 +383,11 @@ export default function ChannelManager({
               <div className="flex items-center gap-2.5">
                 <span className="text-[14px] font-semibold tracking-tight">{c.label}</span>
                 <span className="chip !text-[10px] !py-0">{c.publisher}</span>
+                {c.category && (
+                  <span className="chip !text-[10px] !py-0">
+                    {categories.find((x) => x.key === c.category)?.label ?? c.category}
+                  </span>
+                )}
                 {!c.enabled && <span className="chip !text-[10px] !py-0">{t.common.disabled}</span>}
               </div>
               <p className="text-[11.5px] text-faint mt-1">
@@ -391,6 +421,7 @@ export default function ChannelManager({
               publishers={publishers}
               credentials={credentials}
               templateVariables={templateVariables}
+              categories={categories}
               onDone={() => setEditing(null)}
             />
           )}

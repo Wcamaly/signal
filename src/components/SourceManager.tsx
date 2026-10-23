@@ -6,12 +6,13 @@ import {
   actionAddSource,
   actionDeleteSource,
   actionSeedSources,
+  actionSetSourceCategory,
   actionTestSource,
   actionToggleSource,
 } from "@/lib/actions";
 import type { SourceKindInfo } from "@/lib/sources";
 import { useT } from "./I18nProvider";
-import type { Source } from "@/lib/types";
+import type { Category, Source } from "@/lib/types";
 
 type Row = Source & { item_count: number };
 
@@ -22,7 +23,7 @@ export default function SourceManager({
 }: {
   sources: Row[];
   kinds: SourceKindInfo[];
-  categories: string[];
+  categories: Category[];
 }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -41,6 +42,12 @@ export default function SourceManager({
     (acc[s.category] ||= []).push(s);
     return acc;
   }, {});
+  // Category order first; a key with no row (should not happen after seeding) goes last.
+  const groupKeys = [
+    ...categories.map((c) => c.key).filter((k) => groups[k]),
+    ...Object.keys(groups).filter((k) => !categories.some((c) => c.key === k)),
+  ];
+  const meta = (key: string) => categories.find((c) => c.key === key);
 
   function add() {
     setError(null);
@@ -69,8 +76,22 @@ export default function SourceManager({
     });
   }
 
+  function move(id: number, key: string) {
+    setError(null);
+    start(async () => {
+      const res = await actionSetSourceCategory(id, key);
+      if (!res.ok) setError(res.error ?? t.common.error);
+      router.refresh();
+    });
+  }
+
   return (
     <div className="flex flex-col gap-7">
+      {error && (
+        <p className="text-[12px]" style={{ color: "var(--bad)" }}>
+          {error}
+        </p>
+      )}
       <div className="card p-5">
         <h2 className="kicker mb-3.5">{t.sources.addSource}</h2>
 
@@ -109,7 +130,9 @@ export default function SourceManager({
             <span className="label">{t.sources.category}</span>
             <select className="select !w-auto" value={category} onChange={(e) => setCategory(e.target.value)}>
               {categories.map((c) => (
-                <option key={c}>{c}</option>
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
               ))}
             </select>
           </div>
@@ -145,19 +168,16 @@ export default function SourceManager({
             disabled={pending}
           >{t.sources.restoreDefaults}</button>
         </div>
-
-        {error && (
-          <p className="text-[12px] mt-2.5" style={{ color: "var(--bad)" }}>
-            {error}
-          </p>
-        )}
       </div>
 
-      {Object.entries(groups).map(([cat, list]) => (
+      {groupKeys.map((cat) => (
         <div key={cat}>
-          <h2 className="kicker mb-2.5">{cat}</h2>
+          <h2 className="kicker mb-2.5 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta(cat)?.color ?? "var(--faint)" }} />
+            {meta(cat)?.label ?? cat}
+          </h2>
           <div className="flex flex-col gap-1.5">
-            {list.map((s) => (
+            {groups[cat].map((s) => (
               <div key={s.id} className="card px-4 py-3 flex items-center gap-4">
                 <input
                   type="checkbox"
@@ -180,6 +200,19 @@ export default function SourceManager({
                   )}
                   {tested[s.id] && <div className="text-[11px] text-muted mt-1">{tested[s.id]}</div>}
                 </div>
+                <select
+                  className="select !w-auto !text-[11.5px] shrink-0"
+                  value={s.category}
+                  aria-label={`${t.sources.category}: ${s.name}`}
+                  disabled={pending}
+                  onChange={(e) => move(s.id, e.target.value)}
+                >
+                  {categories.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
                 <span className="chip !text-[10.5px] shrink-0">{s.kind}</span>
                 <span className="font-mono text-[11.5px] text-faint w-12 text-right shrink-0">{s.item_count}</span>
                 <button className="btn btn-ghost btn-sm shrink-0" onClick={() => test(s.id)} disabled={pending}>{t.sources.test}</button>

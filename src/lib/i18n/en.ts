@@ -173,6 +173,7 @@ export const en = {
     title: "Weekly digests",
     sub: "The working document every publication is derived from. It has an opinion; it is not a newsletter.",
     empty: "No digest yet. Run the pipeline from the sidebar.",
+    general: "General",
   },
 
   digestPage: {
@@ -276,6 +277,19 @@ export const en = {
     testResult: (found: number, sample: string) => `${found} items · ${sample}`,
     sub: "RSS, Hacker News, arXiv, GitHub, Reddit and YouTube — none of them needs an API key. Add the ones you actually read: the radar is worth what its sources are worth.",
   },
+  categories: {
+    title: "Categories",
+    hint: "Group your sources. A category with its digest turned on gets its own weekly digest, built from its best-scored items, and channels can write from it.",
+    name: "Name",
+    namePlaceholder: "New category",
+    colour: "Colour",
+    digest: "Weekly digest",
+    digestItems: "Items",
+    order: "Order",
+    create: "Create",
+    confirmDelete: (label: string) =>
+      `Delete "${label}"? Its sources move to General and its channels go back to the general digest.`,
+  },
 
   settings: {
     title: "Voice & settings",
@@ -336,6 +350,10 @@ export const en = {
     inherit: "Inherit from the voice profile",
     languageHint:
       "The posts of this channel are written in this language. Any single post can still be changed from the queue.",
+    sourceDigest: "Source digest",
+    generalDigest: "General digest",
+    sourceDigestHint:
+      "Which weekly digest this channel writes from. A category channel is skipped in a week where that category has no digest.",
     handle: "Handle (preview only)",
     handleHint: "Shown under your name in the preview. Not sent anywhere.",
     template: "Publication template",

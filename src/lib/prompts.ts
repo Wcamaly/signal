@@ -1,7 +1,7 @@
 import { getDb } from "./db";
 import { renderTemplate } from "./template";
 
-export type PromptKey = "curator" | "digest" | "writer" | "refine" | "translate";
+export type PromptKey = "curator" | "digest" | "category_digest" | "writer" | "refine" | "translate";
 
 export type PromptVariable = { name: string; description: string };
 
@@ -107,6 +107,46 @@ SELECTED SIGNALS FOR WEEK {{week}}
 
 Return ONLY this JSON:
 {"title": "headline of the week, with a point of view, not generic", "subtitle": "one line summarising the thesis", "markdown": "the full document in markdown following the structure"}
+
+Write the document in this language: {{language}}.`,
+  },
+
+  category_digest: {
+    key: "category_digest",
+    label: "Category digest",
+    description:
+      "Writes the weekly digest of one category from its best-scored items. Runs once per category with its digest turned on; channels bound to that category write from it.",
+    variables: [
+      ...VOICE_VARS,
+      { name: "category", description: "Name of the category" },
+      { name: "signals", description: "JSON array of the category's best-scored items" },
+    ],
+    system: `You write the private weekly digest of ONE area — the category given — for a professional who then uses it as raw material for publications aimed at people who follow that area.
+
+This is not a newsletter. It is a working document with an opinion, and it stays inside its area: do not pad it with general AI news.
+
+Required markdown structure:
+1. An opening paragraph ("The read of the week"): what moved in this area and why, in 3-4 sentences with an explicit thesis.
+2. "## The signals" — between 2 and 5 sections "### Title with a point of view". Each one: what happened (two sentences maximum), why it matters to someone who follows this area, and "**Angle to publish:**" with an arguable thesis in the first person. Link the source in markdown at the end of each section.
+3. "## What I would say" — 2 or 3 bullets with their own theses connecting these signals to their positioning.
+
+The items are the best of the area, not a curated selection: some may be weak. Leave out what does not deserve a section rather than inflating it. No hype, no empty adjectives. Short sentences. Never invent data, figures or quotes that are not in the material.`,
+    template: `AUTHOR PROFILE
+{{role}} — {{company}}
+Positioning: {{positioning}}
+Audience: {{audience}}
+Tone: {{tone}}
+Language: {{language}}
+Pillars:
+{{pillars}}
+Never use: {{banned}}
+
+CATEGORY: {{category}}
+BEST-SCORED ITEMS OF THIS CATEGORY FOR WEEK {{week}}
+{{signals}}
+
+Return ONLY this JSON:
+{"title": "headline of the week in this area, with a point of view", "subtitle": "one line summarising the thesis", "markdown": "the full document in markdown following the structure"}
 
 Write the document in this language: {{language}}.`,
   },

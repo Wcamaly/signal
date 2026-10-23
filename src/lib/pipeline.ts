@@ -2,11 +2,12 @@ import { getChannels } from "./channels";
 import { getDb, getSetting } from "./db";
 import { ingestAll } from "./ingest";
 import { curateWeek } from "./agents/curator";
-import { buildDigest } from "./agents/digest";
+import { buildCategoryDigest, buildDigest } from "./agents/digest";
+import { getCategories } from "./categories";
 import { writePosts } from "./agents/writer";
 import { llmStatus } from "./llm";
 import { finishRun, startRun, type RunTrigger } from "./runs";
-import { DEFAULT_VOICE, type VoiceProfile } from "./types";
+import { DEFAULT_VOICE, type Channel, type VoiceProfile } from "./types";
 import { resolveWeek, type WeekKey } from "./weeks";
 
 export function getVoice(): VoiceProfile {
@@ -54,11 +55,39 @@ export type PipelineResult = {
   error?: string;
 };
 
+export type PostGroup = { digestId: number; category: string; channels: Channel[] };
+
+/**
+ * The posts stage, planned: one group per digest the channels write from.
+ * A channel bound to a category with no digest this week is skipped with a
+ * warning; the general digest missing is still an error, as it always was.
+ */
+export function groupChannelsByDigest(
+  week: string,
+  channels: Channel[],
+): { groups: PostGroup[]; skipped: string[] } {
+  const byCategory = new Map<string, Channel[]>();
+  for (const c of channels) {
+    const key = c.category ?? "";
+    byCategory.set(key, [...(byCategory.get(key) ?? []), c]);
+  }
+
+  const find = getDb().prepare("SELECT id FROM digests WHERE week_key = ? AND category = ?");
+  const groups: PostGroup[] = [];
+  const skipped: string[] = [];
+  for (const [category, list] of byCategory) {
+    const row = find.get(week, category) as { id: number } | undefined;
+    if (row) groups.push({ digestId: row.id, category, channels: list });
+    else if (!category) throw new Error(`There is no digest for ${week} yet.`);
+    else skipped.push(`Channels ${list.map((c) => c.label).join(", ")} skipped: no "${category}" digest for ${week}.`);
+  }
+  return { groups, skipped };
+}
+
 export async function runPipeline(
   stages: Stage[] = ALL_STAGES,
   options: RunOptions = {},
 ): Promise<PipelineResult> {
-  const db = getDb();
   const voice = getVoice();
   const log: string[] = [];
 
@@ -94,24 +123,45 @@ export async function runPipeline(
       stats.curate = r;
       log.push(`Curation: ${r.scored} scored, ${r.selected} selected, ${r.images} images found.`);
     }
-    let digestId: number | undefined;
     if (stages.includes("digest")) {
       const r = await buildDigest(week, voice);
-      digestId = r.digestId;
       stats.digest = r;
       log.push(`Weekly digest written from ${r.items} signals.`);
+
+      // One failing category digest is a warning; the general one failing above
+      // still fails the run.
+      const categoryDigests: Record<string, unknown>[] = [];
+      for (const category of getCategories().filter((c) => c.digest_enabled)) {
+        try {
+          const c = await buildCategoryDigest(week, category, voice);
+          categoryDigests.push({ key: category.key, ...c });
+          log.push(
+            "skipped" in c
+              ? `⚠ Digest "${category.label}" skipped: no scored items this week.`
+              : `Digest "${category.label}": ${c.items} signals.`,
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          categoryDigests.push({ key: category.key, error: msg });
+          log.push(`⚠ Digest "${category.label}" failed: ${msg}`);
+        }
+      }
+      if (categoryDigests.length) stats.categoryDigests = categoryDigests;
     }
     if (stages.includes("posts")) {
-      if (!digestId) {
-        const d = db.prepare("SELECT id FROM digests WHERE week_key = ?").get(week) as { id: number } | undefined;
-        if (!d) throw new Error(`There is no digest for ${week} yet.`);
-        digestId = d.id;
-      }
       const channels = getChannels(true).filter((c) => c.posts_per_run > 0);
       if (!channels.length) throw new Error("No channel is enabled. Enable one under Channels.");
-      const r = await writePosts(digestId, voice, channels);
-      stats.posts = r;
-      log.push(`Writing: ${r.created} drafts across ${r.channels} channels.`);
+      const plan = groupChannelsByDigest(week, channels);
+      plan.skipped.forEach((s) => log.push(`⚠ ${s}`));
+      let created = 0;
+      let written = 0;
+      for (const g of plan.groups) {
+        const r = await writePosts(g.digestId, voice, g.channels);
+        created += r.created;
+        written += r.channels;
+      }
+      stats.posts = { created, channels: written };
+      log.push(`Writing: ${created} drafts across ${written} channels.`);
     }
 
     finishRun(runId, { status: "ok", stats, log });

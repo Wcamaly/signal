@@ -10,6 +10,7 @@ import {
   saveChannel,
   type ChannelInput,
 } from "./channels";
+import { deleteCategory, getCategory, saveCategory, type CategoryInput } from "./categories";
 import { deleteCredential, readSecret, saveCredential, type CredentialScope } from "./credentials";
 import { getDb, setSetting } from "./db";
 import { fetchSource, seedSources } from "./ingest";
@@ -296,6 +297,7 @@ export async function actionAddSource(input: {
 }): Promise<Result> {
   const res = await guard(() => {
     if (!input.name.trim() || !input.url.trim()) throw new Error("Name and URL are required");
+    if (!getCategory(input.category)) throw new Error(`Unknown category "${input.category}"`);
     const config = Object.fromEntries(
       Object.entries(input.config ?? {}).filter(([, v]) => String(v).trim() !== ""),
     );
@@ -334,6 +336,36 @@ export async function actionTestSource(id: number): Promise<Result & { found?: n
 export async function actionSetItemStatus(id: number, status: string) {
   getDb().prepare("UPDATE items SET status = ? WHERE id = ?").run(status, id);
   revalidatePath("/radar");
+}
+
+/* ---------- categories ---------- */
+
+function revalidateCategories() {
+  for (const p of ["/sources", "/radar", "/digest", "/settings/channels"]) revalidatePath(p);
+}
+
+export async function actionSaveCategory(input: CategoryInput): Promise<Result> {
+  const res = await guard(() => {
+    saveCategory(input);
+  });
+  revalidateCategories();
+  return res;
+}
+
+export async function actionDeleteCategory(key: string): Promise<Result> {
+  const res = await guard(() => deleteCategory(key));
+  revalidateCategories();
+  return res;
+}
+
+export async function actionSetSourceCategory(id: number, key: string): Promise<Result> {
+  const res = await guard(() => {
+    if (!getCategory(key)) throw new Error(`Unknown category "${key}"`);
+    getDb().prepare("UPDATE sources SET category = ? WHERE id = ?").run(key, id);
+  });
+  revalidatePath("/sources");
+  revalidatePath("/radar");
+  return res;
 }
 
 /* ---------- channels ---------- */

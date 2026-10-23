@@ -11,6 +11,16 @@ export type Source = {
   last_error: string | null;
 };
 
+export type Category = {
+  id: number;
+  key: string;
+  label: string;
+  color: string;
+  digest_enabled: number;
+  digest_items: number;
+  sort_order: number;
+};
+
 export type Item = {
   id: number;
   source_id: number | null;
@@ -54,6 +64,8 @@ export type Channel = {
   hint: string | null;
   /** Output language of this channel's posts. NULL inherits the voice profile. */
   language: string | null;
+  /** Key of the category whose digest this channel writes from. NULL = the general digest. */
+  category: string | null;
   template: string | null;
   publisher: string;
   config: string | null;
