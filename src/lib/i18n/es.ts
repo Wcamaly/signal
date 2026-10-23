@@ -174,10 +174,9 @@ export const es: Dictionary = {
 
   digestList: {
     kicker: "Archivo",
-    title: "Resúmenes semanales",
+    title: "Resúmenes",
     sub: "El documento de trabajo del que sale cada publicación. Tiene opinión; no es un newsletter.",
     empty: "Todavía no hay ningún resumen. Ejecutá el pipeline desde la barra lateral.",
-    general: "General",
   },
 
   digestPage: {
