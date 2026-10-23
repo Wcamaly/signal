@@ -18,8 +18,6 @@ export type Category = {
   key: string;
   label: string;
   color: string;
-  digest_enabled: number;
-  digest_items: number;
   sort_order: number;
 };
 

@@ -1,21 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { actionDeleteCategory, actionSaveCategory } from "@/lib/actions";
 import type { CategoryInput } from "@/lib/categories";
 import type { Category } from "@/lib/types";
 import { useT } from "./I18nProvider";
 
-const BLANK: CategoryInput = { label: "", color: "#8b93a1", digest_enabled: false, digest_items: 8, sort_order: 100 };
+const BLANK: CategoryInput = { label: "", color: "#8b93a1", sort_order: 100 };
 
 function toInput(c: Category): CategoryInput {
   return {
     key: c.key,
     label: c.label,
     color: c.color,
-    digest_enabled: !!c.digest_enabled,
-    digest_items: c.digest_items,
     sort_order: c.sort_order,
   };
 }
@@ -68,26 +67,6 @@ function Row({ initial, isNew }: { initial: CategoryInput; isNew: boolean }) {
           onChange={(e) => setD({ ...d, label: e.target.value })}
         />
         {d.key && <span className="font-mono text-[11px] text-faint">{d.key}</span>}
-        <label className="chip cursor-pointer !px-3 !py-1.5">
-          <input
-            type="checkbox"
-            className="accent-[var(--accent)]"
-            checked={d.digest_enabled}
-            onChange={(e) => setD({ ...d, digest_enabled: e.target.checked })}
-          />
-          {t.categories.digest}
-        </label>
-        <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
-          {t.categories.digestItems}
-          <input
-            type="number"
-            min={1}
-            max={30}
-            className="input !w-16"
-            value={d.digest_items}
-            onChange={(e) => setD({ ...d, digest_items: Number(e.target.value) })}
-          />
-        </label>
         <label className="flex items-center gap-1.5 text-[11.5px] text-muted">
           {t.categories.order}
           <input
@@ -126,11 +105,16 @@ export default function CategoryManager({ categories }: { categories: Category[]
   return (
     <div className="card p-5">
       <h2 className="kicker mb-1">{t.categories.title}</h2>
-      <p className="text-[11.5px] text-faint mb-3 leading-snug">{t.categories.hint}</p>
+      <p className="text-[11.5px] text-faint mb-3 leading-snug">
+        {t.categories.hint}{" "}
+        <Link href="/settings/digests" className="text-accent">
+          {t.categories.digestsPointer}
+        </Link>
+      </p>
       {categories.map((c) => (
         // Keyed on the saved values, so a refresh after saving resets the row's local state.
         <Row
-          key={`${c.key}:${c.label}:${c.color}:${c.digest_enabled}:${c.digest_items}:${c.sort_order}`}
+          key={`${c.key}:${c.label}:${c.color}:${c.sort_order}`}
           initial={toInput(c)}
           isNew={false}
         />

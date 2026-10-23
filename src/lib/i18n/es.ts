@@ -282,16 +282,15 @@ export const es: Dictionary = {
   },
   categories: {
     title: "Categorías",
-    hint: "Agrupá tus fuentes. Una categoría con el resumen activado tiene su propio resumen semanal, hecho con sus items mejor puntuados, y los canales pueden escribir a partir de él.",
+    hint: "Agrupá tus fuentes. Un resumen propio para algunas categorías — diario, semanal o mensual — se arma en",
+    digestsPointer: "Configuración → Resúmenes.",
     name: "Nombre",
     namePlaceholder: "Nueva categoría",
     colour: "Color",
-    digest: "Resumen semanal",
-    digestItems: "Items",
     order: "Orden",
     create: "Crear",
     confirmDelete: (label: string) =>
-      `¿Eliminar «${label}»? Sus fuentes pasan a General y sus canales vuelven al resumen general.`,
+      `¿Eliminar «${label}»? Sus fuentes pasan a General y sale de todos los resúmenes — un resumen que se queda sin categorías se desactiva.`,
   },
 
   settings: {

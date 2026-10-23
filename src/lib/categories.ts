@@ -12,8 +12,6 @@ export type CategoryInput = {
   key?: string;
   label: string;
   color: string;
-  digest_enabled: boolean;
-  digest_items: number;
   sort_order?: number;
 };
 
@@ -74,8 +72,6 @@ export function categoryLabel(categories: Category[], key: string): Category {
       key,
       label: key,
       color: "#8b93a1",
-      digest_enabled: 0,
-      digest_items: 8,
       sort_order: 999,
     }
   );
@@ -88,8 +84,6 @@ export function saveCategory(input: CategoryInput): string {
   const row = {
     label,
     color: input.color || "#8b93a1",
-    digest_enabled: input.digest_enabled ? 1 : 0,
-    digest_items: Math.min(30, Math.max(1, Math.round(input.digest_items) || 8)),
     sort_order: Math.round(input.sort_order ?? 100),
   };
   const db = getDb();
@@ -97,9 +91,7 @@ export function saveCategory(input: CategoryInput): string {
   if (input.key) {
     const res = db
       .prepare(
-        `UPDATE categories SET label = @label, color = @color, digest_enabled = @digest_enabled,
-           digest_items = @digest_items, sort_order = @sort_order
-         WHERE key = @key`,
+        `UPDATE categories SET label = @label, color = @color, sort_order = @sort_order WHERE key = @key`,
       )
       .run({ ...row, key: input.key });
     if (!res.changes) throw new Error(`Unknown category "${input.key}"`);
@@ -110,8 +102,7 @@ export function saveCategory(input: CategoryInput): string {
   if (!key) throw new Error("The category name needs at least one letter or digit");
   if (getCategory(key)) throw new Error(`A category with the key "${key}" already exists`);
   db.prepare(
-    `INSERT INTO categories (key, label, color, digest_enabled, digest_items, sort_order)
-     VALUES (@key, @label, @color, @digest_enabled, @digest_items, @sort_order)`,
+    `INSERT INTO categories (key, label, color, sort_order) VALUES (@key, @label, @color, @sort_order)`,
   ).run({ ...row, key });
   return key;
 }

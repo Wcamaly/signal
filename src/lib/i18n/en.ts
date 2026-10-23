@@ -287,16 +287,15 @@ export const en = {
   },
   categories: {
     title: "Categories",
-    hint: "Group your sources. A category with its digest turned on gets its own weekly digest, built from its best-scored items, and channels can write from it.",
+    hint: "Group your sources. A digest of its own for some categories — daily, weekly or monthly — is set up under",
+    digestsPointer: "Settings → Digests.",
     name: "Name",
     namePlaceholder: "New category",
     colour: "Colour",
-    digest: "Weekly digest",
-    digestItems: "Items",
     order: "Order",
     create: "Create",
     confirmDelete: (label: string) =>
-      `Delete "${label}"? Its sources move to General and its channels go back to the general digest.`,
+      `Delete "${label}"? Its sources move to General, and it is taken out of every digest — a digest left with no category is disabled.`,
   },
 
   settings: {
