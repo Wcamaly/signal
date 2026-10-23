@@ -2,8 +2,8 @@ import { getChannels } from "./channels";
 import { getDb, getSetting, legacyDefKey } from "./db";
 import { ingestAll } from "./ingest";
 import { curateWeek } from "./agents/curator";
-import { buildCategoryDigest, buildDigest } from "./agents/digest";
-import { getCategories } from "./categories";
+import { buildDigestFor } from "./agents/digest";
+import { getDigestDefs } from "./digest-defs";
 import { writePosts } from "./agents/writer";
 import { llmStatus } from "./llm";
 import { finishRun, startRun, type RunTrigger } from "./runs";
@@ -124,29 +124,25 @@ export async function runPipeline(
       log.push(`Curation: ${r.scored} scored, ${r.selected} selected, ${r.images} images found.`);
     }
     if (stages.includes("digest")) {
-      const r = await buildDigest(week, voice);
-      stats.digest = r;
-      log.push(`Weekly digest written from ${r.items} signals.`);
-
-      // One failing category digest is a warning; the general one failing above
-      // still fails the run.
-      const categoryDigests: Record<string, unknown>[] = [];
-      for (const category of getCategories().filter((c) => c.digest_enabled)) {
+      // Every enabled weekly definition, for the run's week. One failing or
+      // empty definition is a warning, not a failed run.
+      const digests: Record<string, unknown>[] = [];
+      for (const def of getDigestDefs(true).filter((d) => d.kind === "items" && d.cadence === "weekly")) {
         try {
-          const c = await buildCategoryDigest(week, category, voice);
-          categoryDigests.push({ key: category.key, ...c });
+          const r = await buildDigestFor(def, week, voice);
+          digests.push({ def: def.key, period: week, ...r });
           log.push(
-            "skipped" in c
-              ? `⚠ Digest "${category.label}" skipped: no scored items this week.`
-              : `Digest "${category.label}": ${c.items} signals.`,
+            "skipped" in r
+              ? `⚠ Digest "${def.label}" ${week} skipped: no scored items.`
+              : `Digest "${def.label}" ${week}: ${r.items} signals.`,
           );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          categoryDigests.push({ key: category.key, error: msg });
-          log.push(`⚠ Digest "${category.label}" failed: ${msg}`);
+          digests.push({ def: def.key, period: week, error: msg });
+          log.push(`⚠ Digest "${def.label}" ${week} failed: ${msg}`);
         }
       }
-      if (categoryDigests.length) stats.categoryDigests = categoryDigests;
+      stats.digests = digests;
     }
     if (stages.includes("posts")) {
       const channels = getChannels(true).filter((c) => c.posts_per_run > 0);

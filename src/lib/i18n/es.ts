@@ -467,14 +467,14 @@ export const es: Dictionary = {
           "Puntúa cada item de la semana de 0 a 100, agrupa los duplicados en una sola historia y propone un ángulo. Cambiar esto cambia lo que llega al radar.",
       },
       digest: {
-        label: "Resumen semanal",
+        label: "Resumen (todas las categorías)",
         description:
-          "Escribe el documento de trabajo de la semana a partir de las señales seleccionadas. Es la materia prima de la que sale cada post.",
+          "Escribe el documento de trabajo a partir de las señales seleccionadas. Lo usa todo resumen que cubre todas las categorías, el general incluido. Es la materia prima de la que sale cada post.",
       },
       category_digest: {
         label: "Resumen por categoría",
         description:
-          "Escribe el resumen semanal de una categoría a partir de sus items mejor puntuados. Se ejecuta una vez por cada categoría con el resumen activado; los canales asociados a esa categoría escriben a partir de él.",
+          "Escribe un resumen acotado a algunas categorías a partir de sus items mejor puntuados. Lo usa toda definición de resumen que elige categorías; los canales asociados a ella escriben a partir de él.",
       },
       writer: {
         label: "Escritor",

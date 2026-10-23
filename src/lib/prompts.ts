@@ -26,7 +26,7 @@ const VOICE_VARS: PromptVariable[] = [
   { name: "banned", description: "Banned words and phrases, comma separated" },
   { name: "cta", description: "How you close a post" },
   { name: "samples", description: "Samples of your writing" },
-  { name: "week", description: "ISO week being processed, e.g. 2026-W36" },
+  { name: "week", description: "Period being processed: an ISO week (2026-W36), a day (2026-10-23) or a month (2026-10)" },
 ];
 
 /**
@@ -74,9 +74,9 @@ Write "why" and "angle" in this language: {{language}}. No text outside the JSON
 
   digest: {
     key: "digest",
-    label: "Weekly digest",
+    label: "Digest (all categories)",
     description:
-      "Writes the working document of the week from the selected signals. It is the raw material every post is derived from.",
+      "Writes the working document from the selected signals. Used by every digest that covers all categories, the general one included. It is the raw material every post is derived from.",
     variables: [
       ...VOICE_VARS,
       { name: "signals", description: "JSON array of the selected signals" },
@@ -115,10 +115,10 @@ Write the document in this language: {{language}}.`,
     key: "category_digest",
     label: "Category digest",
     description:
-      "Writes the weekly digest of one category from its best-scored items. Runs once per category with its digest turned on; channels bound to that category write from it.",
+      "Writes a digest restricted to some categories from their best-scored items. Used by every digest definition that picks categories; channels bound to it write from it.",
     variables: [
       ...VOICE_VARS,
-      { name: "category", description: "Name of the category" },
+      { name: "category", description: "Names of the categories, comma separated" },
       { name: "signals", description: "JSON array of the category's best-scored items" },
     ],
     system: `You write the private weekly digest of ONE area — the category given — for a professional who then uses it as raw material for publications aimed at people who follow that area.

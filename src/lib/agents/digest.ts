@@ -1,7 +1,9 @@
-import { getDb, legacyDefKey } from "../db";
+import { categoryLabel, getCategories } from "../categories";
+import { getDb } from "../db";
 import { chatJson, llmReady, modelLabel } from "../llm";
+import { periodRange, type PeriodKey } from "../periods";
 import { getPrompt, renderPrompt } from "../prompts";
-import type { Category, Item, VoiceProfile } from "../types";
+import type { DigestDef, Item, VoiceProfile } from "../types";
 import { isWeekKey } from "../weeks";
 import { voiceVars } from "./shared";
 
@@ -67,77 +69,77 @@ export function saveDigest(
   return row.id;
 }
 
-export async function buildDigest(week: string, voice: VoiceProfile) {
-  const items = getDb()
-    .prepare("SELECT * FROM items WHERE week_key = ? AND status = 'selected' ORDER BY score DESC")
-    .all(week) as Item[];
-
-  if (!items.length) {
-    throw new Error(`No selected items for ${week}. Run ingest + curate first.`);
-  }
-
-  let result: DigestText;
-
-  if (!llmReady()) {
-    result = {
-      title: `AI radar — ${week}`,
-      subtitle: "Demo mode: no LLM configured, so the selected items are listed without analysis.",
-      markdown: `This digest was produced without a model. Configure a provider under **Model & keys** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}\n\n## Noise of the week\n\n_(needs a model)_\n\n## What I would say\n\n_(needs a model)_`,
-    };
+/**
+ * The items that feed an item digest: scored, not rejected on the radar, in
+ * the period (a weekly period by `week_key`, which is indexed; a day or a month
+ * by `published_at`), from the definition's categories (all when empty). The
+ * curator's picks and the items already written about go first, then the rest
+ * by score, up to `item_count`.
+ */
+export function digestItems(def: Pick<DigestDef, "categories" | "item_count">, period: PeriodKey): Item[] {
+  const where = ["i.score IS NOT NULL", "i.status != 'rejected'"];
+  const params: unknown[] = [];
+  if (isWeekKey(period)) {
+    where.push("i.week_key = ?");
+    params.push(period);
   } else {
-    const prompt = getPrompt("digest");
-    result = await chatJson({
-      system: prompt.system,
-      prompt: renderPrompt(prompt.template, {
-        ...voiceVars(voice, week),
-        signals: JSON.stringify(signalPayload(items), null, 1),
-      }),
-      maxTokens: 16000,
-      temperature: 0.7,
-    });
+    const { start, end } = periodRange(period);
+    // published_at is stored as toISOString(), so the bounds are compared the same way.
+    where.push("i.published_at >= ? AND i.published_at < ?");
+    params.push(start.toISOString(), end.toISOString());
   }
-
-  return { digestId: saveDigest("general", week, result, items, voice.language), items: items.length };
+  if (def.categories.length) {
+    where.push(`s.category IN (${def.categories.map(() => "?").join(", ")})`);
+    params.push(...def.categories);
+  }
+  return getDb()
+    .prepare(
+      `SELECT i.* FROM items i LEFT JOIN sources s ON s.id = i.source_id
+       WHERE ${where.join(" AND ")}
+       ORDER BY CASE WHEN i.status IN ('selected', 'used') THEN 0 ELSE 1 END, i.score DESC, i.id
+       LIMIT ?`,
+    )
+    .all(...params, def.item_count) as Item[];
 }
 
 /**
- * The best-scored items of one category in a week, selected for the general
- * digest or not — but never one the user rejected on the radar.
+ * Writes the digest of one definition for one period. The prompt follows the
+ * shape: no categories → `digest`; some categories → `category_digest`, with
+ * `{{category}}` the labels joined. A period with nothing scored is skipped,
+ * not an error.
  */
-export function categoryDigestItems(week: string, category: string, limit: number): Item[] {
-  return getDb()
-    .prepare(
-      `SELECT i.* FROM items i JOIN sources s ON s.id = i.source_id
-       WHERE i.week_key = ? AND s.category = ? AND i.score IS NOT NULL AND i.status != 'rejected'
-       ORDER BY i.score DESC, i.id LIMIT ?`,
-    )
-    .all(week, category, limit) as Item[];
-}
-
-/** A category with nothing scored this week is skipped, not an error. */
-export async function buildCategoryDigest(
-  week: string,
-  category: Category,
+export async function buildDigestFor(
+  def: DigestDef,
+  period: PeriodKey,
   voice: VoiceProfile,
 ): Promise<{ digestId: number; items: number } | { skipped: true }> {
-  const items = categoryDigestItems(week, category.key, category.digest_items);
+  if (def.kind !== "items") throw new Error(`"${def.label}" is a roll-up: roll-ups are not available yet.`);
+  const items = digestItems(def, period);
   if (!items.length) return { skipped: true };
 
+  const categories = getCategories();
+  const scope = def.categories.map((key) => categoryLabel(categories, key).label).join(", ");
   let result: DigestText;
 
   if (!llmReady()) {
-    result = {
-      title: `${category.label} — ${week}`,
-      subtitle: "Demo mode: no LLM configured, so the category's best items are listed without analysis.",
-      markdown: `This digest was produced without a model. Configure a provider under **Model & keys** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}`,
-    };
+    result = scope
+      ? {
+          title: `${def.label} — ${period}`,
+          subtitle: "Demo mode: no LLM configured, so the best items of these categories are listed without analysis.",
+          markdown: `This digest was produced without a model. Configure a provider under **Model & keys** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}`,
+        }
+      : {
+          title: `AI radar — ${period}`,
+          subtitle: "Demo mode: no LLM configured, so the selected items are listed without analysis.",
+          markdown: `This digest was produced without a model. Configure a provider under **Model & keys** and run the pipeline again to get the real write-up.\n\n## The signals\n\n${demoLines(items)}\n\n## Noise of the week\n\n_(needs a model)_\n\n## What I would say\n\n_(needs a model)_`,
+        };
   } else {
-    const prompt = getPrompt("category_digest");
+    const prompt = getPrompt(scope ? "category_digest" : "digest");
     result = await chatJson({
       system: prompt.system,
       prompt: renderPrompt(prompt.template, {
-        ...voiceVars(voice, week),
-        category: category.label,
+        ...voiceVars(voice, period),
+        ...(scope ? { category: scope } : {}),
         signals: JSON.stringify(signalPayload(items), null, 1),
       }),
       maxTokens: 16000,
@@ -145,5 +147,5 @@ export async function buildCategoryDigest(
     });
   }
 
-  return { digestId: saveDigest(legacyDefKey(category.key), week, result, items, voice.language), items: items.length };
+  return { digestId: saveDigest(def.key, period, result, items, voice.language), items: items.length };
 }
