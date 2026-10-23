@@ -352,6 +352,7 @@ export const es: Dictionary = {
     inherit: "Heredar del perfil de voz",
     languageHint:
       "Los posts de este canal se escriben en este idioma. Cualquier post individual se puede cambiar desde la cola.",
+    deletedDigest: (key: string) => `${key} (borrado)`,
     sourceDigest: "Resumen de origen",
     sourceDigestHint:
       "El resumen del que salen los posts de este canal. Escribe cuando ese resumen se escribe: todos los días si es diario, los lunes si es semanal, el día 1 si es mensual.",

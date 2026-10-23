@@ -357,6 +357,7 @@ export const en = {
     inherit: "Inherit from the voice profile",
     languageHint:
       "The posts of this channel are written in this language. Any single post can still be changed from the queue.",
+    deletedDigest: (key: string) => `${key} (deleted)`,
     sourceDigest: "Source digest",
     sourceDigestHint:
       "The digest this channel writes from. It writes when that digest is written: every day for a daily one, on Mondays for a weekly one, on the 1st for a monthly one.",

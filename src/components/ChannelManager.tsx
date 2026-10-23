@@ -195,6 +195,11 @@ function Editor({
                   {x.label} · {t.digestDefs.cadences[x.cadence]}
                 </option>
               ))}
+            {/* Bound to a definition that no longer exists: keep the saved
+                value visible instead of the select silently showing General. */}
+            {d.digest_def && !defs.some((x) => x.key === d.digest_def) && (
+              <option value={d.digest_def}>{t.channels.deletedDigest(d.digest_def)}</option>
+            )}
           </select>
           <p className="text-[11px] text-faint mt-1">{t.channels.sourceDigestHint}</p>
         </div>
@@ -387,7 +392,7 @@ export default function ChannelManager({
                 <span className="chip !text-[10px] !py-0">{c.publisher}</span>
                 {c.digest_def && (
                   <span className="chip !text-[10px] !py-0">
-                    {defs.find((x) => x.key === c.digest_def)?.label ?? c.digest_def}
+                    {defs.find((x) => x.key === c.digest_def)?.label ?? t.channels.deletedDigest(c.digest_def)}
                   </span>
                 )}
                 {!c.enabled && <span className="chip !text-[10px] !py-0">{t.common.disabled}</span>}
