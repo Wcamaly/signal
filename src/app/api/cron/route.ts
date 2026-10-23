@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseStages, runPipeline } from "@/lib/pipeline";
+import { parseStages, runPipeline, type PipelineResult } from "@/lib/pipeline";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -18,6 +18,10 @@ export const maxDuration = 300;
  *   `2026-10-23`, `2026-W43` or `2026-10`.
  * - `week=previous` (or `current`, or `2026-W43`) is the old weekly schedule:
  *   it curates that week and writes every enabled weekly definition for it.
+ *
+ * Answers 200 when the run succeeded, 400 for bad parameters and 409 while
+ * another run is in flight (no run is opened in either case), 500 for a run
+ * that started and failed.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -34,10 +38,8 @@ export async function GET(req: Request) {
   try {
     stages = parseStages(url.searchParams.get("stages"));
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 400 },
-    );
+    const error = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, runId: null, error }, { status: 400 });
   }
 
   const defs = url.searchParams.get("defs");
@@ -47,5 +49,18 @@ export async function GET(req: Request) {
     period: url.searchParams.get("period") ?? undefined,
     trigger: "cron",
   });
-  return NextResponse.json(res, { status: res.ok ? 200 : 500 });
+  return NextResponse.json(res, { status: statusOf(res) });
+}
+
+/**
+ * 400 for a request that names something that does not exist, 409 while
+ * another run holds the slot — neither opened a run, so retrying the same
+ * request later is pointless (400) or fine (409). 500 only for a run that
+ * started and failed.
+ */
+function statusOf(res: PipelineResult): number {
+  if (res.ok) return 200;
+  if (res.refused === "busy") return 409;
+  if (res.refused === "invalid") return 400;
+  return 500;
 }

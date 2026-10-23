@@ -62,6 +62,12 @@ export type PipelineResult = {
   log: string[];
   stats: Record<string, unknown>;
   error?: string;
+  /**
+   * Why no run was opened (`runId` is null): the request itself was wrong
+   * (`invalid`), or another run is in flight (`busy`). Absent once a run
+   * opened — a run that then fails is a failure, not a refusal.
+   */
+  refused?: "invalid" | "busy";
 };
 
 /** One digest a run works on: a definition and the period it covers. */
@@ -190,7 +196,7 @@ export async function runPipeline(
     weeks = curateWeeks(options, targets, now);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg };
+    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg, refused: "invalid" };
   }
 
   // `targets` is what "Run again" replays. Written when the run opens, so a
@@ -204,7 +210,7 @@ export async function runPipeline(
     runId = startRun({ stages, week, trigger: options.trigger ?? "ui", stats });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg };
+    return { ok: false, runId: null, week: null, log: [`✖ ${msg}`], stats: {}, error: msg, refused: "busy" };
   }
 
   const status = llmStatus();
