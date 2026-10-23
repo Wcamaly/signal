@@ -25,18 +25,18 @@ export const en = {
   },
 
   nav: {
-    configure: "Configure",
+    operation: "Operation",
+    management: "Management",
     dashboard: "Dashboard",
     radar: "Radar",
     digest: "Digest archive",
     posts: "Publications",
-    sources: "Sources",
     runs: "Runs",
-    voice: "Voice & settings",
-    channels: "Channels",
+    sources: "Sources",
     digestDefs: "Digests",
-    prompts: "Prompts",
-    model: "Model & keys",
+    channels: "Channels",
+    writing: "Writing",
+    model: "Model",
     settings: "Settings",
   },
 
@@ -45,7 +45,6 @@ export const en = {
     saving: "Saving…",
     saved: "Saved ✓",
     cancel: "Cancel",
-    close: "Close",
     edit: "Edit",
     delete: "Delete",
     remove: "Remove",
@@ -57,7 +56,6 @@ export const en = {
     enabled: "Enabled",
     disabled: "disabled",
     working: "Working…",
-    configuration: "Configuration",
   },
 
   manage: {
@@ -77,7 +75,6 @@ export const en = {
 
   run: {
     button: "Run pipeline",
-    running: "Running…",
     title: "Run the pipeline",
     intro:
       "Each stage consumes the output of the previous one. Run them separately if you already have the earlier data.",
@@ -289,7 +286,6 @@ export const en = {
   },
 
   sources: {
-    kicker: "Input",
     title: "Sources",
     addSource: "Add a source",
     name: "Name",

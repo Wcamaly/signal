@@ -20,18 +20,18 @@ export const es: Dictionary = {
   },
 
   nav: {
-    configure: "Configuración",
+    operation: "Operación",
+    management: "Gestión",
     dashboard: "Panel",
     radar: "Radar",
     digest: "Archivo",
     posts: "Publicaciones",
-    sources: "Fuentes",
     runs: "Ejecuciones",
-    voice: "Voz y ajustes",
-    channels: "Canales",
+    sources: "Fuentes",
     digestDefs: "Resúmenes",
-    prompts: "Prompts",
-    model: "Modelo y claves",
+    channels: "Canales",
+    writing: "Escritura",
+    model: "Modelo",
     settings: "Ajustes",
   },
 
@@ -40,7 +40,6 @@ export const es: Dictionary = {
     saving: "Guardando…",
     saved: "Guardado ✓",
     cancel: "Cancelar",
-    close: "Cerrar",
     edit: "Editar",
     delete: "Eliminar",
     remove: "Quitar",
@@ -52,7 +51,6 @@ export const es: Dictionary = {
     enabled: "Activo",
     disabled: "desactivado",
     working: "Trabajando…",
-    configuration: "Configuración",
   },
 
   manage: {
@@ -72,7 +70,6 @@ export const es: Dictionary = {
 
   run: {
     button: "Ejecutar pipeline",
-    running: "Ejecutando…",
     title: "Ejecutar el pipeline",
     intro:
       "Cada etapa consume la salida de la anterior. Ejecutalas por separado si ya tenés los datos previos.",
@@ -284,7 +281,6 @@ export const es: Dictionary = {
   },
 
   sources: {
-    kicker: "Entrada",
     title: "Fuentes",
     addSource: "Agregar una fuente",
     name: "Nombre",
