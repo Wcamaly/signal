@@ -351,9 +351,8 @@ export const en = {
     languageHint:
       "The posts of this channel are written in this language. Any single post can still be changed from the queue.",
     sourceDigest: "Source digest",
-    generalDigest: "General digest",
     sourceDigestHint:
-      "Which weekly digest this channel writes from. A category channel is skipped in a week where that category has no digest.",
+      "The digest this channel writes from. It writes when that digest is written: every day for a daily one, on Mondays for a weekly one, on the 1st for a monthly one.",
     handle: "Handle (preview only)",
     handleHint: "Shown under your name in the preview. Not sent anywhere.",
     template: "Publication template",
@@ -366,6 +365,10 @@ export const en = {
     credentialError: "Could not store the credential",
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} chars · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} per run${language ? ` · ${language}` : ""}`,
+  },
+
+  digestDefs: {
+    cadences: { daily: "daily", weekly: "weekly", monthly: "monthly" },
   },
 
   promptsPage: {

@@ -346,9 +346,8 @@ export const es: Dictionary = {
     languageHint:
       "Los posts de este canal se escriben en este idioma. Cualquier post individual se puede cambiar desde la cola.",
     sourceDigest: "Resumen de origen",
-    generalDigest: "Resumen general",
     sourceDigestHint:
-      "De qué resumen semanal salen los posts de este canal. Un canal de categoría se salta la semana en que esa categoría no tiene resumen.",
+      "El resumen del que salen los posts de este canal. Escribe cuando ese resumen se escribe: todos los días si es diario, los lunes si es semanal, el día 1 si es mensual.",
     handle: "Usuario (solo para la vista previa)",
     handleHint: "Se muestra debajo de tu nombre en la vista previa. No se envía a ningún lado.",
     template: "Plantilla de publicación",
@@ -361,6 +360,10 @@ export const es: Dictionary = {
     credentialError: "No se pudo guardar la credencial",
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} caracteres · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} por ejecución${language ? ` · ${language}` : ""}`,
+  },
+
+  digestDefs: {
+    cadences: { daily: "diario", weekly: "semanal", monthly: "mensual" },
   },
 
   promptsPage: {

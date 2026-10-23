@@ -1,5 +1,5 @@
 import { getChannels } from "./channels";
-import { getDb, getSetting, legacyDefKey } from "./db";
+import { getDb, getSetting } from "./db";
 import { ingestAll } from "./ingest";
 import { curateWeek } from "./agents/curator";
 import { buildDigestFor } from "./agents/digest";
@@ -59,7 +59,7 @@ export type PostGroup = { digestId: number; defKey: string; channels: Channel[] 
 
 /**
  * The posts stage, planned: one group per digest the channels write from.
- * A channel bound to a category with no digest this week is skipped with a
+ * A channel bound to a definition with no digest this week is skipped with a
  * warning; the general digest missing is still an error, as it always was.
  */
 export function groupChannelsByDigest(
@@ -68,7 +68,7 @@ export function groupChannelsByDigest(
 ): { groups: PostGroup[]; skipped: string[] } {
   const byDef = new Map<string, Channel[]>();
   for (const c of channels) {
-    const key = legacyDefKey(c.category);
+    const key = c.digest_def ?? "general";
     byDef.set(key, [...(byDef.get(key) ?? []), c]);
   }
 

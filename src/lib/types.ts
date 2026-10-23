@@ -94,8 +94,6 @@ export type Channel = {
   hint: string | null;
   /** Output language of this channel's posts. NULL inherits the voice profile. */
   language: string | null;
-  /** Key of the category whose digest this channel writes from. NULL = the general digest. */
-  category: string | null;
   /** Key of the digest definition this channel writes from. NULL = the general one. */
   digest_def: string | null;
   template: string | null;

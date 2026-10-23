@@ -9,7 +9,8 @@ process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-pipe
 const { getDb } = await import("./db");
 const { groupChannelsByDigest } = await import("./pipeline");
 
-const channel = (key: string, category: string | null) => ({ key, label: key.toUpperCase(), category }) as Channel;
+const channel = (key: string, digestDef: string | null) =>
+  ({ key, label: key.toUpperCase(), digest_def: digestDef }) as Channel;
 const digest = (week: string, category: string) =>
   Number(
     getDb()
