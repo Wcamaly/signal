@@ -22,7 +22,7 @@ const input = (over: Partial<Parameters<typeof saveDigestDef>[0]> = {}) => ({
 });
 
 beforeEach(() => {
-  db().exec("DELETE FROM digest_defs; DELETE FROM channels; DELETE FROM categories; DELETE FROM settings;");
+  db().exec("DELETE FROM digest_defs; DELETE FROM channels; DELETE FROM categories; DELETE FROM settings; DELETE FROM digests;");
   getCategories(); // the shipped categories: labs, regulation, press...
 });
 
@@ -121,6 +121,15 @@ describe("deleteDigestDef", () => {
     expect(getDigestDef(key)).toBeUndefined();
     expect(db().prepare("SELECT digest_def FROM channels WHERE key = 'daily-x'").get()).toEqual({ digest_def: null });
     expect(db().prepare("SELECT COUNT(*) c FROM digests WHERE def_key = ?").get(key)).toEqual({ c: 1 });
+  });
+
+  it("does not let a new definition take over a deleted one's archive", () => {
+    const key = saveDigestDef(input());
+    db().prepare("INSERT INTO digests (def_key, period_key, title) VALUES (?, '2026-10-22', 'archived')").run(key);
+    deleteDigestDef(key);
+    expect(() => saveDigestDef(input())).toThrow(/already used by archived digests; pick another name/);
+    expect(getDigestDef(key)).toBeUndefined();
+    expect(saveDigestDef(input({ label: "AI daily 2" }))).toBe("ai-daily-2");
   });
 
   it("takes it out of every roll-up's sources", () => {

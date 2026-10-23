@@ -148,6 +148,11 @@ export function saveDigestDef(input: DigestDefInput): string {
   const key = slugify(label);
   if (!key) throw new Error("The digest name needs at least one letter or digit");
   if (getDigestDef(key)) throw new Error(`A digest with the key "${key}" already exists`);
+  // A deleted definition's digests stay in the archive under its key. A new
+  // one with that key would upsert over them, period by period.
+  if (db.prepare("SELECT 1 FROM digests WHERE def_key = ? LIMIT 1").get(key)) {
+    throw new Error(`The key "${key}" is already used by archived digests; pick another name`);
+  }
   db.prepare(
     `INSERT INTO digest_defs (key, label, kind, cadence, categories, item_count, enabled, sort_order)
      VALUES (@key, @label, 'items', @cadence, @categories, @item_count, @enabled, @sort_order)`,
