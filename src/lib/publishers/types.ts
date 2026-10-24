@@ -1,4 +1,4 @@
-import type { Channel, Post } from "../types";
+import type { Channel, Digest, Post } from "../types";
 
 export type PublishContext = {
   channel: Channel;
@@ -36,6 +36,24 @@ export type Publisher = {
   credentialLabel: string;
   configFields: PublisherConfigField[];
   publish(ctx: PublishContext): Promise<{ url: string | null }>;
+  /**
+   * Optional: a channel whose config `enabled` accepts receives the digest it
+   * is bound to, sent by the run that writes it, instead of writing posts.
+   */
+  digest?: {
+    enabled(config: Record<string, unknown>): boolean;
+    send(ctx: DigestDeliveryContext): Promise<void>;
+  };
+};
+
+export type DigestDeliveryContext = {
+  channel: Channel;
+  digest: Digest;
+  /** Decrypted credential for this channel, when it has one. */
+  secret: string | null;
+  config: Record<string, unknown>;
+  /** The "read the full digest" link text, in the interface language. */
+  readMore: string;
 };
 
 export function requireConfig(config: Record<string, unknown>, key: string, label: string): string {

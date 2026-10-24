@@ -1,4 +1,7 @@
+import { parseJson } from "../db";
 import { getDictionary } from "../i18n";
+import type { Channel } from "../types";
+import { telegram } from "./telegram";
 import { postJson, requireConfig, type Publisher } from "./types";
 
 const manual: Publisher = {
@@ -123,19 +126,25 @@ const bluesky: Publisher = {
 };
 
 /** Registry. Add a publisher here and every channel can select it. */
-export const PUBLISHERS: Publisher[] = [manual, webhook, mastodon, bluesky];
+export const PUBLISHERS: Publisher[] = [manual, webhook, mastodon, bluesky, telegram];
 
 export function getPublisher(id: string): Publisher | undefined {
   return PUBLISHERS.find((p) => p.id === id);
 }
 
+/** Whether a channel receives its digest instead of writing posts. */
+export function sendsDigest(channel: Pick<Channel, "publisher" | "config">): boolean {
+  const digest = getPublisher(channel.publisher)?.digest;
+  return !!digest && digest.enabled(parseJson<Record<string, unknown>>(channel.config, {}));
+}
+
 /** Publisher metadata without the implementation, safe for client components. */
-export type PublisherInfo = Omit<Publisher, "publish">;
+export type PublisherInfo = Omit<Publisher, "publish" | "digest">;
 
 /** Publisher metadata in the interface language; untranslated ones stay English. */
 export function publisherCatalog(): PublisherInfo[] {
   const t = getDictionary();
-  return PUBLISHERS.map(({ publish: _publish, ...info }) => {
+  return PUBLISHERS.map(({ publish: _publish, digest: _digest, ...info }) => {
     const o = t.registry.publishers[info.id];
     if (!o) return info;
     return {
@@ -148,4 +157,4 @@ export function publisherCatalog(): PublisherInfo[] {
   });
 }
 
-export type { PublishContext, Publisher, PublisherConfigField } from "./types";
+export type { DigestDeliveryContext, PublishContext, Publisher, PublisherConfigField } from "./types";

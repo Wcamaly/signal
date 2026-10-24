@@ -240,6 +240,15 @@ Each channel picks a publisher:
 - **Mastodon** — real API. Create an application on your instance with the
   `write:statuses` scope and paste the token.
 - **Bluesky** — real API, via an app password (never your account password).
+- **Telegram** — a bot sends to your chat. Create the bot with @BotFather and
+  paste its token as the channel's credential; send the bot one message, then
+  read your chat id from `https://api.telegram.org/bot<token>/getUpdates`.
+  With **Send** left as `digest` (the default) the channel writes no posts: every
+  run that writes its source digest sends it on its own, as a short message —
+  title, thesis, one line per signal linking its source — ending in a link to
+  the full digest on Signal, built from **Signal URL**. A failed send is a
+  warning in the run log, never a failed run. Set **Send** to `posts` and it
+  behaves like Mastodon: posts go out when you publish them from the queue.
 
 Channel credentials are encrypted exactly like the LLM keys.
 

@@ -125,7 +125,8 @@ person publishing three times a week, copy-paste costs less than the paperwork.
 
 When you do want it automated, each channel picks a publisher: **webhook** (any
 URL — n8n, Make, Zapier, your CMS), **Mastodon** or **Bluesky** through their
-real APIs, or one you write yourself in about thirty lines —
+real APIs, **Telegram** (which can also deliver each digest to your phone as it
+is written), or one you write yourself in about thirty lines —
 see [docs/extending.md](docs/extending.md).
 
 ---

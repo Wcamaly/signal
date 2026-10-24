@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Channel, DigestDef } from "./types";
 
 // The due rules read the local calendar: pin the cluster's time zone.
@@ -14,6 +14,7 @@ process.env.SIGNAL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "signal-pipe
 
 const { getDb } = await import("./db");
 const { getChannels } = await import("./channels");
+const { saveCredential } = await import("./credentials");
 const { clientRunOptions, curateWeeks, dueTargets, groupChannelsByTarget, relaunchOptions, resolveTargets, runPipeline } =
   await import("./pipeline");
 const { getRun, reconcileStaleRuns } = await import("./runs");
@@ -248,6 +249,63 @@ describe("runPipeline", () => {
     db().exec("UPDATE channels SET enabled = 0 WHERE key = 'pulse-ch'");
     const res = await runPipeline(["posts"], { now: THURSDAY });
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/No channel/) });
+  });
+
+  describe("a channel that receives its digest", () => {
+    const sent: { url: string; body: Record<string, unknown> }[] = [];
+    const answer = (status: number) =>
+      vi.fn(async (url: string, init: { body: string }) => {
+        sent.push({ url, body: JSON.parse(init.body) });
+        return new Response(status === 200 ? '{"ok":true}' : '{"ok":false,"description":"chat not found"}', { status });
+      });
+
+    beforeEach(() => {
+      sent.length = 0;
+      const cred = saveCredential({ scope: "channel", provider: "telegram", label: "test", secret: "bot-token" });
+      db()
+        .prepare(
+          `INSERT INTO channels (key, label, digest_def, posts_per_run, enabled, publisher, config, credential_id)
+           VALUES ('tg', 'Telegram', 'pulse', 1, 1, 'telegram', ?, ?)`,
+        )
+        .run(JSON.stringify({ chat_id: "42", signal_url: "https://signal.test/" }), cred.id);
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("gets the digest the run wrote, and writes no posts", async () => {
+      vi.stubGlobal("fetch", answer(200));
+      const res = await runPipeline(["digest", "posts"], { now: MONDAY });
+      expect(res.ok).toBe(true);
+      expect(res.log).toContain("Delivery: 1 digest sent.");
+      expect(sent).toHaveLength(1);
+      expect(sent[0].url).toBe("https://api.telegram.org/botbot-token/sendMessage");
+      const pulse = db().prepare("SELECT id FROM digests WHERE def_key = 'pulse'").get() as { id: number };
+      expect(sent[0].body).toMatchObject({ chat_id: "42", parse_mode: "HTML" });
+      expect(sent[0].body.text).toContain(`<a href="https://signal.test/digest/${pulse.id}">`);
+      expect(db().prepare("SELECT COUNT(*) c FROM posts WHERE platform = 'tg'").get()).toEqual({ c: 0 });
+    });
+
+    it("turns a failed send into a warning, not a failed run", async () => {
+      vi.stubGlobal("fetch", answer(400));
+      const res = await runPipeline(["digest"], { now: MONDAY });
+      expect(res.ok).toBe(true);
+      expect(res.log.join("\n")).toMatch(/⚠ Channel "Telegram": the digest was not sent: HTTP 400/);
+    });
+
+    it("is not a posts channel, so it never makes the posts stage fail", async () => {
+      db().exec("UPDATE channels SET enabled = 0 WHERE key = 'pulse-ch'");
+      vi.stubGlobal("fetch", answer(200));
+      const res = await runPipeline(["posts"], { defs: ["pulse"], now: MONDAY });
+      expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/No channel.*\(Pulse\)/) });
+    });
+
+    it("writes posts like any other channel in posts mode", async () => {
+      db().prepare("UPDATE channels SET config = ? WHERE key = 'tg'").run(JSON.stringify({ chat_id: "42", mode: "posts" }));
+      vi.stubGlobal("fetch", answer(200));
+      const res = await runPipeline(["digest", "posts"], { now: MONDAY });
+      expect(res.ok).toBe(true);
+      expect(sent).toHaveLength(0);
+      expect((db().prepare("SELECT COUNT(*) c FROM posts WHERE platform = 'tg'").get() as { c: number }).c).toBeGreaterThan(0);
+    });
   });
 
   it("records on the run the week of its single weekly digest, otherwise the current week", async () => {

@@ -397,6 +397,7 @@ export const en = {
     pasteToken: "Paste the token",
     confirmDelete: (label: string) =>
       `Delete the channel "${label}"? Its posts stay in the queue under its key.`,
+    readFullDigest: "Read the full digest →",
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} chars · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} per run${language ? ` · ${language}` : ""}`,
   },
