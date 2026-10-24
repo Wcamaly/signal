@@ -68,7 +68,6 @@ export async function curateWeek(week: string, voice: VoiceProfile) {
         ...voiceVars(voice, week),
         items: JSON.stringify(payload, null, 1),
       }),
-      maxTokens: 16000,
       temperature: 0.3,
     });
   }
