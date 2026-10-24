@@ -1,14 +1,17 @@
-import { getChannels } from "./channels";
+import { channelConfig, getChannels } from "./channels";
+import { readSecret } from "./credentials";
 import { getDb, getSetting } from "./db";
 import { ingestAll } from "./ingest";
 import { curateWeek } from "./agents/curator";
 import { buildDigestFor } from "./agents/digest";
 import { getDigestDefs } from "./digest-defs";
+import { getDictionary } from "./i18n";
 import { writePosts } from "./agents/writer";
 import { llmStatus } from "./llm";
+import { getPublisher, sendsDigest } from "./publishers";
 import { isDue, periodWeeks, previousPeriod, resolvePeriod, type PeriodKey } from "./periods";
 import { finishRun, runStats, startRun, type Run, type RunTrigger } from "./runs";
-import { DEFAULT_VOICE, type Channel, type DigestDef, type VoiceProfile } from "./types";
+import { DEFAULT_VOICE, type Channel, type Digest, type DigestDef, type VoiceProfile } from "./types";
 import { previousWeekKey, resolveWeek, weekKey, type WeekKey } from "./weeks";
 
 export function getVoice(): VoiceProfile {
@@ -175,6 +178,40 @@ export function groupChannelsByTarget(
   return { groups, skipped };
 }
 
+/**
+ * Sends each digest this run wrote to the enabled channels that receive their
+ * digest — a Telegram chat, say — instead of writing posts. A failed send is a
+ * warning, not a failed run: the digest is written and readable on Signal.
+ */
+export async function deliverDigests(
+  written: Map<string, number>,
+  channels: Channel[],
+): Promise<{ sent: number; warnings: string[] }> {
+  const find = getDb().prepare("SELECT * FROM digests WHERE id = ?");
+  const readMore = getDictionary().channels.readFullDigest;
+  let sent = 0;
+  const warnings: string[] = [];
+  for (const channel of channels) {
+    if (!channel.enabled || !sendsDigest(channel)) continue;
+    const id = written.get(channel.digest_def ?? "general");
+    const send = getPublisher(channel.publisher)?.digest?.send;
+    if (id === undefined || !send) continue;
+    try {
+      await send({
+        channel,
+        digest: find.get(id) as Digest,
+        secret: channel.credential_id ? readSecret(channel.credential_id) : null,
+        config: channelConfig(channel),
+        readMore,
+      });
+      sent++;
+    } catch (err) {
+      warnings.push(`Channel "${channel.label}": the digest was not sent: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  return { sent, warnings };
+}
+
 /** What a browser may ask for: everything in RunOptions but the clock and the trigger. */
 export type ClientRunOptions = Pick<RunOptions, "week" | "defs" | "period" | "targets">;
 
@@ -308,11 +345,19 @@ export async function runPipeline(
       if (digests.length && digests.every((d) => "error" in d)) {
         throw new Error(`Every digest failed. The first one: ${String(digests[0].error)}`);
       }
+      if (written.size) {
+        const r = await deliverDigests(written, getChannels());
+        if (r.sent) log.push(`Delivery: ${r.sent} digest${r.sent === 1 ? "" : "s"} sent.`);
+        r.warnings.forEach((w) => log.push(`⚠ ${w}`));
+      }
     }
     if (stages.includes("posts")) {
       // Only the channels bound to this run's digests matter: on a day when
       // no bound definition is due, every channel being off is not an error.
-      const bound = getChannels().filter((c) => targets.some((t) => (c.digest_def ?? "general") === t.def.key));
+      // Channels that receive the digest itself were served by the digest stage.
+      const bound = getChannels().filter(
+        (c) => !sendsDigest(c) && targets.some((t) => (c.digest_def ?? "general") === t.def.key),
+      );
       const channels = bound.filter((c) => c.enabled && c.posts_per_run > 0);
       if (bound.length && !channels.length) {
         throw new Error(

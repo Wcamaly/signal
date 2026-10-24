@@ -392,6 +392,7 @@ export const es: Dictionary = {
     pasteToken: "Pegá el token",
     confirmDelete: (label: string) =>
       `¿Eliminar el canal «${label}»? Sus posts quedan en la cola bajo su clave.`,
+    readFullDigest: "Leer el resumen completo →",
     summary: (charLimit: number, postsPerRun: number, language: string | null) =>
       `${charLimit} caracteres · ${postsPerRun} post${postsPerRun === 1 ? "" : "s"} por ejecución${language ? ` · ${language}` : ""}`,
   },
@@ -520,6 +521,12 @@ export const es: Dictionary = {
         help: "Publica a través del protocolo AT. Usá una contraseña de aplicación (Ajustes → App Passwords), nunca la de tu cuenta. Los enlaces y las imágenes van como texto plano.",
         credentialLabel: "Contraseña de aplicación",
         fields: { handle: "Usuario", service: "URL del PDS" },
+      },
+      telegram: {
+        label: "Telegram",
+        help: "Manda a un chat de Telegram con un bot. Crealo con @BotFather y pegá su token; escribile una vez al bot y sacá tu chat id de https://api.telegram.org/bot<token>/getUpdates. En modo digest, el resumen asociado llega solo cada vez que se escribe; en modo posts, los posts salen cuando los publicás desde la cola.",
+        credentialLabel: "Token del bot",
+        fields: { chat_id: "Chat ID", mode: "Enviar", signal_url: "URL de Signal" },
       },
     },
     providers: {},
