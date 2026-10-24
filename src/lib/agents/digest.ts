@@ -142,7 +142,6 @@ export async function buildDigestFor(
         ...(scope ? { category: scope } : {}),
         signals: JSON.stringify(signalPayload(items), null, 1),
       }),
-      maxTokens: 16000,
       temperature: 0.7,
     });
   }

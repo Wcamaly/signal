@@ -45,15 +45,19 @@ export const anthropicProvider: LlmProvider = {
     });
 
     try {
-      const res = await client.messages.create({
-        model: ctx.model,
-        max_tokens: req.maxTokens ?? ctx.maxTokens,
-        system: req.system,
-        messages: [{ role: "user", content: req.prompt }],
-        ...(NO_SAMPLING.test(ctx.model)
-          ? {}
-          : { temperature: req.temperature ?? ctx.temperature }),
-      });
+      // Streamed so a high Max tokens does not run into the SDK's limit on
+      // long non-streaming requests; finalMessage() is the same response.
+      const res = await client.messages
+        .stream({
+          model: ctx.model,
+          max_tokens: req.maxTokens ?? ctx.maxTokens,
+          system: req.system,
+          messages: [{ role: "user", content: req.prompt }],
+          ...(NO_SAMPLING.test(ctx.model)
+            ? {}
+            : { temperature: req.temperature ?? ctx.temperature }),
+        })
+        .finalMessage();
 
       if (res.stop_reason === "refusal") {
         throw new LlmError("Claude declined to answer this request", "anthropic");
