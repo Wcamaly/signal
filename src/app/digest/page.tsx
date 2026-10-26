@@ -57,7 +57,7 @@ export default async function DigestList({ searchParams }: { searchParams: Searc
   return (
     <div>
       <PageHeader kicker={t.digestList.kicker} title={t.digestList.title} sub={t.digestList.sub} />
-      <div className="p-8 flex flex-col gap-2 max-w-3xl">
+      <div className="p-4 sm:p-8 flex flex-col gap-2 max-w-3xl">
         <div className="mb-2">
           <CategoryChips
             options={options}
@@ -86,7 +86,7 @@ export default async function DigestList({ searchParams }: { searchParams: Searc
             );
           })
         ) : (
-          <div className="card p-6 text-[13px] text-muted">{t.digestList.empty}</div>
+          <div className="card p-4 sm:p-6 text-[13px] text-muted">{t.digestList.empty}</div>
         )}
       </div>
     </div>

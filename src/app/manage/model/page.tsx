@@ -13,7 +13,7 @@ export default function ModelPage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.model.title} sub={t.model.sub} />
       <SectionTabs tabs={modelTabs(t)} />
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 sm:p-8 max-w-3xl">
         <ProviderForm
           providers={providerCatalog()}
           config={getLlmConfig()}

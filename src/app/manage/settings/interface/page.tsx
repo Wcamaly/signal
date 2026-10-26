@@ -12,7 +12,7 @@ export default function InterfaceSettingsPage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.settings.interfaceTitle} sub={t.settings.interfaceSub} />
       <SectionTabs tabs={settingsTabs(t)} />
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 sm:p-8 max-w-3xl">
         <InterfaceForm uiLocale={getUiLocale()} uiLocales={uiLocaleOptions()} />
       </div>
     </div>

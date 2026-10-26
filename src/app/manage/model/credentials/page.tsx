@@ -15,7 +15,7 @@ export default function CredentialsPage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.model.credentialsTitle} sub={t.model.credentialsSub} />
       <SectionTabs tabs={modelTabs(t)} />
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 sm:p-8 max-w-3xl">
         <CredentialsForm
           providers={providerCatalog()}
           current={getLlmConfig().provider}

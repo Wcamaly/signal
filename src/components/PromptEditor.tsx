@@ -45,7 +45,7 @@ export default function PromptEditor({ prompt }: { prompt: EditablePrompt }) {
   }
 
   return (
-    <section className="card p-6">
+    <section className="card p-4 sm:p-6">
       <span className="label">{t.promptsPage.systemPrompt}</span>
       <textarea
         className="textarea min-h-[220px] font-mono !text-[12px]"

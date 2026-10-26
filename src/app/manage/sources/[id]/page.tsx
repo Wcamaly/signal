@@ -24,7 +24,7 @@ export default async function EditSourcePage({ params }: { params: Params }) {
     <div>
       <PageHeader kicker={t.manage.kicker} title={source.name} sub={source.url} />
       <SectionTabs tabs={sourcesTabs(t)} />
-      <div className="p-8 max-w-3xl flex flex-col gap-5">
+      <div className="p-4 sm:p-8 max-w-3xl flex flex-col gap-5">
         <BackLink href="/manage/sources" label={t.manage.back(t.sources.title)} />
         {source.last_error && (
           <p className="text-[12px]" style={{ color: "var(--bad)" }}>

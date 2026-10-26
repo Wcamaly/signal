@@ -68,7 +68,7 @@ export default function SourceList({ sources, categories }: { sources: SourceRow
           </h2>
           <div className="flex flex-col gap-1.5">
             {groups[cat].map((s) => (
-              <div key={s.id} className="card px-4 py-3 flex items-center gap-4">
+              <div key={s.id} className="card px-3 sm:px-4 py-3 flex items-center gap-2.5 sm:gap-4">
                 <input
                   type="checkbox"
                   className="accent-[var(--accent)] shrink-0"
@@ -93,8 +93,8 @@ export default function SourceList({ sources, categories }: { sources: SourceRow
                   )}
                   {tested[s.id] && <div className="text-[11px] text-muted mt-1">{tested[s.id]}</div>}
                 </div>
-                <span className="chip !text-[10.5px] shrink-0">{s.kind}</span>
-                <span className="font-mono text-[11.5px] text-faint w-12 text-right shrink-0">{s.item_count}</span>
+                <span className="chip !text-[10.5px] shrink-0 max-sm:!hidden">{s.kind}</span>
+                <span className="font-mono text-[11.5px] text-faint w-12 text-right shrink-0 hidden sm:block">{s.item_count}</span>
                 <button className="btn btn-ghost btn-sm shrink-0" onClick={() => test(s.id)} disabled={pending}>
                   {t.sources.test}
                 </button>

@@ -60,7 +60,7 @@ export default function VoiceForm({ voice: initial }: { voice: VoiceProfile }) {
 
   return (
     <div className="flex flex-col gap-7">
-      <section className="card p-6">
+      <section className="card p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4 mb-5">
           <h2 className="kicker">{t.settings.voiceProfile}</h2>
           <button className="btn btn-ghost btn-sm" onClick={() => setV(EXAMPLE)} type="button">
@@ -68,7 +68,7 @@ export default function VoiceForm({ voice: initial }: { voice: VoiceProfile }) {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label={t.settings.name}>
             <input className="input" value={v.author} onChange={(e) => set("author", e.target.value)} />
           </Field>
@@ -153,7 +153,7 @@ export default function VoiceForm({ voice: initial }: { voice: VoiceProfile }) {
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label={t.settings.workingLanguage} hint={t.settings.workingLanguageHint}>
             <LanguageSelect value={v.language} onChange={(l) => set("language", l)} />
           </Field>

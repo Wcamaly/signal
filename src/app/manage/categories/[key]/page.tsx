@@ -23,7 +23,7 @@ export default async function EditCategoryPage({ params }: { params: Params }) {
     <div>
       <PageHeader kicker={t.manage.kicker} title={category.label} />
       <SectionTabs tabs={sourcesTabs(t)} />
-      <div className="p-8 max-w-3xl flex flex-col gap-5">
+      <div className="p-4 sm:p-8 max-w-3xl flex flex-col gap-5">
         <BackLink href="/manage/categories" label={t.manage.back(t.categories.title)} />
         <CategoryForm
           isNew={false}

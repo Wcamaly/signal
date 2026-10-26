@@ -41,7 +41,7 @@ export default async function RunsPage({ searchParams }: { searchParams: Search 
     <div>
       <PageHeader kicker={t.runs.kicker} title={t.runs.title} sub={t.runs.sub(total)} />
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex flex-wrap gap-1.5 mb-2">
           <Chip href={link({ status: undefined })} active={!sp.status}>
             {t.common.all}
@@ -111,7 +111,7 @@ export default async function RunsPage({ searchParams }: { searchParams: Search 
               </Link>
             ))
           ) : (
-            <div className="card p-6 text-[13px] text-muted">
+            <div className="card p-4 sm:p-6 text-[13px] text-muted">
               {total ? t.runs.emptyFiltered : t.runs.empty}
             </div>
           )}

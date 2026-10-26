@@ -65,7 +65,7 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
           </div>
         }
       />
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex gap-1.5">
             {[0, 60, 75, 85].map((m) => (
@@ -90,7 +90,7 @@ export default async function RadarPage({ searchParams }: { searchParams: Search
           {items.length ? (
             items.map((i) => <ItemRow key={i.id} item={i} />)
           ) : (
-            <div className="card p-6 text-[13px] text-muted">{t.radar.empty}</div>
+            <div className="card p-4 sm:p-6 text-[13px] text-muted">{t.radar.empty}</div>
           )}
         </div>
       </div>

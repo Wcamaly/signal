@@ -13,7 +13,7 @@ export default function NewRunPage() {
   return (
     <div>
       <PageHeader kicker={t.runs.kicker} title={t.run.title} sub={t.run.intro} />
-      <div className="p-8 max-w-2xl flex flex-col gap-5">
+      <div className="p-4 sm:p-8 max-w-2xl flex flex-col gap-5">
         <BackLink href="/runs" label={t.runs.back} />
         <RunForm
           defs={defs.filter((d) => d.kind === "items").map(({ key, label, cadence }) => ({ key, label, cadence }))}

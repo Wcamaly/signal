@@ -25,6 +25,8 @@ export const en = {
   },
 
   nav: {
+    openMenu: "Open menu",
+    closeMenu: "Close menu",
     operation: "Operation",
     management: "Management",
     dashboard: "Dashboard",

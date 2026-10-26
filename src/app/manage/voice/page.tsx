@@ -13,7 +13,7 @@ export default function VoicePage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.settings.title} sub={t.settings.sub} />
       <SectionTabs tabs={writingTabs(t)} />
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 sm:p-8 max-w-3xl">
         <VoiceForm voice={getVoice()} />
       </div>
     </div>

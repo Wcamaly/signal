@@ -27,8 +27,8 @@ export default function PipelineForm({
 
   return (
     <div className="flex flex-col gap-7">
-      <section className="card p-6">
-        <div className="grid grid-cols-2 gap-x-4">
+      <section className="card p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label={t.settings.signalsPerWeek} hint={t.settings.signalsPerWeekHint}>
             <input
               type="number"

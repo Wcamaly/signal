@@ -43,7 +43,7 @@ export default function CategoryForm({ initial, isNew }: { initial: CategoryInpu
   }
 
   return (
-    <section className="card p-6 flex flex-col gap-4">
+    <section className="card p-4 sm:p-6 flex flex-col gap-4">
       <div className="flex items-end gap-3 flex-wrap">
         <div>
           <span className="label">{t.categories.colour}</span>
