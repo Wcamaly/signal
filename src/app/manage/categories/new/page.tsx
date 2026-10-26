@@ -13,7 +13,7 @@ export default function NewCategoryPage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.categories.newCategory} />
       <SectionTabs tabs={sourcesTabs(t)} />
-      <div className="p-8 max-w-3xl flex flex-col gap-5">
+      <div className="p-4 sm:p-8 max-w-3xl flex flex-col gap-5">
         <BackLink href="/manage/categories" label={t.manage.back(t.categories.title)} />
         <CategoryForm isNew initial={{ label: "", color: "#8b93a1", sort_order: 100 }} />
       </div>

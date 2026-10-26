@@ -33,7 +33,7 @@ export default async function SourcesPage({ searchParams }: { searchParams: Sear
         }
       />
       <SectionTabs tabs={sourcesTabs(t)} />
-      <div className="p-8 max-w-4xl flex flex-col gap-7">
+      <div className="p-4 sm:p-8 max-w-4xl flex flex-col gap-7">
         <CategoryChips
           options={categories}
           active={filter ?? undefined}

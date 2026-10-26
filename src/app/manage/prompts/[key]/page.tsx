@@ -21,7 +21,7 @@ export default async function PromptPage({ params }: { params: Params }) {
     <div>
       <PageHeader kicker={t.manage.kicker} title={prompt.label} sub={prompt.description} />
       <SectionTabs tabs={writingTabs(t)} />
-      <div className="p-8 max-w-4xl flex flex-col gap-5">
+      <div className="p-4 sm:p-8 max-w-4xl flex flex-col gap-5">
         <BackLink href="/manage/prompts" label={t.manage.back(t.promptsPage.title)} />
         <PromptEditor prompt={prompt} />
       </div>

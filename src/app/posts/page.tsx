@@ -62,8 +62,8 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
         sub={t.posts.sub}
       />
 
-      <div className="px-8 py-4 border-b border-line flex items-center gap-4 flex-wrap">
-        <div className="flex gap-1.5">
+      <div className="px-4 sm:px-8 py-4 border-b border-line flex items-center gap-x-4 gap-y-2.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           {STATUSES.map((s) => (
             <a
               key={s.key}
@@ -75,7 +75,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             </a>
           ))}
         </div>
-        <div className="w-px h-4 bg-[var(--border)]" />
+        <div className="hidden sm:block w-px h-4 bg-[var(--border)]" />
         <div className="flex gap-1.5 flex-wrap">
           <a
             href={qs({ channel: "all" })}
@@ -96,7 +96,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
         </div>
       </div>
 
-      <div className="p-8 flex flex-col gap-4 max-w-[860px]">
+      <div className="p-4 sm:p-8 flex flex-col gap-4 max-w-[860px]">
         {posts.length ? (
           posts.map((p) => {
             // A post whose channel was deleted still has to render: channelLabel
@@ -129,7 +129,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
             );
           })
         ) : (
-          <div className="card p-6 text-[13px] text-muted">{t.posts.empty}</div>
+          <div className="card p-4 sm:p-6 text-[13px] text-muted">{t.posts.empty}</div>
         )}
       </div>
     </div>

@@ -53,7 +53,7 @@ export default function CredentialsForm({
 
   return (
     <div className="flex flex-col gap-7">
-      <div className="w-64">
+      <div className="w-full sm:w-64">
         <span className="label">{t.model.provider}</span>
         <select
           className="select"
@@ -72,7 +72,7 @@ export default function CredentialsForm({
         </select>
       </div>
 
-      <section className="card p-6">
+      <section className="card p-4 sm:p-6">
         <h2 className="kicker mb-2">{t.model.credentialsFor(provider.label)}</h2>
         <p className="text-[12px] text-muted mb-5 leading-relaxed">
           {provider.needsKey ? (

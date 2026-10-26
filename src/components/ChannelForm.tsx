@@ -72,8 +72,8 @@ export default function ChannelForm({
   }
 
   return (
-    <section className="card p-6 flex flex-col gap-4">
-      <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3">
+    <section className="card p-4 sm:p-6 flex flex-col gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_auto_auto] gap-3">
         <div>
           <span className="label">{t.channels.name}</span>
           <input className="input" value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} />
@@ -116,7 +116,7 @@ export default function ChannelForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <span className="label">{t.channels.language}</span>
           <LanguageSelect
@@ -180,7 +180,7 @@ export default function ChannelForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_auto] gap-3 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 sm:items-end">
         <div>
           <span className="label">{t.channels.publisher}</span>
           <select

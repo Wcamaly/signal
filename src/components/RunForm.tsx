@@ -124,7 +124,7 @@ export default function RunForm({ defs, due }: { defs: RunDef[]; due: string[] }
   }
 
   return (
-    <div className="card p-6" style={{ background: "var(--surface)" }}>
+    <div className="card p-4 sm:p-6" style={{ background: "var(--surface)" }}>
       <div className="mb-5 flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="kicker">{t.run.digests}</span>

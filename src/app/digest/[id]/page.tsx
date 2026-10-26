@@ -67,13 +67,13 @@ export default async function DigestPage({ params }: { params: Promise<{ id: str
           </>
         }
       />
-      <div className="p-8 grid grid-cols-[minmax(0,1fr)_260px] gap-10 items-start">
+      <div className="p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-10 items-start">
         <article
-          className="prose-signal max-w-[720px]"
+          className="prose-signal max-w-[720px] min-w-0 break-words"
           dangerouslySetInnerHTML={{ __html: renderMarkdown(digest.markdown || "") }}
         />
 
-        <aside className="flex flex-col gap-6 sticky top-8">
+        <aside className="flex flex-col gap-6 lg:sticky lg:top-8">
           <DigestLanguage digestId={digest.id} language={language} />
 
           <div>

@@ -15,7 +15,7 @@ export default function PipelineSettingsPage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.settings.pipeline} sub={t.settings.pipelineSub} />
       <SectionTabs tabs={settingsTabs(t)} />
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 sm:p-8 max-w-3xl">
         <PipelineForm
           initial={{
             // The general digest's item count: the number the curator uses.

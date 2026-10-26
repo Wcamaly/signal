@@ -13,7 +13,7 @@ export default function PromptsPage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.promptsPage.title} sub={t.promptsPage.sub} />
       <SectionTabs tabs={writingTabs(t)} />
-      <div className="p-8 max-w-4xl">
+      <div className="p-4 sm:p-8 max-w-4xl">
         <PromptList prompts={PROMPT_KEYS.map((key) => editablePrompt(key, t.registry.prompts))} />
       </div>
     </div>

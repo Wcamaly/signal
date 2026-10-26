@@ -33,7 +33,7 @@ export default function CategoriesPage() {
         }
       />
       <SectionTabs tabs={sourcesTabs(t)} />
-      <div className="p-8 max-w-4xl flex flex-col gap-4">
+      <div className="p-4 sm:p-8 max-w-4xl flex flex-col gap-4">
         <p className="text-[12px] text-faint leading-snug">
           {t.categories.hint}{" "}
           <Link href="/manage/digests" className="text-accent">

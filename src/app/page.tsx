@@ -62,7 +62,7 @@ export default function Dashboard() {
     <div>
       <PageHeader kicker={t.dashboard.kicker(week)} title={t.dashboard.title} sub={t.dashboard.sub} />
 
-      <div className="p-8 flex flex-col gap-7">
+      <div className="p-4 sm:p-8 flex flex-col gap-7">
         {!status.ready && (
           <div className="card p-4 border-l-2" style={{ borderLeftColor: "var(--warn)" }}>
             <div className="text-[13px] font-medium mb-1">{t.dashboard.demoTitle}</div>
@@ -76,7 +76,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <section className="grid grid-cols-6 gap-3">
+        <section className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
           <Stat n={items} label={t.dashboard.stats.items} href="/radar" />
           <Stat n={selected} label={t.dashboard.stats.selected} href="/radar" />
           <Stat n={drafts} label={t.dashboard.stats.drafts} href="/posts" />
@@ -85,7 +85,7 @@ export default function Dashboard() {
           <Stat n={sources} label={t.dashboard.stats.sources} href="/manage/sources" />
         </section>
 
-        <div className="grid grid-cols-[1.15fr_1fr] gap-7 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-7 items-start">
           <section>
             <div className="flex items-baseline justify-between mb-3">
               <h2 className="kicker">{t.dashboard.digestOfWeek}</h2>

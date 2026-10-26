@@ -21,7 +21,7 @@ export default function ChannelsPage() {
           </Link>
         }
       />
-      <div className="p-8 max-w-4xl">
+      <div className="p-4 sm:p-8 max-w-4xl">
         <ChannelList channels={getChannels()} defs={getDigestDefs()} />
       </div>
     </div>

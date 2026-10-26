@@ -18,7 +18,7 @@ export default function SectionTabs({ tabs }: { tabs: SectionTab[] }) {
   );
 
   return (
-    <div className="px-8 py-3 border-b border-line flex gap-1.5">
+    <div className="px-4 sm:px-8 py-3 border-b border-line flex gap-1.5 overflow-x-auto">
       {tabs.map((t) => (
         <Link
           key={t.href}

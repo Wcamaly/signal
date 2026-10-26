@@ -60,8 +60,8 @@ export default function DigestDefForm({
   }
 
   return (
-    <section className="card p-6 flex flex-col gap-4">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-end">
+    <section className="card p-4 sm:p-6 flex flex-col gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-[1fr_auto_auto_auto] gap-3 items-end">
         <div>
           <span className="label">{t.digestDefs.name}</span>
           <input

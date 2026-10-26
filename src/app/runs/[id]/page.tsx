@@ -76,7 +76,7 @@ export default async function RunDetailPage({ params }: { params: Params }) {
         right={<RelaunchButton id={run.id} disabled={run.status === "running"} />}
       />
 
-      <div className="p-8 flex flex-col gap-7">
+      <div className="p-4 sm:p-8 flex flex-col gap-7">
         <Link href="/runs" className="text-[12px] text-muted hover:text-ink">
           {t.runs.back}
         </Link>
@@ -84,7 +84,7 @@ export default async function RunDetailPage({ params }: { params: Params }) {
         <section className="card p-5">
           <div className="flex items-start gap-3">
             <RunStatusDot status={run.status} />
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-[12.5px] flex-1">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-2 text-[12.5px] flex-1 min-w-0 break-words">
               <div className="text-muted">{t.runs.statuses[run.status]}</div>
               <div className="font-mono text-faint">
                 {run.seconds === null ? t.runs.stillRunning : t.runs.duration(run.seconds)}
@@ -117,7 +117,7 @@ export default async function RunDetailPage({ params }: { params: Params }) {
         {rows.length > 0 && (
           <section>
             <h2 className="kicker mb-3">{t.runs.result}</h2>
-            <div className="card p-5 grid grid-cols-[auto_1fr] gap-x-8 gap-y-1.5 text-[12.5px]">
+            <div className="card p-4 sm:p-5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 sm:gap-x-8 gap-y-1.5 text-[12.5px] break-words">
               {rows.map((r) => (
                 <div key={r.label} className="contents">
                   <span className="font-mono text-faint">{r.label}</span>

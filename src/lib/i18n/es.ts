@@ -20,6 +20,8 @@ export const es: Dictionary = {
   },
 
   nav: {
+    openMenu: "Abrir menú",
+    closeMenu: "Cerrar menú",
     operation: "Operación",
     management: "Gestión",
     dashboard: "Panel",

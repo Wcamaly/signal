@@ -16,7 +16,7 @@ export default function NewSourcePage() {
     <div>
       <PageHeader kicker={t.manage.kicker} title={t.sources.addSource} sub={t.sources.sub} />
       <SectionTabs tabs={sourcesTabs(t)} />
-      <div className="p-8 max-w-3xl flex flex-col gap-5">
+      <div className="p-4 sm:p-8 max-w-3xl flex flex-col gap-5">
         <BackLink href="/manage/sources" label={t.manage.back(t.sources.title)} />
         <SourceForm
           isNew

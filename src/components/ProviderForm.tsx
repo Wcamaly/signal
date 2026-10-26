@@ -96,10 +96,10 @@ export default function ProviderForm({
         </div>
       </div>
 
-      <section className="card p-6">
+      <section className="card p-4 sm:p-6">
         <h2 className="kicker mb-5">{t.model.provider}</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <span className="label">{t.model.provider}</span>
             <select className="select" value={cfg.provider} onChange={(e) => selectProvider(e.target.value)}>
@@ -149,7 +149,7 @@ export default function ProviderForm({
           </div>
         ))}
 
-        <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 mt-5">
+        <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-4 mt-5">
           <div>
             <span className="label">{t.model.baseUrl}</span>
             <input

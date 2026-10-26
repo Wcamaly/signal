@@ -17,10 +17,10 @@ export default function InterfaceForm({
   const t = useT();
 
   return (
-    <section className="card p-6">
+    <section className="card p-4 sm:p-6">
       <Field label={t.settings.interfaceLanguage} hint={t.settings.interfaceLanguageHint}>
         <select
-          className="select !w-56"
+          className="select sm:!w-56"
           value={uiLocale}
           onChange={(e) => start(async () => void (await actionSaveUiLanguage(e.target.value)))}
           disabled={pending}
