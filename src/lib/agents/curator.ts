@@ -1,10 +1,13 @@
 import { getDb } from "../db";
 import { generalItemCount } from "../digest-defs";
 import { fillSelectedImages } from "../images";
-import { chatJson, llmReady, modelLabel } from "../llm";
+import { chatJson, isJsonTruncated, llmReady, modelLabel } from "../llm";
 import { getPrompt, renderPrompt } from "../prompts";
 import type { Item, VoiceProfile } from "../types";
 import { voiceVars } from "./shared";
+
+/** Items scored per model call; see curateWeek. */
+export const CURATOR_BATCH = 30;
 
 type Verdict = {
   id: number;
@@ -48,34 +51,10 @@ export async function curateWeek(week: string, voice: VoiceProfile) {
 
   if (!items.length) return { scored: 0, selected: 0, images: 0, model: modelLabel() };
 
-  let verdicts: Verdict[];
-
-  if (!llmReady()) {
-    verdicts = items.map((i) => heuristicScore(i, voice));
-  } else {
-    const payload = items.map((i) => ({
-      id: i.id,
-      title: i.title,
-      source: i.source_id,
-      published: i.published_at,
-      summary: (i.summary ?? "").slice(0, 500),
-    }));
-
-    const prompt = getPrompt("curator");
-    verdicts = await chatJson<Verdict[]>({
-      system: prompt.system,
-      prompt: renderPrompt(prompt.template, {
-        ...voiceVars(voice, week),
-        items: JSON.stringify(payload, null, 1),
-      }),
-      temperature: 0.3,
-    });
-  }
-
   const update = db.prepare(
     `UPDATE items SET score = @score, why = @why, angle = @angle, topics = @topics, cluster = @cluster, status = 'scored' WHERE id = @id`,
   );
-  const tx = db.transaction((vs: Verdict[]) => {
+  const save = db.transaction((vs: Verdict[]) => {
     for (const v of vs) {
       if (typeof v?.id !== "number") continue;
       update.run({
@@ -88,7 +67,49 @@ export async function curateWeek(week: string, voice: VoiceProfile) {
       });
     }
   });
-  tx(verdicts);
+
+  let scored = 0;
+  if (!llmReady()) {
+    const verdicts = items.map((i) => heuristicScore(i, voice));
+    save(verdicts);
+    scored = verdicts.length;
+  } else {
+    // In batches: a verdict is ~150 tokens, so 120 items in one answer outgrow
+    // any sensible Max tokens and the JSON comes back cut. Each batch is saved
+    // as it lands, so a failure halfway keeps what was already scored.
+    // Adaptive thinking (Claude Opus 5) also spends max_tokens on hidden
+    // reasoning, so a batch that looked safe still arrives cut — split it
+    // and retry rather than failing the whole run.
+    const prompt = getPrompt("curator");
+    const scoreBatch = async (batch: Item[]): Promise<Verdict[]> => {
+      const payload = batch.map((it) => ({
+        id: it.id,
+        title: it.title,
+        source: it.source_id,
+        published: it.published_at,
+        summary: (it.summary ?? "").slice(0, 500),
+      }));
+      try {
+        return await chatJson<Verdict[]>({
+          system: prompt.system,
+          prompt: renderPrompt(prompt.template, {
+            ...voiceVars(voice, week),
+            items: JSON.stringify(payload, null, 1),
+          }),
+          temperature: 0.3,
+        });
+      } catch (err) {
+        if (!isJsonTruncated(err) || batch.length < 2) throw err;
+        const mid = Math.ceil(batch.length / 2);
+        return [...(await scoreBatch(batch.slice(0, mid))), ...(await scoreBatch(batch.slice(mid)))];
+      }
+    };
+    for (let i = 0; i < items.length; i += CURATOR_BATCH) {
+      const verdicts = await scoreBatch(items.slice(i, i + CURATOR_BATCH));
+      save(verdicts);
+      scored += verdicts.length;
+    }
+  }
 
   // Selection: best item per cluster, top N of the week (N = general.item_count). It runs every day now,
   // so it must not undo the radar: a rejected item is never picked, and one
@@ -108,5 +129,5 @@ export async function curateWeek(week: string, voice: VoiceProfile) {
   // Last, over the ten or so items that were actually selected.
   const images = await fillSelectedImages(week);
 
-  return { scored: verdicts.length, selected: top.length, images, model: modelLabel() };
+  return { scored, selected: top.length, images, model: modelLabel() };
 }
