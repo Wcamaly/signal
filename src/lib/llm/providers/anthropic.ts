@@ -6,8 +6,17 @@ import { LlmError } from "../types";
  * Claude models from 4.6 onwards reject `temperature` (and assistant prefill)
  * when adaptive thinking is in play, so both are simply not sent for them.
  * Older model ids keep the sampling parameter.
+ *
+ * Those same models think by default and spend `max_tokens` on hidden
+ * reasoning. The curator and the digest need a complete JSON value, so
+ * thinking is turned off for them — otherwise the array is cut mid-object
+ * and the run dies with "raise the token limit".
  */
 const NO_SAMPLING = /^claude-(fable|mythos)-5|^claude-opus-(5|4-8|4-7|4-6)|^claude-sonnet-(5|4-6)/;
+
+export function thinkingOff(model: string): { thinking: { type: "disabled" } } | Record<string, never> {
+  return NO_SAMPLING.test(model) ? { thinking: { type: "disabled" } } : {};
+}
 
 export const anthropicProvider: LlmProvider = {
   id: "anthropic",
@@ -53,6 +62,7 @@ export const anthropicProvider: LlmProvider = {
           max_tokens: req.maxTokens ?? ctx.maxTokens,
           system: req.system,
           messages: [{ role: "user", content: req.prompt }],
+          ...thinkingOff(ctx.model),
           ...(NO_SAMPLING.test(ctx.model)
             ? {}
             : { temperature: req.temperature ?? ctx.temperature }),

@@ -55,22 +55,43 @@ export function normalizeDate(s: string): string | null {
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-export async function fetchText(url: string, timeoutMs = 15000): Promise<string> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "user-agent": USER_AGENT,
-        accept: "application/rss+xml, application/xml, text/xml, application/json, */*",
-      },
-      signal: ctrl.signal,
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
-  } finally {
-    clearTimeout(t);
+const TRANSIENT = new Set([429, 502, 503, 504]);
+
+type Pause = (ms: number) => Promise<void>;
+const defaultPause: Pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * GET a URL as text. 429 / 5xx are retried a couple of times — VentureBeat
+ * and a few other newsrooms rate-limit the first hit from a datacenter IP.
+ */
+export async function fetchText(url: string, timeoutMs = 15000, pause: Pause = defaultPause): Promise<string> {
+  const attempts = 3;
+  let lastStatus = 0;
+  for (let i = 0; i < attempts; i++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "user-agent": USER_AGENT,
+          accept: "application/rss+xml, application/xml, text/xml, application/json, */*",
+        },
+        signal: ctrl.signal,
+      });
+      if (res.ok) return await res.text();
+      lastStatus = res.status;
+      if (!TRANSIENT.has(res.status) || i === attempts - 1) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const retryAfter = Number(res.headers.get("retry-after"));
+      const waitMs =
+        Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 8000) : 400 * 2 ** i;
+      await pause(waitMs);
+    } finally {
+      clearTimeout(t);
+    }
   }
+  throw new Error(`HTTP ${lastStatus}`);
 }
 
 export async function fetchJson<T>(url: string, timeoutMs = 15000): Promise<T> {

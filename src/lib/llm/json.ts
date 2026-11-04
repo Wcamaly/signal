@@ -1,3 +1,10 @@
+export const JSON_TRUNCATED = "The response ended in the middle of a JSON value (raise the token limit)";
+
+/** True when the model ran out of output tokens and the JSON never closed. */
+export function isJsonTruncated(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("middle of a JSON value");
+}
+
 /**
  * Pulls the first complete JSON value out of a model response.
  *
@@ -30,5 +37,5 @@ export function extractJson<T>(text: string): T {
       if (depth === 0) return JSON.parse(candidate.slice(start, i + 1)) as T;
     }
   }
-  throw new Error("The response ended in the middle of a JSON value (raise the token limit)");
+  throw new Error(JSON_TRUNCATED);
 }

@@ -14,7 +14,7 @@ import {
 import type { ChatRequest, LlmProvider } from "./types";
 
 export { LlmError } from "./types";
-export { extractJson } from "./json";
+export { extractJson, isJsonTruncated } from "./json";
 export type { ChatRequest, LlmProvider } from "./types";
 
 /** Registry. Add a provider here and it appears in the UI. */
